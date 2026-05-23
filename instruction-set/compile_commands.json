@@ -1,0 +1,15 @@
+[
+  {
+    "file": "instgen.cpp",
+    "arguments": [
+      "/usr/bin/g++",
+      "instgen.cpp",
+      "-o",
+      "test",
+      "-g",
+      "--std=c++20"
+    ],
+    "directory": "/home/aregmk/Documents/technion/semester6/project/asymm_tiling/instruction-set",
+    "output": "test"
+  }
+]
