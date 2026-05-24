@@ -57,70 +57,66 @@ class InstGen
             a_addr += page_size;
 
         // put B close to A and align
-        Addr b_addr  = a_addr + b_byte_size;
+        Addr b_addr = a_addr + a_byte_size;
+
         Addr b_align = b_addr / page_size;
         b_addr       = b_align * page_size;
-        if (b_addr < a_addr + b_byte_size)
+        if (b_addr < a_addr + a_byte_size)
             b_addr += page_size;
 
-        assert(b_addr - a_addr >= b_byte_size);
+        assert(b_addr - a_addr >= a_byte_size);
 
         // put C close to A,B and align
-        Addr c_addr  = b_addr + c_byte_size;
+        Addr c_addr  = b_addr + b_byte_size;
         Addr c_align = c_addr / page_size;
         c_addr       = c_align * page_size;
-        if (c_addr < b_addr + c_byte_size)
+        if (c_addr < b_addr + b_byte_size)
             c_addr += page_size;
 
-        assert(c_addr - b_addr >= c_byte_size);
+        assert(c_addr - b_addr >= b_byte_size);
 
         A = {mat_a.width, mat_a.height, mat_a.elem_width, a_addr};
         B = {mat_b.width, mat_b.height, mat_b.elem_width, b_addr};
         C = {mat_a.height, mat_b.width, c_elem_width, c_addr};
     }
 
-    // testing -----------
-    // void load(TileID id, Addr src_addr, int width, int height, int stride,
-    //           ElemWidth size)
-    enum mat {
-        a,
-        b,
-        c,
-    };
+    // LOAD_TILE <Tile ID><Base Addr><Width><Height><Stride><Element Size>
 
-    void load(mat m)
+    // loading matrix A, from AB=C. The left matrix, so we need to shift the
+    // tiles to the right, by using their width.
+    void load_left() const
     {
-        // LOAD_TILE <Tile ID><Base Addr><Width><Height><Stride><Element Size>
-
-        const GhostMat* mat_ptr = pickMat(m);
-
-        TileID nid = getNewId();
-        printf("LOAD_TILE %d, 0x%.32lX, %d, %d, %d, %d\n", nid, mat_ptr->addr,
-               mat_ptr->width / 2, mat_ptr->height / 2, mat_ptr->width,
-               mat_ptr->elem_width);
+        printf("LOAD_TILE %d, 0x%lX, %d, %d, %d, %d\n", 0, A.addr, A.width / 2,
+               A.height / 2, A.width, A.elem_width);
     }
-    // testing -----------
 
-    void store(TileID id, Addr dest_addr, int width, int height, int stride,
-               ElemWidth size);
+    // loading matrix B, from AB=C. The right matrix, so we need to shift the
+    // tiles down, by using their height.
+    void load_right() const
+    {
+        printf("LOAD_TILE %d, 0x%lX, %d, %d, %d, %d\n", 1, B.addr, B.width / 2,
+               B.height / 2, B.width, B.elem_width);
+    }
 
-    void mul_acc(TileID A, TileID B, TileID C);
+    void store() const;
+
+    void mul_acc() const;
+
+    void generate() const
+    {
+        constexpr int tile_width = 10;
+
+        while (1) {
+            load_left();
+            load_right();
+
+            mul_acc();
+        }
+
+        store();
+    }
 
   private:
-    TileID getNewId()
-    {
-        TileID new_id = min_avail_id_;
-        ++min_avail_id_;
-        return new_id;
-    }
-
-    void releaseId()
-    {
-        --min_avail_id_;
-    }
-
-    inline static TileID min_avail_id_ = 0;
-
     struct GhostMat {
         uint width;
         uint height;
@@ -132,33 +128,13 @@ class InstGen
     GhostMat A;
     GhostMat B;
     GhostMat C;
-
-    const GhostMat* pickMat(mat m) const
-    {
-        const GhostMat* mat_ptr;
-
-        switch (m) {
-        case a:
-            mat_ptr = &A;
-            break;
-        case b:
-            mat_ptr = &B;
-            break;
-        case c:
-            mat_ptr = &C;
-            break;
-        }
-
-        return mat_ptr;
-    }
 };
 
 int main()
 {
     InstGen gen{{100, 100, 64}, {100, 100, 8}};
-    gen.load(InstGen::a);
-    gen.load(InstGen::b);
-    gen.load(InstGen::c);
+    gen.load_left();
+    gen.load_right();
 
     return 0;
 };
