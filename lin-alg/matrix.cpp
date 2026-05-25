@@ -4,69 +4,6 @@
 #include <random>
 
 template <typename T>
-class RandMatrix
-{
-  public:
-    RandMatrix(size_t n)
-        : elems_(new T[n * n]), width_(n), height_(n), nr_elems_(n * n)
-    {
-        fill();
-    }
-
-    RandMatrix(size_t n, size_t m)
-        : elems_(new T[n * m]), width_(n), height_(m), nr_elems_(n * m)
-    {
-        fill();
-    }
-
-    ~RandMatrix()
-    {
-        delete[] elems_;
-    }
-
-    const T& getElem(size_t row, size_t col) const
-    {
-        return (elems_[row * width_ + col]);
-    }
-
-    T& getElem(size_t row, size_t col)
-    {
-        return (elems_[row * width_ + col]);
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const RandMatrix<T>& m)
-    {
-        size_t counter = 0;
-        for (int i = 0; i < m.nr_elems_; ++i) {
-            os << m.elems_[i];
-            if (counter != 0 && counter % m.width_ == 0) {
-                os << std::endl;
-            } else {
-                os << ' ';
-            }
-            ++counter;
-        }
-
-        return os;
-    }
-
-  private:
-    T* elems_;
-    size_t width_;
-    size_t height_;
-    size_t nr_elems_;
-
-    void fill()
-    {
-        std::mt19937 prng_eng_{std::random_device()()};
-
-        for (int i = 0; i < nr_elems_; ++i) {
-            elems_[i] = prng_eng_();
-        }
-    }
-};
-
-template <typename T>
 class SparseMatrix
 {
   public:
@@ -141,9 +78,6 @@ class SparseMatrix
 
     void fill()
     {
-        // generates numbers between 0 to 2^32
-        std::mt19937 prng_eng_{std::random_device()()};
-
         std::mt19937 to_put_eng_{std::random_device()()};
 
         size_t treshold = nr_elems_ >> 8;
@@ -156,7 +90,7 @@ class SparseMatrix
             if (to_put < treshold) { // put in a number
                 size_t row = i / width_;
                 size_t col = i % width_;
-                elems_.push_back({static_cast<int>(prng_eng_()), row, col});
+                elems_.push_back({1, row, col});
             }
         }
     }
@@ -166,7 +100,7 @@ int main()
 {
     SparseMatrix<int> mat(10000);
 
-    std::ofstream ofs("./mat.out");
+    std::ofstream ofs("./mat.sparse");
     ofs << mat << std::endl;
 
     return 0;
