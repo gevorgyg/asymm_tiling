@@ -174,9 +174,9 @@ class InstGen
 
 int main()
 {
-    InstGen gen{100, 100, 8, 100, 100, 4};
+    InstGen gen{1000, 1000, 8, 1000, 1000, 4};
 
-    std::ofstream ofs("../instruction-translator/matmul.matv");
+    std::ofstream ofs("matmul.matv");
 
     if (!ofs.is_open()) {
         std::cerr << "error opening file" << std::endl;

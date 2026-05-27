@@ -1,0 +1,24 @@
+[
+  {
+    "file": "cache.cpp",
+    "arguments": [
+      "/usr/bin/g++",
+      "cache.cpp",
+      "-o",
+      "test"
+    ],
+    "directory": "/home/aregmk/Documents/technion/semester6/project/asymm_tiling/instruction-translator",
+    "output": "test"
+  },
+  {
+    "file": "interpeter.cpp",
+    "arguments": [
+      "/usr/bin/g++",
+      "interpeter.cpp",
+      "-o",
+      "test"
+    ],
+    "directory": "/home/aregmk/Documents/technion/semester6/project/asymm_tiling/instruction-translator",
+    "output": "test"
+  }
+]
