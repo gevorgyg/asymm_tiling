@@ -193,7 +193,7 @@ class InstGen
 
 int main()
 {
-    InstGen gen{1000, 1000, 8, 1000, 1000, 4};
+    InstGen gen{1000, 1000, 4, 1000, 1000, 8};
 
     std::ofstream ofs("matmul.matv");
 
@@ -201,7 +201,7 @@ int main()
         std::cerr << "error opening file" << std::endl;
     }
 
-    gen.generate(4, ofs);
+    gen.generate(8, 2, 4, ofs);
 
     return 0;
 };
