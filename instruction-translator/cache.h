@@ -5,7 +5,7 @@
 #include <vector>
 
 typedef uint32_t MASK;
-typedef uint64_t addr_t;
+typedef uint32_t addr_t;
 typedef uint32_t set_t;
 typedef bool outcome;
 
@@ -73,13 +73,13 @@ class way
      * Check if the tag provided and tag at the index of the set are the same
      * and return true if yes and false if no.
      */
-    bool find_tag(tag_t tag, set_t set) const;
+    bool find_tag(const tag_t& tag, const set_t set) const;
 
     /* insert_tag:
      * Just put the tag at the index of the set and mark the dirty and valid
      * bits as needed.
      */
-    void insert_tag(tag_t tag, set_t set);
+    void insert_tag(const tag_t& tag, const set_t set);
 
     bool check_set_valid(set_t set) const;
 

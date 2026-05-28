@@ -7,7 +7,8 @@
 // ---------------------------- HELPER FUNCTIONS ---------------------------- //
 
 /* simple log function */
-static int my_log2(int size) {
+static int my_log2(int size)
+{
     short result = 0;
     while (size >>= 1)
         result++;
@@ -15,7 +16,8 @@ static int my_log2(int size) {
 }
 
 /* return 2^exponent */
-static int ttp(int exponent) {
+static int ttp(int exponent)
+{
     return (1 << exponent);
 }
 
@@ -28,29 +30,27 @@ simulator::simulator(int _block_size, int _mem_cycles, int _l1_size,
       l1_cycles(_l1_cycles), l1_assoc(_l1_assoc), l2_size(_l2_size),
       l2_cycles(_l2_cycles), l2_assoc(_l2_assoc), write_alloc(_write_alloc),
       L1(l1_size, block_size, l1_cycles, l1_assoc, write_alloc),
-      L2(l2_size, block_size, l2_cycles, l2_assoc, write_alloc) {}
+      L2(l2_size, block_size, l2_cycles, l2_assoc, write_alloc)
+{
+}
 
-simulator &simulator::getInstance(int _block_size, int _mem_cycles,
+simulator& simulator::getInstance(int _block_size, int _mem_cycles,
                                   int _l1_size, int _l1_cycles, int _l1_assoc,
                                   int _l2_size, int _l2_cycles, int _l2_assoc,
-                                  bool _write_alloc) {
+                                  bool _write_alloc)
+{
 
     /* Creating a static instance of the simulator because we don't need more
      * than one
      */
-    static simulator instance(_block_size,
-                              _mem_cycles,
-                              _l1_size,
-                              _l1_cycles,
-                              _l1_assoc,
-                              _l2_size,
-                              _l2_cycles,
-                              _l2_assoc,
+    static simulator instance(_block_size, _mem_cycles, _l1_size, _l1_cycles,
+                              _l1_assoc, _l2_size, _l2_cycles, _l2_assoc,
                               _write_alloc);
     return instance;
 }
 
-void simulator::do_read(addr_t address) {
+void simulator::do_read(addr_t address)
+{
     addr_t victim_address = 0;
     log_l1_access();
     if (!L1.find_and_read_data(address)) {
@@ -93,7 +93,8 @@ void simulator::do_read(addr_t address) {
     }
 }
 
-void simulator::do_write(addr_t address) {
+void simulator::do_write(addr_t address)
+{
     if (write_alloc) {
         addr_t victim_address = 0;
         log_l1_access();
@@ -144,22 +145,26 @@ void simulator::do_write(addr_t address) {
     }
 }
 
-void simulator::log_l1_access() {
+void simulator::log_l1_access()
+{
     /* only need to increment the access amount of the first access try, that
      * always starts at L1 */
     n_of_access++;
     total_access_cycles += l1_cycles;
 }
 
-void simulator::log_l2_access() {
+void simulator::log_l2_access()
+{
     total_access_cycles += l2_cycles;
 }
 
-void simulator::log_mem_access() {
+void simulator::log_mem_access()
+{
     total_access_cycles += mem_cycles;
 }
 
-void simulator::process_request(char operation, addr_t address) {
+void simulator::process_request(char operation, addr_t address)
+{
     switch (operation) {
     case 'r':
         do_read(address);
@@ -172,13 +177,16 @@ void simulator::process_request(char operation, addr_t address) {
     }
 }
 
-double simulator::calc_L1_miss_rate() const {
+double simulator::calc_L1_miss_rate() const
+{
     return (double)L1.get_n_misses() / (double)L1.get_n_access();
 }
-double simulator::calc_L2_miss_rate() const {
+double simulator::calc_L2_miss_rate() const
+{
     return (double)L2.get_n_misses() / (double)L2.get_n_access();
 }
-double simulator::calc_avg_access_time() const {
+double simulator::calc_avg_access_time() const
+{
     return (double)total_access_cycles / (double)n_of_access;
 }
 
@@ -187,9 +195,10 @@ double simulator::calc_avg_access_time() const {
 cache::cache(int _size, int _block_size, int _cycles, int _assoc,
              bool _write_alloc)
     : size(_size), block_size(_block_size), cycles(_cycles), assoc(ttp(_assoc)),
-      write_alloc(_write_alloc) {
+      write_alloc(_write_alloc)
+{
 
-    n_of_sets = (ttp(size) / assoc) / ttp(block_size);
+    n_of_sets  = (ttp(size) / assoc) / ttp(block_size);
     b_tag_size = B_ADDR_SIZE - block_size - my_log2(n_of_sets);
 
     /* create n-ways, each one containing a #set of lines and tag */
@@ -204,21 +213,24 @@ cache::cache(int _size, int _block_size, int _cycles, int _assoc,
     /* create a mask of 000011111000... to get the set from the address */
 
     int set_bits = my_log2(n_of_sets);
-    set_mask = ((1 << set_bits) - 1) << block_size;
+    set_mask     = ((1 << set_bits) - 1) << block_size;
 
     // set_mask = (~((1 << (B_ADDR_SIZE - block_size)) - 1)) & (~tag_mask);
 }
 
-tag_t cache::create_tag(addr_t address) const {
+tag_t cache::create_tag(addr_t address) const
+{
     uint32_t tag_nr = (address & tag_mask) >> (B_ADDR_SIZE - b_tag_size);
     return tag_t(b_tag_size, address, tag_nr);
 }
 
-set_t cache::create_set(addr_t address) const {
+set_t cache::create_set(addr_t address) const
+{
     return (address & set_mask) >> block_size;
 }
 
-outcome cache::find_and_read_data(addr_t address) {
+outcome cache::find_and_read_data(addr_t address)
+{
     tag_t cur_tag = create_tag(address);
     set_t cur_set = create_set(address);
     n_of_access++;
@@ -234,12 +246,14 @@ outcome cache::find_and_read_data(addr_t address) {
     return false;
 }
 
-addr_t cache::find_victim(addr_t address) {
+addr_t cache::find_victim(addr_t address)
+{
     set_t cur_set = create_set(address);
 
     /* nr == number */
     int way_nr = find_empty_space(cur_set); /* find INVALID set */
-    if (way_nr != -1) return address;
+    if (way_nr != -1)
+        return address;
 
     /* only if there is no empty space, we pick a victim, to avoid sending junk
      * data back */
@@ -247,7 +261,8 @@ addr_t cache::find_victim(addr_t address) {
     return ways[way_nr].get_full_address(cur_set);
 }
 
-outcome cache::is_victim_dirty(addr_t victim_address) {
+outcome cache::is_victim_dirty(addr_t victim_address)
+{
     tag_t cur_tag = create_tag(victim_address);
     set_t cur_set = create_set(victim_address);
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
@@ -258,15 +273,18 @@ outcome cache::is_victim_dirty(addr_t victim_address) {
     return false;
 }
 
-void cache::invalidate_victim(addr_t victim_address) {
+void cache::invalidate_victim(addr_t victim_address)
+{
     set_validity_status(victim_address, false);
 }
 
-void cache::dirtify_victim(addr_t victim_address) {
+void cache::dirtify_victim(addr_t victim_address)
+{
     set_dirt_status(victim_address, true);
 }
 
-void cache::insert_new_data(addr_t address) {
+void cache::insert_new_data(addr_t address)
+{
     tag_t cur_tag = create_tag(address);
     set_t cur_set = create_set(address);
 
@@ -278,7 +296,8 @@ void cache::insert_new_data(addr_t address) {
     LRUs[cur_set].update_queue(way_nr);
 }
 
-void cache::insert_dirty_new_data(addr_t address) {
+void cache::insert_dirty_new_data(addr_t address)
+{
     tag_t cur_tag = create_tag(address);
     set_t cur_set = create_set(address);
 
@@ -291,7 +310,8 @@ void cache::insert_dirty_new_data(addr_t address) {
     LRUs[cur_set].update_queue(way_nr);
 }
 
-outcome cache::find_and_write_data(addr_t address) {
+outcome cache::find_and_write_data(addr_t address)
+{
     tag_t cur_tag = create_tag(address);
     set_t cur_set = create_set(address);
     n_of_access++;
@@ -311,19 +331,23 @@ outcome cache::find_and_write_data(addr_t address) {
     return false;
 }
 
-int cache::find_empty_space(set_t set) const {
+int cache::find_empty_space(set_t set) const
+{
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
-        if (!ways[way_nr].check_set_valid(set)) return way_nr;
+        if (!ways[way_nr].check_set_valid(set))
+            return way_nr;
     }
 
     return -1;
 }
 
-int cache::get_lru_way(set_t set) const {
+int cache::get_lru_way(set_t set) const
+{
     return LRUs[set].get_lru();
 }
 
-void cache::set_dirt_status(addr_t address, bool status) {
+void cache::set_dirt_status(addr_t address, bool status)
+{
     tag_t cur_tag = create_tag(address);
     set_t cur_set = create_set(address);
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
@@ -336,7 +360,8 @@ void cache::set_dirt_status(addr_t address, bool status) {
     }
 }
 
-void cache::set_validity_status(addr_t address, bool status) {
+void cache::set_validity_status(addr_t address, bool status)
+{
     tag_t cur_tag = create_tag(address);
     set_t cur_set = create_set(address);
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
@@ -346,13 +371,16 @@ void cache::set_validity_status(addr_t address, bool status) {
     }
 }
 
-size_t cache::get_n_access() const {
+size_t cache::get_n_access() const
+{
     return n_of_access;
 }
-size_t cache::get_n_hits() const {
+size_t cache::get_n_hits() const
+{
     return n_of_hits;
 }
-size_t cache::get_n_misses() const {
+size_t cache::get_n_misses() const
+{
     return n_of_misses;
 }
 
@@ -360,33 +388,42 @@ size_t cache::get_n_misses() const {
 
 way::way(int _assoc, int _n_of_lines, int _b_tag_size, int _block_size)
     : assoc(_assoc), n_of_lines(_n_of_lines), b_tag_size(_b_tag_size),
-      block_size(_block_size), tags(n_of_lines, tag_t(b_tag_size)) {}
+      block_size(_block_size), tags(n_of_lines, tag_t(b_tag_size))
+{
+}
 
-bool way::find_tag(tag_t tag, set_t set) const {
+bool way::find_tag(const tag_t& tag, const set_t set) const
+{
     return (tags[set] == tag) && tags[set].is_valid();
 }
 
-void way::insert_tag(tag_t tag, set_t set) {
+void way::insert_tag(const tag_t& tag, const set_t set)
+{
     tags[set].validate_and_insert(tag);
 }
 
-bool way::check_set_valid(set_t set) const {
+bool way::check_set_valid(const set_t set) const
+{
     return tags[set].is_valid();
 }
 
-bool way::is_set_dirty(set_t set) const {
+bool way::is_set_dirty(set_t set) const
+{
     return tags[set].is_dirty();
 }
 
-void way::set_dirt_status(set_t set, bool status) {
+void way::set_dirt_status(set_t set, bool status)
+{
     tags[set].set_dirty(status);
 }
 
-void way::set_valid_status(set_t set, bool status) {
+void way::set_valid_status(set_t set, bool status)
+{
     tags[set].set_valid(status);
 }
 
-addr_t way::get_full_address(set_t set) const {
+addr_t way::get_full_address(set_t set) const
+{
     return tags[set].get_full_address();
 }
 
@@ -394,69 +431,84 @@ addr_t way::get_full_address(set_t set) const {
 
 tag_t::tag_t(int _b_tag_size, addr_t address, uint32_t _data)
     : data(_data), full_address(address), b_tag_size(_b_tag_size), valid(false),
-      dirty(false) {}
+      dirty(false)
+{
+}
 
-tag_t &tag_t::operator=(const tag_t &other) {
-    data = other.data;
+tag_t& tag_t::operator=(const tag_t& other)
+{
+    data         = other.data;
     full_address = other.full_address;
-    b_tag_size = other.b_tag_size;
-    valid = other.valid;
-    dirty = other.dirty;
+    b_tag_size   = other.b_tag_size;
+    valid        = other.valid;
+    dirty        = other.dirty;
 
     return *this;
 }
 
-bool tag_t::operator==(const tag_t &other) const {
+bool tag_t::operator==(const tag_t& other) const
+{
     return data == other.data;
 }
 
-void tag_t::validate_and_insert(const tag_t &other) {
-    data = other.data;
+void tag_t::validate_and_insert(const tag_t& other)
+{
+    data         = other.data;
     full_address = other.full_address;
-    b_tag_size = other.b_tag_size;
-    valid = true;
-    dirty = false;
+    b_tag_size   = other.b_tag_size;
+    valid        = true;
+    dirty        = false;
 }
 
-uint32_t tag_t::get_data() const {
+uint32_t tag_t::get_data() const
+{
     return data;
 }
 
-addr_t tag_t::get_full_address() const {
+addr_t tag_t::get_full_address() const
+{
     return full_address;
 }
 
-bool tag_t::is_valid() const {
+bool tag_t::is_valid() const
+{
     return valid;
 }
 
-bool tag_t::is_dirty() const {
+bool tag_t::is_dirty() const
+{
     return dirty;
 }
 
-void tag_t::set_data(uint32_t _data) {
+void tag_t::set_data(uint32_t _data)
+{
     data = _data;
 }
 
-void tag_t::set_valid(bool state) {
+void tag_t::set_valid(bool state)
+{
     valid = state;
 }
 
-void tag_t::set_dirty(bool state) {
+void tag_t::set_dirty(bool state)
+{
     dirty = state;
 }
 
 // ---------------------------- TAG ----------------------------  //
 
-LRU::LRU(int _assoc) : assoc(_assoc), queue(assoc) {
+LRU::LRU(int _assoc) : assoc(_assoc), queue(assoc)
+{
     for (int i = 0; i < assoc; i++) {
         queue[i] = i;
     }
 }
 
-int LRU::get_lru() const {
+int LRU::get_lru() const
+{
     for (size_t i = 0; i < queue.size(); i++) {
-        if (queue[i] == 0) return i;
+        if (queue[i] == 0)
+            return i;
     }
 
     /* shouldn't happen, bubble to top */
@@ -464,10 +516,12 @@ int LRU::get_lru() const {
 }
 
 /* one to one copy of what is taught in class */
-void LRU::update_queue(size_t index) {
-    uint32_t x = queue[index];
+void LRU::update_queue(size_t index)
+{
+    uint32_t x   = queue[index];
     queue[index] = assoc - 1;
     for (size_t i = 0; i < queue.size(); i++) {
-        if ((i != index) && (queue[i] > x)) queue[i]--;
+        if ((i != index) && (queue[i] > x))
+            queue[i]--;
     }
 }

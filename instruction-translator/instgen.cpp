@@ -11,16 +11,15 @@
 // TILE_MUL_ACC <SrcTile1 ID> <SrcTile2 ID> <DestTile ID>
 //
 
-using uint = unsigned int;
+using uint      = unsigned int;
+using TileID    = uint;
+using Addr      = unsigned int;
+using ElemWidth = uint;
 
 class InstGen
 {
   public:
-    using TileID    = uint;
-    using Addr      = unsigned long;
-    using ElemWidth = uint;
-
-    static constexpr size_t page_size = 4 * 1024;
+    static constexpr uint page_size = 4 * 1024;
 
     InstGen(uint a_width, uint a_height, uint a_elem_width, uint b_width,
             uint b_height, uint b_elem_width)
@@ -40,7 +39,7 @@ class InstGen
         size_t c_byte_size     = a_height * b_width * c_elem_width;
 
         // generate A address and make sure it leaves enough space for B
-        std::mt19937_64 prng_addr_{std::random_device()()};
+        std::mt19937 prng_addr_{std::random_device()()};
         std::uniform_int_distribution<Addr> distA(
             a_byte_size, long_limit::max() - b_byte_size - c_byte_size);
 

@@ -1,4 +1,5 @@
 #include "cache.h"
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -29,6 +30,20 @@ class Interpeter
     }
 
   private:
+    using Addr = unsigned int;
+    using uint = unsigned int;
+
+    inline static constexpr int nr_vec_regs = 3;
+
+    struct vec_reg {
+        Addr base_addr;
+
+        uint t_width;
+        uint t_height;
+        uint stride;
+        uint elem_width;
+    };
+
     enum cmd {
         load_tile,
         move_tile,
@@ -36,6 +51,7 @@ class Interpeter
         eof,
     };
 
+    std::array<vec_reg, 3> vec_regs_;
     int line_;
     std::ifstream in_stream_;
     simulator& cache_sim_;
@@ -54,15 +70,14 @@ class Interpeter
         }                                                                      \
     } while (0)
 
-    // ltea <Base Addr> <Width> <Height> <Stride> <Element Size> <Tile ID>
     void handleTload()
     {
-        size_t base_addr;
-        int tile_width;
-        int tile_height;
-        int stride;
-        int elem_width;
-        int dst_reg;
+        Addr base_addr;
+        uint tile_width;
+        uint tile_height;
+        uint stride;
+        uint elem_width;
+        uint dst_reg;
 
         INTERPRETER_SYNTEX_CHECK('(', "opening parenthesis", "command name");
 
@@ -98,6 +113,9 @@ class Interpeter
             std::cerr << "invalid register in line: " << line_ << std::endl;
             exit(1);
         }
+
+        vec_regs_[dst_reg] = {base_addr, tile_width, tile_height, stride,
+                              elem_width};
 
         INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
 
@@ -110,15 +128,14 @@ class Interpeter
         }
     }
 
-    // tmov <Dest Addr> <Width> <Height> <Stride> <Element Size> <reg>
     void handleTmove()
     {
-        size_t base_addr;
-        int tile_width;
-        int tile_height;
-        int stride;
-        int elem_width;
-        int dst_reg;
+        Addr base_addr;
+        uint tile_width;
+        uint tile_height;
+        uint stride;
+        uint elem_width;
+        uint dst_reg;
 
         INTERPRETER_SYNTEX_CHECK('(', "opening parenthesis", "command name");
 
@@ -154,7 +171,19 @@ class Interpeter
             std::cerr << "invalid register in line: " << line_ << std::endl;
             exit(1);
         }
+
+        vec_regs_[dst_reg] = {base_addr, tile_width, tile_height, stride,
+                              elem_width};
+
         INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+
+        for (int row = 0; row < tile_height; ++row) {
+            for (int col = 0; col < tile_width; ++col) {
+                long target = base_addr + (row * stride + col) * elem_width;
+
+                cache_sim_.process_request('w', target);
+            }
+        }
     }
 
     // tmulac <SrcTile1 ID> <SrcTile2 ID> <DestTile ID>
@@ -166,6 +195,13 @@ class Interpeter
 
         std::string reg_name;
         in_stream_ >> reg_name;
+        if (reg_name.back() == ',') {
+            reg_name.pop_back();
+        } else {
+            std::cerr << "missing ',' after first register in line: " << line_
+                      << std::endl;
+            exit(1);
+        }
 
         if (reg_name == "%ra") {
             tile_1 = 0;
@@ -177,9 +213,15 @@ class Interpeter
             std::cerr << "invalid register in line: " << line_ << std::endl;
             exit(1);
         }
-        INTERPRETER_SYNTEX_CHECK(',', "comma", "tile one");
 
         in_stream_ >> reg_name;
+        if (reg_name.back() == ',') {
+            reg_name.pop_back();
+        } else {
+            std::cerr << "missing ',' after first register in line: " << line_
+                      << std::endl;
+            exit(1);
+        }
 
         if (reg_name == "%ra") {
             tile_2 = 0;
@@ -191,8 +233,6 @@ class Interpeter
             std::cerr << "invalid register in line: " << line_ << std::endl;
             exit(1);
         }
-
-        INTERPRETER_SYNTEX_CHECK(',', "comma", "tile two");
 
         in_stream_ >> reg_name;
 
@@ -206,7 +246,34 @@ class Interpeter
             std::cerr << "invalid register in line: " << line_ << std::endl;
             exit(1);
         }
+
         INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+
+        const vec_reg& ra = vec_regs_[tile_1];
+        const vec_reg& rb = vec_regs_[tile_2];
+        const vec_reg& rc = vec_regs_[tile_3];
+
+        for (int a_row = 0; a_row < ra.t_height; ++a_row) {
+            for (int b_col = 0; b_col < rb.t_width; ++b_col) {
+                Addr target_c =
+                    rc.base_addr + (a_row * rc.stride + b_col) * rc.elem_width;
+
+                for (int t = 0; t < ra.t_width; ++t) {
+                    Addr target_a =
+                        ra.base_addr + (a_row * ra.stride + t) * ra.elem_width;
+                    Addr target_b =
+                        rb.base_addr + (t * rb.stride + b_col) * rb.elem_width;
+
+                    cache_sim_.process_request('r', target_a);
+                    cache_sim_.process_request('r', target_b);
+                    // multiply A and B
+                }
+
+                cache_sim_.process_request('r', target_c);
+                cache_sim_.process_request('w', target_c);
+                // accumulate in C
+            }
+        }
     }
 
     void handleCmd()
