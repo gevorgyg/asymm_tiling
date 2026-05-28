@@ -80,47 +80,67 @@ class InstGen
     // TODO: support a-sym tiles
 
     // k is the tile width ratio
-    void generate(int k, std::ostream& os) const
+    void generate(int m, int n, int k, std::ostream& os) const
     {
         static constexpr char a_id[] = "%ra";
         static constexpr char b_id[] = "%rb";
         static constexpr char c_id[] = "%rc";
 
-        int tile_width  = C.width / k;
-        int tile_height = tile_width;
+        const uint t_m = A.height / m;
+        const uint t_n = B.width / n;
+        const uint t_k = A.width / k;
+
+        const uint a_tile_height = t_m;
+        const uint a_tile_width  = t_k;
+
+        const uint b_tile_height = t_k;
+        const uint b_tile_width  = t_n;
+
+        const uint c_tile_height = t_m;
+        const uint c_tile_width  = t_n;
 
         int tci = 0;
         int tri = 0;
 
-        while (tri * C.width * tile_height + tci * tile_width <
+        while (tri * C.width * c_tile_height + tci * c_tile_width <
                C.total_elem_size) {
 
-            Addr c_disp = tri * C.width * tile_height * C.elem_width;
+            Addr c_disp = tri * C.width * c_tile_height * C.elem_width;
+
+            uint ctw = std::min(c_tile_width, C.width - tci * c_tile_width);
+            uint cth = std::min(c_tile_height, C.height - tri * c_tile_height);
 
             os << "ltea" << ' ' << '(' << "0x" << std::hex          //
-               << C.addr + c_disp + tci * tile_width * C.elem_width //
-               << std::dec << ", " << tile_width << ", "            //
-               << tile_height << ", " << C.width << ", "            //
+               << C.addr + c_disp + tci * ctw * C.elem_width        //
+               << std::dec << ", " << ctw << ", "                   //
+               << cth << ", " << C.width << ", "                    //
                << C.elem_width << ')' << ", " << c_id << std::endl; //
 
             int in_tci = 0;
             int in_tri = 0;
 
-            while (in_tci * tile_width < A.width) {
-                Addr a_disp = tri * A.width * tile_height * A.elem_width;
-                Addr b_disp = tci * tile_width * B.elem_width;
+            while (in_tci * a_tile_width < A.width) {
+                Addr a_disp = tri * A.width * a_tile_height * A.elem_width;
+                Addr b_disp = tci * b_tile_width * B.elem_width;
 
-                os << "ltea " << '(' << "0x" << std::hex                   //
-                   << A.addr + a_disp + in_tci * tile_width * A.elem_width //
-                   << std::dec << ", " << tile_width << ", "               //
-                   << tile_height << ", " << A.width << ", "               //
-                   << A.elem_width << ')' << ", " << a_id << std::endl;    //
+                uint atw =
+                    std::min(a_tile_width, A.width - in_tci * a_tile_width);
+                uint ath = cth;
+
+                uint btw = ctw;
+                uint bth = atw;
+
+                os << "ltea " << '(' << "0x" << std::hex                //
+                   << A.addr + a_disp + in_tci * atw * A.elem_width     //
+                   << std::dec << ", " << atw << ", "                   //
+                   << ath << ", " << A.width << ", "                    //
+                   << A.elem_width << ')' << ", " << a_id << std::endl; //
 
                 os << "ltea " << '(' << "0x" << std::hex                //
                    << B.addr + b_disp +                                 //
-                          in_tri * B.width * tile_height * B.elem_width //
-                   << std::dec << ", " << tile_width << ", "            //
-                   << tile_height << ", " << B.width << ", "            //
+                          in_tri * B.width * bth * B.elem_width         //
+                   << std::dec << ", " << btw << ", "                   //
+                   << bth << ", " << B.width << ", "                    //
                    << B.elem_width << ')' << ", " << b_id << std::endl; //
 
                 os << "tmulac " << a_id << ", " << b_id << ", " << c_id
@@ -132,13 +152,13 @@ class InstGen
 
             os << "tmov " << '(' << "0x" << std::hex                //
                << C.addr + c_disp +                                 //
-                      tci * tile_width * C.elem_width               //
-               << std::dec << ", " << tile_width << ", "            //
-               << tile_height << ", " << C.width << ", "            //
+                      tci * ctw * C.elem_width                      //
+               << std::dec << ", " << ctw << ", "                   //
+               << cth << ", " << C.width << ", "                    //
                << C.elem_width << ')' << ", " << c_id << std::endl; //
 
             ++tci;
-            if (tci * tile_width >= C.width) {
+            if (tci * ctw >= C.width) {
                 tci = 0;
                 ++tri;
             }
