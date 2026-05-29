@@ -11,7 +11,6 @@ using RawAddr  = uint;
 using SetIndex = uint;
 using DirtyBit = bool;
 using Outcome  = bool;
-using Evicted  = bool;
 
 namespace
 {
@@ -96,15 +95,15 @@ class Set
     // front = most recent
     // back = least recent
 
-    Outcome lookup(Tag tag)
+    CacheLine* lookup(Tag tag)
     {
         auto target = ways_.find(tag);
         if (target != ways_.end()) { // hit
             updateQueue(target);
-            return true;
+            return &target->second;
         }
 
-        return false; // miss
+        return nullptr; // miss
     }
 
     void invalidate(Tag tag)
@@ -116,7 +115,7 @@ class Set
         }
     }
 
-    Evicted insert(const AddrParts& addr, RawAddr& evicted_addr,
+    Outcome insert(const AddrParts& addr, RawAddr& evicted_addr,
                    DirtyBit& evicted_dirty)
     {
         auto target = ways_.find(addr.tag);
@@ -223,7 +222,7 @@ class cache
 
     const AddrSplitter splitter;
 
-    Outcome lookup(const AddrParts& addr)
+    CacheLine* lookup(const AddrParts& addr)
     {
         return sets_[addr.set].lookup(addr.tag);
     }
@@ -233,7 +232,7 @@ class cache
         sets_[addr.set].invalidate(addr.tag);
     }
 
-    Evicted insert(const AddrParts& addr, RawAddr& evicted_addr,
+    Outcome insert(const AddrParts& addr, RawAddr& evicted_addr,
                    DirtyBit& evicted_dirty)
     {
         return sets_[addr.set].insert(addr, evicted_addr, evicted_dirty);
@@ -260,18 +259,17 @@ class simulator
     simulator(const simulator&)            = delete;
     simulator& operator=(const simulator&) = delete;
 
-    static simulator& getInstance(int _block_size, int _mem_cycles,
-                                  int _l1_size, int _l1_cycles, int _l1_assoc,
-                                  int _l2_size, int _l2_cycles, int _l2_assoc,
-                                  bool _write_alloc)
+    static simulator& getInstance(int block_size, int mem_cycles, int l1_size,
+                                  int l1_cycles, int l1_assoc, int l2_size,
+                                  int l2_cycles, int l2_assoc, bool write_alloc)
     {
 
         /* Creating a static instance of the simulator because we don't need
          * more than one
          */
-        static simulator instance(_block_size, _mem_cycles, _l1_size,
-                                  _l1_cycles, _l1_assoc, _l2_size, _l2_cycles,
-                                  _l2_assoc, _write_alloc);
+        static simulator instance(block_size, mem_cycles, l1_size, l1_cycles,
+                                  l1_assoc, l2_size, l2_cycles, l2_assoc,
+                                  write_alloc);
         return instance;
     }
 
@@ -285,17 +283,18 @@ class simulator
             do_write(address);
             break;
         default:
-            throw std::logic_error("No such operation"); /* shouldn't happen */
+            std::cerr << "No such operation" << std::endl;
+            exit(1);
         }
     }
 
     double calc_L1_miss_rate() const
     {
-        return (double)L1_.get_n_misses() / (double)L1_.get_n_access();
+        return (double)l1_.get_n_misses() / (double)l1_.get_n_access();
     }
     double calc_L2_miss_rate() const
     {
-        return (double)L2_.get_n_misses() / (double)L2_.get_n_access();
+        return (double)l2_.get_n_misses() / (double)l2_.get_n_access();
     }
     double calc_avg_access_time() const
     {
@@ -309,8 +308,8 @@ class simulator
         : block_size_(block_size), mem_cycles_(mem_cycles), l1_size_(l1_size),
           l1_cycles_(l1_cycles), l1_assoc_(l1_assoc), l2_size_(l2_size),
           l2_cycles_(l2_cycles), l2_assoc_(l2_assoc), write_alloc_(write_alloc),
-          L1_(l1_size, block_size, l1_cycles, l1_assoc, write_alloc),
-          L2_(l2_size, block_size, l2_cycles, l2_assoc, write_alloc)
+          l1_(l1_size, block_size, l1_cycles, l1_assoc, write_alloc),
+          l2_(l2_size, block_size, l2_cycles, l2_assoc, write_alloc)
     {
     }
 
@@ -330,21 +329,108 @@ class simulator
 
     const bool write_alloc_;
 
-    cache L1_;
-    cache L2_;
+    cache l1_;
+    cache l2_;
 
-    enum states {
+    enum state {
         search_l1,
         search_l2,
         insert_l1,
         insert_l2,
-        read_from_ram,
-        write_to_ram,
+        snoop_l1,
+        write_back_l2,
     };
+
+    state cur_state;
 
     void do_read(RawAddr address)
     {
-        AddrParts addr_parts = L1_.splitter(address);
+        AddrParts l1_addr_parts = l1_.splitter(address);
+        AddrParts l2_addr_parts = l2_.splitter(address);
+
+        RawAddr evicted_addr   = 0;
+        DirtyBit evicted_dirty = false;
+
+        state cur_state = search_l1;
+        bool finish     = false;
+        while (!finish) {
+            switch (cur_state) {
+            case search_l1: {
+                log_l1_access();
+                CacheLine* found = l1_.lookup(l1_addr_parts);
+                if (found) { // hit
+                    finish = true;
+                } else {
+                    cur_state = search_l2;
+                }
+            } break;
+            case search_l2: {
+                log_l2_access();
+                CacheLine* found = l2_.lookup(l2_addr_parts);
+                if (found) { // hit
+                    cur_state = insert_l1;
+                } else {
+                    cur_state = insert_l2;
+                }
+            } break;
+            case insert_l2: {
+                log_mem_access();
+
+                Outcome wasEvicted =
+                    l2_.insert(l2_addr_parts, evicted_addr, evicted_dirty);
+
+                if (wasEvicted) {
+                    // write back to memory the evicted data in background
+                    cur_state = snoop_l1;
+                } else {
+                    cur_state = insert_l1;
+                }
+
+            } break;
+            case snoop_l1: {
+                AddrParts l1_snoop_addr_parts = l1_.splitter(evicted_addr);
+
+                CacheLine* victim = l1_.lookup(l1_snoop_addr_parts);
+                if (victim) {
+                    if (victim->isDirty()) {
+                        // TODO: make it customizable if you log mem access on
+                        // propagating or not
+
+                        // log_mem_access();
+                    }
+
+                    l1_.invalidate(l1_snoop_addr_parts);
+                }
+
+                cur_state = insert_l1;
+
+            } break;
+            case insert_l1: {
+                Outcome wasEvicted =
+                    l1_.insert(l1_addr_parts, evicted_addr, evicted_dirty);
+
+                if (wasEvicted && evicted_dirty) {
+                    cur_state = write_back_l2;
+                } else {
+                    finish = true;
+                }
+            } break;
+            case write_back_l2: {
+                AddrParts l2_writeback_addr_parts = l2_.splitter(evicted_addr);
+
+                CacheLine* target = l2_.lookup(l2_writeback_addr_parts);
+                if (target) {
+                    target->markDirty();
+                } else {
+                    // shouldn't happen because inclusive cache
+                    std::cerr << "cache contradicts inclusivness" << std::endl;
+                    exit(1);
+                }
+
+                finish = true;
+            } break;
+            }
+        }
     }
 
     void do_write(RawAddr address)
@@ -358,12 +444,12 @@ class simulator
 
     void do_write_simple(RawAddr address)
     {
-        AddrParts addr_parts = L1_.splitter(address);
+        AddrParts addr_parts = l1_.splitter(address);
     }
 
     void do_write_allocate(RawAddr address)
     {
-        AddrParts addr_parts = L1_.splitter(address);
+        AddrParts addr_parts = l1_.splitter(address);
     }
 
     void log_l1_access()
