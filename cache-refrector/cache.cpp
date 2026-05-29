@@ -31,9 +31,9 @@ int ttp(int exponent)
 simulator::simulator(int _block_size, int _mem_cycles, int _l1_size,
                      int _l1_cycles, int _l1_assoc, int _l2_size,
                      int _l2_cycles, int _l2_assoc, bool _write_alloc)
-    : block_size(_block_size), mem_cycles(_mem_cycles), l1_size(_l1_size),
-      l1_cycles(_l1_cycles), l1_assoc(_l1_assoc), l2_size(_l2_size),
-      l2_cycles(_l2_cycles), l2_assoc(_l2_assoc), write_alloc(_write_alloc),
+    : block_size(_block_size), mem_cycles_(_mem_cycles), l1_size_(_l1_size),
+      l1_cycles_(_l1_cycles), l1_assoc_(_l1_assoc), l2_size_(_l2_size),
+      l2_cycles_(_l2_cycles), l2_assoc_(_l2_assoc), write_alloc_(_write_alloc),
       L1(l1_size, block_size, l1_cycles, l1_assoc, write_alloc),
       L2(l2_size, block_size, l2_cycles, l2_assoc, write_alloc)
 {
@@ -54,24 +54,24 @@ simulator& simulator::getInstance(int _block_size, int _mem_cycles,
     return instance;
 }
 
-void simulator::do_read(addr_t address)
+void simulator::do_read(RawAddr address)
 {
-    addr_t victim_address = 0;
+    RawAddr victim_address = 0;
     log_l1_access();
-    if (!L1.find_and_read_data(address)) {
+    if (!L1_.find_and_read_data(address)) {
         log_l2_access();
-        if (!L2.find_and_read_data(address)) {
+        if (!L2_.find_and_read_data(address)) {
             /* We didn't find the data in L2 and L1, so we need to get it from
              * memory. */
             log_mem_access();
 
             /* start snoop */
-            victim_address = L2.find_victim(address);
-            if (L1.is_victim_dirty(victim_address)) {
+            victim_address = L2_.find_victim(address);
+            if (L1_.is_victim_dirty(victim_address)) {
                 /* write to L2 */
-                L2.dirtify_victim(victim_address);
+                L2_.dirtify_victim(victim_address);
             }
-            L1.invalidate_victim(victim_address);
+            L1_.invalidate_victim(victim_address);
             /*
             if (L2.is_victim_dirty(victim_address)) {
                 <write to memeory>
@@ -79,71 +79,71 @@ void simulator::do_read(addr_t address)
             * no need for this, because write back is done in the background,
             * but this is what is happening in the background.
             */
-            L2.invalidate_victim(victim_address);
+            L2_.invalidate_victim(victim_address);
 
             /* end of snoop, write new data into L2 */
-            L2.insert_new_data(address);
+            L2_.insert_new_data(address);
         }
 
         /* find a place to write into L1 */
-        victim_address = L1.find_victim(address);
-        if (L1.is_victim_dirty(victim_address)) {
+        victim_address = L1_.find_victim(address);
+        if (L1_.is_victim_dirty(victim_address)) {
             /* write to L2 */
-            L2.dirtify_victim(victim_address);
+            L2_.dirtify_victim(victim_address);
         }
-        L1.invalidate_victim(victim_address);
+        L1_.invalidate_victim(victim_address);
 
         /* end of snoop, write new data into L1 */
-        L1.insert_new_data(address);
+        L1_.insert_new_data(address);
     }
 }
 
-void simulator::do_write(addr_t address)
+void simulator::do_write(RawAddr address)
 {
-    if (write_alloc) {
-        addr_t victim_address = 0;
+    if (write_alloc_) {
+        RawAddr victim_address = 0;
         log_l1_access();
-        if (!L1.find_and_write_data(address)) {
+        if (!L1_.find_and_write_data(address)) {
             log_l2_access();
-            if (!L2.find_and_read_data(address)) {
+            if (!L2_.find_and_read_data(address)) {
                 /* We didn't find the data in L2 and L1, so we need to get it
                  * from memory. */
                 log_mem_access();
 
                 /* start snoop */
-                victim_address = L2.find_victim(address);
-                if (L1.is_victim_dirty(victim_address)) {
+                victim_address = L2_.find_victim(address);
+                if (L1_.is_victim_dirty(victim_address)) {
                     /* write to L2 */
-                    L2.dirtify_victim(victim_address);
+                    L2_.dirtify_victim(victim_address);
                 }
-                L1.invalidate_victim(victim_address);
+                L1_.invalidate_victim(victim_address);
                 /*
                 if (L2.is_victim_dirty(victim_address)) {
                     <write to memeory>
                 }
                 */
-                L2.invalidate_victim(victim_address);
+                L2_.invalidate_victim(victim_address);
 
                 /* end of snoop, write new data into L2 */
-                L2.insert_new_data(address);
+                L2_.insert_new_data(address);
             }
 
             /* find a place to write into L1 */
-            victim_address = L1.find_victim(address);
-            if (L1.is_victim_dirty(victim_address)) {
+            victim_address = L1_.find_victim(address);
+            if (L1_.is_victim_dirty(victim_address)) {
                 /* write to L2 */
-                L2.dirtify_victim(victim_address);
+                L2_.dirtify_victim(victim_address);
             }
-            L1.invalidate_victim(victim_address);
+            L1_.invalidate_victim(victim_address);
 
             /* end of snoop, write new data into L1 */
-            L1.insert_dirty_new_data(address);
+            L1_.insert_dirty_new_data(address);
         }
     } else { /* no write allocate, very simple */
         log_l1_access();
-        if (!L1.find_and_write_data(address)) {
+        if (!L1_.find_and_write_data(address)) {
             log_l2_access();
-            if (!L2.find_and_write_data(address)) {
+            if (!L2_.find_and_write_data(address)) {
                 log_mem_access();
             }
         }
@@ -155,20 +155,20 @@ void simulator::log_l1_access()
     /* only need to increment the access amount of the first access try, that
      * always starts at L1 */
     n_of_access++;
-    total_access_cycles += l1_cycles;
+    total_access_cycles += l1_cycles_;
 }
 
 void simulator::log_l2_access()
 {
-    total_access_cycles += l2_cycles;
+    total_access_cycles += l2_cycles_;
 }
 
 void simulator::log_mem_access()
 {
-    total_access_cycles += mem_cycles;
+    total_access_cycles += mem_cycles_;
 }
 
-void simulator::process_request(char operation, addr_t address)
+void simulator::process_request(char operation, RawAddr address)
 {
     switch (operation) {
     case 'r':
@@ -184,11 +184,11 @@ void simulator::process_request(char operation, addr_t address)
 
 double simulator::calc_L1_miss_rate() const
 {
-    return (double)L1.get_n_misses() / (double)L1.get_n_access();
+    return (double)L1_.get_n_misses() / (double)L1_.get_n_access();
 }
 double simulator::calc_L2_miss_rate() const
 {
-    return (double)L2.get_n_misses() / (double)L2.get_n_access();
+    return (double)L2_.get_n_misses() / (double)L2_.get_n_access();
 }
 double simulator::calc_avg_access_time() const
 {
@@ -199,45 +199,45 @@ double simulator::calc_avg_access_time() const
 
 cache::cache(int _size, int _block_size, int _cycles, int _assoc,
              bool _write_alloc)
-    : size(_size), block_size(_block_size), cycles(_cycles), assoc(ttp(_assoc)),
-      write_alloc(_write_alloc)
+    : size_(_size), block_size_(_block_size), cycles_(_cycles),
+      assoc_(ttp(_assoc)), write_alloc_(_write_alloc)
 {
 
-    n_of_sets  = (ttp(size) / assoc) / ttp(block_size);
-    b_tag_size = B_ADDR_SIZE - block_size - my_log2(n_of_sets);
+    n_of_sets_  = (ttp(size_) / assoc_) / ttp(block_size_);
+    b_tag_size_ = B_ADDR_SIZE - block_size_ - my_log2(n_of_sets_);
 
     /* create n-ways, each one containing a #set of lines and tag */
-    ways =
-        std::vector<way>(assoc, way(assoc, n_of_sets, b_tag_size, block_size));
+    ways = std::vector<way>(assoc_,
+                            way(assoc_, n_of_sets_, b_tag_size_, block_size_));
 
     /* create an LRU queue for each set */
-    LRUs = std::vector<LRU>(n_of_sets, LRU(assoc));
+    LRUs = std::vector<LRU>(n_of_sets_, LRU(assoc_));
 
     /* create a mask of 111111000000... to get the tag from the address */
-    tag_mask = ~((1 << (B_ADDR_SIZE - b_tag_size)) - 1);
+    tag_mask_ = ~((1 << (B_ADDR_SIZE - b_tag_size_)) - 1);
     /* create a mask of 000011111000... to get the set from the address */
 
-    int set_bits = my_log2(n_of_sets);
-    set_mask     = ((1 << set_bits) - 1) << block_size;
+    int set_bits = my_log2(n_of_sets_);
+    set_mask_    = ((1 << set_bits) - 1) << block_size_;
 
     // set_mask = (~((1 << (B_ADDR_SIZE - block_size)) - 1)) & (~tag_mask);
 }
 
-tag_t cache::create_tag(addr_t address) const
+tag_t cache::create_tag(RawAddr address) const
 {
-    uint32_t tag_nr = (address & tag_mask) >> (B_ADDR_SIZE - b_tag_size);
-    return tag_t(b_tag_size, address, tag_nr);
+    uint32_t tag_nr = (address & tag_mask_) >> (B_ADDR_SIZE - b_tag_size_);
+    return tag_t(b_tag_size_, address, tag_nr);
 }
 
-set_t cache::create_set(addr_t address) const
+SetNr cache::create_set(RawAddr address) const
 {
-    return (address & set_mask) >> block_size;
+    return (address & set_mask_) >> block_size_;
 }
 
-outcome cache::find_and_read_data(addr_t address)
+Outcome cache::find_and_read_data(RawAddr address)
 {
     tag_t cur_tag = create_tag(address);
-    set_t cur_set = create_set(address);
+    SetNr cur_set = create_set(address);
     n_of_access++;
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
         if (ways[way_nr].find_tag(cur_tag, cur_set)) {
@@ -251,9 +251,9 @@ outcome cache::find_and_read_data(addr_t address)
     return false;
 }
 
-addr_t cache::find_victim(addr_t address)
+RawAddr cache::find_victim(RawAddr address)
 {
-    set_t cur_set = create_set(address);
+    SetNr cur_set = create_set(address);
 
     /* nr == number */
     int way_nr = find_empty_space(cur_set); /* find INVALID set */
@@ -266,10 +266,10 @@ addr_t cache::find_victim(addr_t address)
     return ways[way_nr].get_full_address(cur_set);
 }
 
-outcome cache::is_victim_dirty(addr_t victim_address)
+Outcome cache::is_victim_dirty(RawAddr victim_address)
 {
     tag_t cur_tag = create_tag(victim_address);
-    set_t cur_set = create_set(victim_address);
+    SetNr cur_set = create_set(victim_address);
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
         if (ways[way_nr].find_tag(cur_tag, cur_set)) {
             return ways[way_nr].is_set_dirty(cur_set);
@@ -278,20 +278,20 @@ outcome cache::is_victim_dirty(addr_t victim_address)
     return false;
 }
 
-void cache::invalidate_victim(addr_t victim_address)
+void cache::invalidate_victim(RawAddr victim_address)
 {
     set_validity_status(victim_address, false);
 }
 
-void cache::dirtify_victim(addr_t victim_address)
+void cache::dirtify_victim(RawAddr victim_address)
 {
     set_dirt_status(victim_address, true);
 }
 
-void cache::insert_new_data(addr_t address)
+void cache::insert_new_data(RawAddr address)
 {
     tag_t cur_tag = create_tag(address);
-    set_t cur_set = create_set(address);
+    SetNr cur_set = create_set(address);
 
     /* nr == number */
     int way_nr = find_empty_space(cur_set); /* find INVALID set */
@@ -301,10 +301,10 @@ void cache::insert_new_data(addr_t address)
     LRUs[cur_set].update_queue(way_nr);
 }
 
-void cache::insert_dirty_new_data(addr_t address)
+void cache::insert_dirty_new_data(RawAddr address)
 {
     tag_t cur_tag = create_tag(address);
-    set_t cur_set = create_set(address);
+    SetNr cur_set = create_set(address);
 
     /* nr == number */
     int way_nr = find_empty_space(cur_set); /* find INVALID set */
@@ -315,10 +315,10 @@ void cache::insert_dirty_new_data(addr_t address)
     LRUs[cur_set].update_queue(way_nr);
 }
 
-outcome cache::find_and_write_data(addr_t address)
+Outcome cache::find_and_write_data(RawAddr address)
 {
     tag_t cur_tag = create_tag(address);
-    set_t cur_set = create_set(address);
+    SetNr cur_set = create_set(address);
     n_of_access++;
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
         if (ways[way_nr].find_tag(cur_tag, cur_set)) {
@@ -336,7 +336,7 @@ outcome cache::find_and_write_data(addr_t address)
     return false;
 }
 
-int cache::find_empty_space(set_t set) const
+int cache::find_empty_space(SetNr set) const
 {
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
         if (!ways[way_nr].check_set_valid(set))
@@ -346,15 +346,15 @@ int cache::find_empty_space(set_t set) const
     return -1;
 }
 
-int cache::get_lru_way(set_t set) const
+int cache::get_lru_way(SetNr set) const
 {
     return LRUs[set].get_lru();
 }
 
-void cache::set_dirt_status(addr_t address, bool status)
+void cache::set_dirt_status(RawAddr address, bool status)
 {
     tag_t cur_tag = create_tag(address);
-    set_t cur_set = create_set(address);
+    SetNr cur_set = create_set(address);
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
         if (ways[way_nr].find_tag(cur_tag, cur_set)) {
             ways[way_nr].set_dirt_status(cur_set, status);
@@ -365,10 +365,10 @@ void cache::set_dirt_status(addr_t address, bool status)
     }
 }
 
-void cache::set_validity_status(addr_t address, bool status)
+void cache::set_validity_status(RawAddr address, bool status)
 {
     tag_t cur_tag = create_tag(address);
-    set_t cur_set = create_set(address);
+    SetNr cur_set = create_set(address);
     for (size_t way_nr = 0; way_nr < ways.size(); way_nr++) {
         if (ways[way_nr].find_tag(cur_tag, cur_set)) {
             ways[way_nr].set_valid_status(cur_set, status);
@@ -397,44 +397,44 @@ way::way(int _assoc, int _n_of_lines, int _b_tag_size, int _block_size)
 {
 }
 
-bool way::find_tag(const tag_t& tag, const set_t set) const
+bool way::find_tag(const tag_t& tag, const SetNr set) const
 {
     return (tags[set] == tag) && tags[set].is_valid();
 }
 
-void way::insert_tag(const tag_t& tag, const set_t set)
+void way::insert_tag(const tag_t& tag, const SetNr set)
 {
     tags[set].validate_and_insert(tag);
 }
 
-bool way::check_set_valid(const set_t set) const
+bool way::check_set_valid(const SetNr set) const
 {
     return tags[set].is_valid();
 }
 
-bool way::is_set_dirty(set_t set) const
+bool way::is_set_dirty(SetNr set) const
 {
     return tags[set].is_dirty();
 }
 
-void way::set_dirt_status(set_t set, bool status)
+void way::set_dirt_status(SetNr set, bool status)
 {
     tags[set].set_dirty(status);
 }
 
-void way::set_valid_status(set_t set, bool status)
+void way::set_valid_status(SetNr set, bool status)
 {
     tags[set].set_valid(status);
 }
 
-addr_t way::get_full_address(set_t set) const
+RawAddr way::get_full_address(SetNr set) const
 {
     return tags[set].get_full_address();
 }
 
 // ---------------------------- TAG ----------------------------  //
 
-tag_t::tag_t(int _b_tag_size, addr_t address, uint32_t _data)
+tag_t::tag_t(int _b_tag_size, RawAddr address, uint32_t _data)
     : data(_data), full_address(address), b_tag_size(_b_tag_size), valid(false),
       dirty(false)
 {
@@ -470,7 +470,7 @@ uint32_t tag_t::get_data() const
     return data;
 }
 
-addr_t tag_t::get_full_address() const
+RawAddr tag_t::get_full_address() const
 {
     return full_address;
 }
