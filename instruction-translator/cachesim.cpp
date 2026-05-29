@@ -205,6 +205,7 @@ class AddrSplitter
     }
 };
 
+// TODO: update cache statistics when calling the functions
 class cache
 {
   public:
@@ -393,10 +394,9 @@ class simulator
                 CacheLine* victim = l1_.lookup(l1_snoop_addr_parts);
                 if (victim) {
                     if (victim->isDirty()) {
-                        // TODO: make it customizable if you log mem access on
-                        // propagating or not
-
-                        // log_mem_access();
+                        // NOTE: maybe not needed if the writes are in
+                        // background
+                        log_mem_access();
                     }
 
                     l1_.invalidate(l1_snoop_addr_parts);
@@ -442,14 +442,30 @@ class simulator
         }
     }
 
-    void do_write_simple(RawAddr address)
-    {
-        AddrParts addr_parts = l1_.splitter(address);
-    }
-
     void do_write_allocate(RawAddr address)
     {
-        AddrParts addr_parts = l1_.splitter(address);
+        AddrParts l1_addr_parts = l1_.splitter(address);
+        AddrParts l2_addr_parts = l2_.splitter(address);
+    }
+
+    void do_write_simple(RawAddr address)
+    {
+        AddrParts l1_addr_parts = l1_.splitter(address);
+        AddrParts l2_addr_parts = l2_.splitter(address);
+
+        CacheLine* target = l1_.lookup(l1_addr_parts);
+        if (target) {
+            target->markDirty();
+            return;
+        }
+
+        target = l2_.lookup(l2_addr_parts);
+        if (target) {
+            target->markDirty();
+            return;
+        }
+
+        log_mem_access();
     }
 
     void log_l1_access()
