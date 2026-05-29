@@ -4,32 +4,26 @@
 #include <cstdint>
 #include <vector>
 
-typedef uint32_t MASK;
-typedef uint32_t addr_t;
-typedef uint32_t set_t;
-typedef bool outcome;
+using MASK    = uint32_t;
+using addr_t  = uint32_t;
+using set_t   = uint32_t;
+using outcome = bool;
 
 class LRU
 {
-    int assoc;
-    std::vector<uint32_t> queue;
-
   public:
-    LRU(int _assoc);
+    LRU(int assoc);
 
     int get_lru() const;
     void update_queue(size_t index);
+
+  private:
+    int assoc_;
+    std::vector<uint32_t> queue_;
 };
 
 class tag_t
 {
-    uint32_t data;
-    addr_t full_address;
-    int b_tag_size; // likely not needed, might remove
-
-    bool valid;
-    bool dirty;
-
   public:
     tag_t(int _b_tag_size, addr_t address = 0, uint32_t _data = 0);
     tag_t& operator=(const tag_t& other);
@@ -55,17 +49,18 @@ class tag_t
     void set_data(uint32_t _data);
     void set_valid(bool state);
     void set_dirty(bool state);
+
+  private:
+    uint32_t data;
+    addr_t full_address;
+    int b_tag_size; // likely not needed, might remove
+
+    bool valid;
+    bool dirty;
 };
 
 class way
 {
-    int assoc;
-    int n_of_lines; // = n_of_tags
-    int b_tag_size;
-    int block_size;
-
-    std::vector<tag_t> tags;
-
   public:
     way(int _assoc, int _n_of_lines, int _b_tag_size, int _block_size);
 
@@ -90,45 +85,18 @@ class way
     void set_valid_status(set_t set, bool status);
 
     addr_t get_full_address(set_t set) const;
+
+  private:
+    int assoc;
+    int n_of_lines; // = n_of_tags
+    int b_tag_size;
+    int block_size;
+
+    std::vector<tag_t> tags;
 };
 
 class cache
 {
-    static constexpr int B_ADDR_SIZE     = 32;
-    static constexpr int B_ALIGN_SIZE    = 2;
-    static constexpr int B_METADATA_SIZE = 2;
-
-    int size;       // = cache size
-    int block_size; // = line size
-    int cycles;
-    int assoc;
-    int n_of_sets; // implicitly, this is also the n_of_tags
-    int b_tag_size;
-
-    // data for printing
-    size_t n_of_access = 0;
-    size_t n_of_misses = 0;
-    size_t n_of_hits   = 0;
-    // ---------------
-
-    bool write_alloc;
-
-    std::vector<way> ways;
-    std::vector<LRU> LRUs;
-
-    MASK tag_mask;
-    MASK set_mask;
-
-  private:
-    /* create_tag and create_set:
-     * Create a tag and set from the address using the mask, to send forward to
-     * the way and tag class for comperison and processing.
-     */
-    tag_t create_tag(addr_t address) const;
-    set_t create_set(addr_t address) const;
-    int find_empty_space(set_t set) const; // TODO
-    int get_lru_way(set_t set) const;      // TODO
-
   public:
     cache(int _size, int _block_size, int _cycles, int _assoc,
           bool _write_alloc);
@@ -180,10 +148,61 @@ class cache
     size_t get_n_access() const;
     size_t get_n_hits() const;
     size_t get_n_misses() const;
+
+  private:
+    static constexpr int B_ADDR_SIZE     = 32;
+    static constexpr int B_ALIGN_SIZE    = 2;
+    static constexpr int B_METADATA_SIZE = 2;
+
+    int size;       // = cache size
+    int block_size; // = line size
+    int cycles;
+    int assoc;
+    int n_of_sets; // implicitly, this is also the n_of_tags
+    int b_tag_size;
+
+    // data for printing
+    size_t n_of_access = 0;
+    size_t n_of_misses = 0;
+    size_t n_of_hits   = 0;
+    // ---------------
+
+    bool write_alloc;
+
+    std::vector<way> ways;
+    std::vector<LRU> LRUs;
+
+    MASK tag_mask;
+    MASK set_mask;
+
+    /* create_tag and create_set:
+     * Create a tag and set from the address using the mask, to send forward to
+     * the way and tag class for comperison and processing.
+     */
+    tag_t create_tag(addr_t address) const;
+    set_t create_set(addr_t address) const;
+    int find_empty_space(set_t set) const; // TODO
+    int get_lru_way(set_t set) const;      // TODO
 };
 
 class simulator
 {
+  public:
+    simulator(const simulator&)            = delete;
+    simulator& operator=(const simulator&) = delete;
+
+    static simulator& getInstance(int _block_size, int _mem_cycles,
+                                  int _l1_size, int _l1_cycles, int _l1_assoc,
+                                  int _l2_size, int _l2_cycles, int _l2_assoc,
+                                  bool _write_alloc);
+
+    void process_request(char operation, addr_t address);
+
+    double calc_L1_miss_rate() const;
+    double calc_L2_miss_rate() const;
+    double calc_avg_access_time() const;
+
+  private:
     simulator(int _block_size, int _mem_cycles, int _l1_size, int _l1_cycles,
               int _l1_assoc, int _l2_size, int _l2_cycles, int _l2_assoc,
               bool _write_alloc); // singleton
@@ -207,28 +226,12 @@ class simulator
     cache L1;
     cache L2;
 
-  private:
     void do_read(addr_t address);
     void do_write(addr_t address);
 
     void log_l1_access();
     void log_l2_access();
     void log_mem_access();
-
-  public:
-    simulator(const simulator&)            = delete;
-    simulator& operator=(const simulator&) = delete;
-
-    static simulator& getInstance(int _block_size, int _mem_cycles,
-                                  int _l1_size, int _l1_cycles, int _l1_assoc,
-                                  int _l2_size, int _l2_cycles, int _l2_assoc,
-                                  bool _write_alloc);
-
-    void process_request(char operation, addr_t address);
-
-    double calc_L1_miss_rate() const;
-    double calc_L2_miss_rate() const;
-    double calc_avg_access_time() const;
 };
 
 #endif

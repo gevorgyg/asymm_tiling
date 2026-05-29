@@ -497,17 +497,17 @@ void tag_t::set_dirty(bool state)
 
 // ---------------------------- TAG ----------------------------  //
 
-LRU::LRU(int _assoc) : assoc(_assoc), queue(assoc)
+LRU::LRU(int assoc) : assoc_(assoc), queue_(assoc)
 {
-    for (int i = 0; i < assoc; i++) {
-        queue[i] = i;
+    for (int i = 0; i < assoc_; i++) {
+        queue_[i] = i;
     }
 }
 
 int LRU::get_lru() const
 {
-    for (size_t i = 0; i < queue.size(); i++) {
-        if (queue[i] == 0)
+    for (size_t i = 0; i < queue_.size(); i++) {
+        if (queue_[i] == 0)
             return i;
     }
 
@@ -518,10 +518,10 @@ int LRU::get_lru() const
 /* one to one copy of what is taught in class */
 void LRU::update_queue(size_t index)
 {
-    uint32_t x   = queue[index];
-    queue[index] = assoc - 1;
-    for (size_t i = 0; i < queue.size(); i++) {
-        if ((i != index) && (queue[i] > x))
-            queue[i]--;
+    uint32_t x    = queue_[index];
+    queue_[index] = assoc_ - 1;
+    for (size_t i = 0; i < queue_.size(); i++) {
+        if ((i != index) && (queue_[i] > x))
+            queue_[i]--;
     }
 }
