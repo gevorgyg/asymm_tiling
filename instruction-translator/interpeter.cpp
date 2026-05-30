@@ -5,6 +5,8 @@
 #include <iostream>
 #include <string>
 
+extern int createInstuctions(int m, int n, int k);
+
 using std::filesystem::path;
 
 static constexpr int block_size       = 6;
@@ -330,14 +332,26 @@ class Interpeter
     }
 };
 
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc != 4) {
+        std::cout << "There should be 4 arguments" << std::endl;
+        exit(1);
+    }
+
+    int dims[3] = {std::atoi(argv[1]), std::atoi(argv[2]), std::atoi(argv[3])};
+
     simulator& sim =
         simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true);
 
+    createInstuctions(dims[0], dims[1], dims[2]);
+
     Interpeter inter("./matmul.matv", sim);
 
+    std::cout << "----------------------------" << std::endl;
+
     std::cout << "Starting trace interpretation loop..." << std::endl;
+
     inter.run();
 
     std::cout <<                                                           //
@@ -349,6 +363,8 @@ int main()
     printf("L2 Miss Rate: %.03f\n", sim.calc_L2_miss_rate());
     printf("Average Memory Access Time: %.03f cycles\n",
            sim.calc_avg_access_time());
+
+    std::cout << "----------------------------" << std::endl;
 
     return 0;
 };

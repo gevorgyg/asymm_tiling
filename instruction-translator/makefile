@@ -1,18 +1,12 @@
-all: main trace
+all: main
 
-debug: main_d trace_d
+debug: main_d
 
 main: cachesim.h
-	g++ interpeter.cpp -o test -O3
-
-trace:
-	g++ instgen.cpp -o gentrace
+	g++ instgen.cpp interpeter.cpp -o test -O3
 
 main_d: cachesim.h
 	g++ interpeter.cpp -o test -g
 
-trace_d:
-	g++ instgen.cpp -o gentrace -g
-
 clean:
-	rm gentrace test matmul.matv
+	rm test matmul.matv

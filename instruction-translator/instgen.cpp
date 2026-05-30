@@ -188,17 +188,18 @@ class InstGen
     GhostMat C;
 };
 
-int main()
+int createInstuctions(int m, int n, int k)
 {
-    InstGen gen{100, 100, 8, 100, 100, 1};
+    InstGen gen{500, 500, 8, 500, 500, 1};
 
-    std::ofstream ofs("matmul.matv");
+    std::ofstream ofs("./matmul.matv");
 
     if (!ofs.is_open()) {
         std::cerr << "error opening file" << std::endl;
     }
 
-    gen.generate(4, 1, 4, ofs);
+    std::cout << m << ' ' << n << ' ' << k << std::endl;
+    gen.generate(m, n, k, ofs);
 
     return 0;
 };
