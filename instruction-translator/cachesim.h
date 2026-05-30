@@ -34,7 +34,7 @@ int my_log2(int size)
 }
 
 /* return 2^exponent */
-int ttp(int exponent)
+constexpr int ttp(int exponent)
 {
     return (1 << exponent);
 }
@@ -51,8 +51,7 @@ struct AddrParts {
 class CacheLine
 {
   public:
-    using QueuePos =
-        std::list<std::unordered_map<Tag, CacheLine>::iterator>::iterator;
+    using QueuePos = std::list<Tag>::iterator;
 
     CacheLine(RawAddr addr) : addr_(addr)
     {
@@ -135,7 +134,9 @@ class Set
         // not found
         bool evicted = false;
         if (ways_.size() >= max_size_) { // full set
-            Data victim   = lru_queue_.back();
+            Tag victim_tag = lru_queue_.back();
+            Data victim    = ways_.find(victim_tag);
+
             evicted_addr  = victim->second.getAddr();
             evicted_dirty = victim->second.isDirty();
 
@@ -156,7 +157,7 @@ class Set
 
         auto new_data = insertion_result.first;
 
-        lru_queue_.push_front(new_data);
+        lru_queue_.push_front(new_data->first);
 
         new_data->second.setQueuePos(lru_queue_.begin());
 
@@ -175,7 +176,7 @@ class Set
 
     std::unordered_map<Tag, CacheLine> ways_;
 
-    std::list<Data> lru_queue_;
+    std::list<Tag> lru_queue_;
 
     size_t max_size_;
 };
@@ -219,8 +220,8 @@ class cache
     cache(int size, int block_size, int cycles, int assoc, bool write_alloc)
         : size_(size), cycles_(cycles), assoc_(ttp(assoc)),
           write_alloc_(write_alloc),
-          sets_((ttp(size) / assoc) / ttp(block_size), Set{assoc_}),
-          splitter((ttp(size) / assoc) / ttp(block_size), block_size)
+          sets_((ttp(size) / ttp(assoc)) / ttp(block_size), Set{ttp(assoc)}),
+          splitter((ttp(size) / ttp(assoc)) / ttp(block_size), block_size)
     {
     }
 
@@ -251,6 +252,11 @@ class cache
         }
 
         return target;
+    }
+
+    CacheLine* lookupNoUpdate(const AddrParts& addr)
+    {
+        return sets_[addr.set].lookup(addr.tag);
     }
 
     void invalidate(const AddrParts& addr)
@@ -419,7 +425,7 @@ class simulator
                 // take dirty status of evicted line from L2
                 bool should_evict = evicted_dirty;
 
-                CacheLine* victim = l1_.lookup(l1_snoop_addr_parts);
+                CacheLine* victim = l1_.lookupNoUpdate(l1_snoop_addr_parts);
                 if (victim) {
                     if (victim->isDirty()) {
                         should_evict = true;
@@ -431,7 +437,7 @@ class simulator
                 if (should_evict) {
                     // NOTE: maybe not needed if the writes are in
                     // background
-                    log_mem_access();
+                    // log_mem_access();
                 }
 
                 cur_state = insert_l1;
@@ -450,7 +456,7 @@ class simulator
             case write_back_l2: {
                 AddrParts l2_writeback_addr_parts = l2_.splitter(evicted_addr);
 
-                CacheLine* target = l2_.lookup(l2_writeback_addr_parts);
+                CacheLine* target = l2_.lookupNoUpdate(l2_writeback_addr_parts);
                 if (target) {
                     target->markDirty();
                 } else {
@@ -524,7 +530,7 @@ class simulator
                 AddrParts l1_snoop_addr_parts = l1_.splitter(evicted_addr);
 
                 bool should_evict = evicted_dirty;
-                CacheLine* victim = l1_.lookup(l1_snoop_addr_parts);
+                CacheLine* victim = l1_.lookupNoUpdate(l1_snoop_addr_parts);
                 if (victim) {
                     if (victim->isDirty()) {
                         should_evict = true;
@@ -536,7 +542,7 @@ class simulator
                 if (should_evict) {
                     // NOTE: maybe not needed if the writes are in
                     // background
-                    log_mem_access();
+                    // log_mem_access();
                 }
 
                 cur_state = insert_l1;
@@ -558,7 +564,7 @@ class simulator
             case write_back_l2: {
                 AddrParts l2_writeback_addr_parts = l2_.splitter(evicted_addr);
 
-                CacheLine* target = l2_.lookup(l2_writeback_addr_parts);
+                CacheLine* target = l2_.lookupNoUpdate(l2_writeback_addr_parts);
                 if (target) {
                     target->markDirty();
                 } else {
@@ -578,12 +584,14 @@ class simulator
         AddrParts l1_addr_parts = l1_.splitter(address);
         AddrParts l2_addr_parts = l2_.splitter(address);
 
+        log_l1_access();
         CacheLine* target = l1_.lookup(l1_addr_parts);
         if (target) {
             target->markDirty();
             return;
         }
 
+        log_l2_access();
         target = l2_.lookup(l2_addr_parts);
         if (target) {
             target->markDirty();

@@ -7,6 +7,9 @@
 
 using std::filesystem::path;
 
+static constexpr int block_size       = 6;
+static constexpr int block_size_bytes = ttp(block_size);
+
 class Interpeter
 {
   public:
@@ -329,7 +332,8 @@ class Interpeter
 
 int main()
 {
-    simulator& sim = simulator::getInstance(6, 180, 15, 4, 2, 18, 24, 4, true);
+    simulator& sim =
+        simulator::getInstance(block_size, 180, 15, 4, 10, 18, 24, 10, true);
 
     Interpeter inter("./matmul.matv", sim);
 

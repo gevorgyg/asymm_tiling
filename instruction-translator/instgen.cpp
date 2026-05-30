@@ -76,9 +76,6 @@ class InstGen
     }
 
     // LOAD_TILE <Base Addr><Width><Height><Stride><Element Size>
-
-    // TODO: support a-sym tiles
-
     // k is the tile width ratio
     void generate(int m, int n, int k, std::ostream& os) const
     {
@@ -193,7 +190,7 @@ class InstGen
 
 int main()
 {
-    InstGen gen{1000, 1000, 4, 1000, 1000, 8};
+    InstGen gen{100, 100, 8, 100, 100, 1};
 
     std::ofstream ofs("matmul.matv");
 
@@ -201,7 +198,7 @@ int main()
         std::cerr << "error opening file" << std::endl;
     }
 
-    gen.generate(8, 2, 4, ofs);
+    gen.generate(4, 1, 4, ofs);
 
     return 0;
 };
