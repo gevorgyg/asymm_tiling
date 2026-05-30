@@ -1,16 +1,15 @@
 #include "cachesim.h"
+#include "instgen.h"
+#include "threadsafe_queue.h"
 #include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
 
-extern int createInstuctions(int m, int n, int k);
-
 using std::filesystem::path;
 
-static constexpr int block_size       = 6;
-static constexpr int block_size_bytes = ttp(block_size);
+static constexpr int block_size = 6;
 
 class Interpeter
 {
@@ -332,6 +331,21 @@ class Interpeter
     }
 };
 
+constexpr char instruction_path[] = "./matmul.matv";
+
+void generateInstructions(int m, int n, int k)
+{
+    InstGenerator gen{500, 500, 8, 500, 500, 1};
+
+    std::ofstream ofs(instruction_path);
+
+    if (!ofs.is_open()) {
+        std::cerr << "error opening file" << std::endl;
+    }
+
+    gen.generate(m, n, k, ofs);
+}
+
 int main(int argc, char* argv[])
 {
     if (argc != 4) {
@@ -344,27 +358,23 @@ int main(int argc, char* argv[])
     simulator& sim =
         simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true);
 
-    createInstuctions(dims[0], dims[1], dims[2]);
+    generateInstructions(dims[0], dims[1], dims[2]);
 
-    Interpeter inter("./matmul.matv", sim);
+    Interpeter inter(instruction_path, sim);
 
     std::cout << "----------------------------" << std::endl;
 
-    std::cout << "Starting trace interpretation loop..." << std::endl;
+    std::cout << dims[0] << ' ' << dims[1] << ' ' << dims[2] << std::endl;
+
+    std::cout << "----------------------------" << std::endl;
 
     inter.run();
-
-    std::cout <<                                                           //
-        "Interpretation complete! Extracting cache performance records..." //
-              << std::endl;
 
     printf("--- Workload Statistics ---\n");
     printf("L1 Miss Rate: %.03f\n", sim.calc_L1_miss_rate());
     printf("L2 Miss Rate: %.03f\n", sim.calc_L2_miss_rate());
     printf("Average Memory Access Time: %.03f cycles\n",
            sim.calc_avg_access_time());
-
-    std::cout << "----------------------------" << std::endl;
 
     return 0;
 };

@@ -1,9 +1,21 @@
 [
   {
-    "file": "cache.cpp",
+    "file": "cachesim.cpp",
     "arguments": [
       "/usr/bin/g++",
-      "cache.cpp",
+      "cachesim.cpp",
+      "-o",
+      "test",
+      "-O3"
+    ],
+    "directory": "/home/aregmk/Documents/technion/semester6/project/asymm_tiling/instruction-translator",
+    "output": "test"
+  },
+  {
+    "file": "instgen.cpp",
+    "arguments": [
+      "/usr/bin/g++",
+      "instgen.cpp",
       "-o",
       "test",
       "-O3"
@@ -22,16 +34,5 @@
     ],
     "directory": "/home/aregmk/Documents/technion/semester6/project/asymm_tiling/instruction-translator",
     "output": "test"
-  },
-  {
-    "file": "instgen.cpp",
-    "arguments": [
-      "/usr/bin/g++",
-      "instgen.cpp",
-      "-o",
-      "gentrace"
-    ],
-    "directory": "/home/aregmk/Documents/technion/semester6/project/asymm_tiling/instruction-translator",
-    "output": "gentrace"
   }
 ]
