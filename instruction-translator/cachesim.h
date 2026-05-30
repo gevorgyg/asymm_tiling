@@ -1,7 +1,11 @@
+#ifndef CACHE_SIM_H_
+#define CACHE_SIM_H_
+
 #include <cassert>
 #include <iostream>
 #include <list>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 using uint     = unsigned int;
@@ -12,6 +16,8 @@ using SetIndex = uint;
 using DirtyBit = bool;
 using Outcome  = bool;
 
+// TODO: move all of this to a seperate cpp file including the static function
+// to avoid seperate static function instantiations
 namespace
 {
 
@@ -83,6 +89,8 @@ class CacheLine
     DirtyBit dirty_ = false;
 };
 
+using Insertion = std::pair<CacheLine*, Outcome>;
+
 class Set
 {
   public:
@@ -115,13 +123,13 @@ class Set
         }
     }
 
-    Outcome insert(const AddrParts& addr, RawAddr& evicted_addr,
-                   DirtyBit& evicted_dirty)
+    Insertion insert(const AddrParts& addr, RawAddr& evicted_addr,
+                     DirtyBit& evicted_dirty)
     {
         auto target = ways_.find(addr.tag);
         if (target != ways_.end()) { // found
             updateQueue(target);
-            return false;
+            return {&target->second, false};
         }
 
         // not found
@@ -152,7 +160,7 @@ class Set
 
         new_data->second.setQueuePos(lru_queue_.begin());
 
-        return evicted;
+        return {&new_data->second, evicted};
     }
 
   private:
@@ -205,7 +213,6 @@ class AddrSplitter
     }
 };
 
-// TODO: update cache statistics when calling the functions
 class cache
 {
   public:
@@ -217,15 +224,33 @@ class cache
     {
     }
 
-    size_t get_n_access() const;
-    size_t get_n_hits() const;
-    size_t get_n_misses() const;
+    size_t get_n_access() const
+    {
+        return n_of_access;
+    }
+    size_t get_n_hits() const
+    {
+        return n_of_hits;
+    }
+    size_t get_n_misses() const
+    {
+        return n_of_misses;
+    }
 
     const AddrSplitter splitter;
 
     CacheLine* lookup(const AddrParts& addr)
     {
-        return sets_[addr.set].lookup(addr.tag);
+        ++n_of_access;
+        CacheLine* target = sets_[addr.set].lookup(addr.tag);
+
+        if (target) {
+            ++n_of_hits;
+        } else {
+            ++n_of_misses;
+        }
+
+        return target;
     }
 
     void invalidate(const AddrParts& addr)
@@ -233,8 +258,8 @@ class cache
         sets_[addr.set].invalidate(addr.tag);
     }
 
-    Outcome insert(const AddrParts& addr, RawAddr& evicted_addr,
-                   DirtyBit& evicted_dirty)
+    Insertion insert(const AddrParts& addr, RawAddr& evicted_addr,
+                     DirtyBit& evicted_dirty)
     {
         return sets_[addr.set].insert(addr, evicted_addr, evicted_dirty);
     }
@@ -377,10 +402,10 @@ class simulator
             case insert_l2: {
                 log_mem_access();
 
-                Outcome wasEvicted =
+                Insertion wasEvicted =
                     l2_.insert(l2_addr_parts, evicted_addr, evicted_dirty);
 
-                if (wasEvicted) {
+                if (wasEvicted.second) {
                     // write back to memory the evicted data in background
                     cur_state = snoop_l1;
                 } else {
@@ -391,25 +416,32 @@ class simulator
             case snoop_l1: {
                 AddrParts l1_snoop_addr_parts = l1_.splitter(evicted_addr);
 
+                // take dirty status of evicted line from L2
+                bool should_evict = evicted_dirty;
+
                 CacheLine* victim = l1_.lookup(l1_snoop_addr_parts);
                 if (victim) {
                     if (victim->isDirty()) {
-                        // NOTE: maybe not needed if the writes are in
-                        // background
-                        log_mem_access();
+                        should_evict = true;
                     }
 
                     l1_.invalidate(l1_snoop_addr_parts);
+                }
+
+                if (should_evict) {
+                    // NOTE: maybe not needed if the writes are in
+                    // background
+                    log_mem_access();
                 }
 
                 cur_state = insert_l1;
 
             } break;
             case insert_l1: {
-                Outcome wasEvicted =
+                Insertion wasEvicted =
                     l1_.insert(l1_addr_parts, evicted_addr, evicted_dirty);
 
-                if (wasEvicted && evicted_dirty) {
+                if (wasEvicted.second && evicted_dirty) {
                     cur_state = write_back_l2;
                 } else {
                     finish = true;
@@ -446,6 +478,99 @@ class simulator
     {
         AddrParts l1_addr_parts = l1_.splitter(address);
         AddrParts l2_addr_parts = l2_.splitter(address);
+
+        RawAddr evicted_addr   = 0;
+        DirtyBit evicted_dirty = false;
+
+        state cur_state = search_l1;
+        bool finish     = false;
+        while (!finish) {
+            switch (cur_state) {
+            case search_l1: {
+                log_l1_access();
+                CacheLine* found = l1_.lookup(l1_addr_parts);
+                if (found) { // hit
+                    found->markDirty();
+
+                    finish = true;
+                } else {
+                    cur_state = search_l2;
+                }
+            } break;
+            case search_l2: {
+                log_l2_access();
+                CacheLine* found = l2_.lookup(l2_addr_parts);
+                if (found) { // hit
+                    cur_state = insert_l1;
+                } else {
+                    cur_state = insert_l2;
+                }
+            } break;
+            case insert_l2: {
+                log_mem_access();
+
+                Insertion wasEvicted =
+                    l2_.insert(l2_addr_parts, evicted_addr, evicted_dirty);
+
+                if (wasEvicted.second) {
+                    // write back to memory the evicted data in background
+                    cur_state = snoop_l1;
+                } else {
+                    cur_state = insert_l1;
+                }
+
+            } break;
+            case snoop_l1: {
+                AddrParts l1_snoop_addr_parts = l1_.splitter(evicted_addr);
+
+                bool should_evict = evicted_dirty;
+                CacheLine* victim = l1_.lookup(l1_snoop_addr_parts);
+                if (victim) {
+                    if (victim->isDirty()) {
+                        should_evict = true;
+                    }
+
+                    l1_.invalidate(l1_snoop_addr_parts);
+                }
+
+                if (should_evict) {
+                    // NOTE: maybe not needed if the writes are in
+                    // background
+                    log_mem_access();
+                }
+
+                cur_state = insert_l1;
+
+            } break;
+            case insert_l1: {
+                Insertion result =
+                    l1_.insert(l1_addr_parts, evicted_addr, evicted_dirty);
+
+                // mark the NEWLY inserted as dirty
+                result.first->markDirty();
+
+                if (result.second && evicted_dirty) {
+                    cur_state = write_back_l2;
+                } else {
+                    finish = true;
+                }
+            } break;
+            case write_back_l2: {
+                AddrParts l2_writeback_addr_parts = l2_.splitter(evicted_addr);
+
+                CacheLine* target = l2_.lookup(l2_writeback_addr_parts);
+                if (target) {
+                    target->markDirty();
+                } else {
+                    // shouldn't happen because inclusive cache
+                    std::cerr << "cache contradicts inclusivness" << std::endl;
+                    exit(1);
+                }
+
+                finish = true;
+            } break;
+            }
+        }
     }
 
     void do_write_simple(RawAddr address)
@@ -485,3 +610,5 @@ class simulator
         total_access_cycles += mem_cycles_;
     }
 };
+
+#endif
