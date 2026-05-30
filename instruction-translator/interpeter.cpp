@@ -333,7 +333,7 @@ class Interpeter
 int main()
 {
     simulator& sim =
-        simulator::getInstance(block_size, 180, 15, 4, 10, 18, 24, 10, true);
+        simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true);
 
     Interpeter inter("./matmul.matv", sim);
 
