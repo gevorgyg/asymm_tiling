@@ -58,7 +58,7 @@ class InstGenerator
             if (a_addr < a_byte_size)
                 a_addr += page_size;
 
-            // put B close to A and align
+            // put C close to A and align
             Addr c_addr = a_addr + a_byte_size;
 
             Addr c_align = c_addr / page_size;
@@ -68,10 +68,17 @@ class InstGenerator
 
             assert(c_addr - a_addr >= a_byte_size);
 
-            A = GhostMat{a_width, a_height, a_elem_width, a_addr};
-            C = GhostMat{a_height, b_width, c_elem_width, c_addr};
+            // TODO: think about a better way to get the magic address
+            Addr magic_addr = 0;
+            if (a_addr > 16) {
+                magic_addr = a_addr - 16;
+            } else {
+                magic_addr = c_addr + c_byte_size + 16;
+            }
 
-            magic_addr_ = a_addr - 16;
+            A = GhostMat{a_width, a_height, a_elem_width, a_addr};
+            B = GhostMat{b_width, b_height, b_elem_width, magic_addr};
+            C = GhostMat{a_height, b_width, c_elem_width, c_addr};
 
         } else {
             // generate A address and make sure it leaves enough space for B
@@ -135,132 +142,83 @@ class InstGenerator
         int tci = 0;
         int tri = 0;
 
-        if (is_prng_generator_) { // prng
-            while (tri * C.width * c_tile_height + tci * c_tile_width <
-                   C.total_elem_size) {
+        if (is_prng_generator_) {
+            os << "strtrng" << ' ' << "0x" << std::hex << B.addr //
+               << std::dec << std::endl;                         //
+        }
 
-                Addr c_disp = tri * C.width * c_tile_height * C.elem_width;
+        while (tri * C.width * c_tile_height + tci * c_tile_width <
+               C.total_elem_size) {
 
-                uint ctw = std::min(c_tile_width, C.width - tci * c_tile_width);
-                uint cth =
-                    std::min(c_tile_height, C.height - tri * c_tile_height);
+            Addr c_disp = tri * C.width * c_tile_height * C.elem_width;
 
-                os << "ltea" << ' ' << '(' << "0x" << std::hex          //
-                   << C.addr + c_disp + tci * ctw * C.elem_width        //
-                   << std::dec << ", " << ctw << ", "                   //
-                   << cth << ", " << C.width << ", "                    //
-                   << C.elem_width << ')' << ", " << c_id << std::endl; //
+            uint ctw = std::min(c_tile_width, C.width - tci * c_tile_width);
+            uint cth = std::min(c_tile_height, C.height - tri * c_tile_height);
 
-                int in_tci = 0;
-                int in_tri = 0;
+            os << "ltea" << ' ' << '(' << "0x" << std::hex          //
+               << C.addr + c_disp + tci * ctw * C.elem_width        //
+               << std::dec << ", " << ctw << ", "                   //
+               << cth << ", " << C.width << ", "                    //
+               << C.elem_width << ')' << ", " << c_id << std::endl; //
 
-                while (in_tci * a_tile_width < A.width) {
-                    Addr a_disp = tri * A.width * a_tile_height * A.elem_width;
-                    Addr b_disp = tci * b_tile_width * B.elem_width;
+            int in_tci = 0;
+            int in_tri = 0;
 
-                    uint atw =
-                        std::min(a_tile_width, A.width - in_tci * a_tile_width);
-                    uint ath = cth;
+            while (in_tci * a_tile_width < A.width) {
+                Addr a_disp = tri * A.width * a_tile_height * A.elem_width;
+                Addr b_disp = tci * b_tile_width * B.elem_width;
 
-                    uint btw = ctw;
-                    uint bth = atw;
+                uint atw =
+                    std::min(a_tile_width, A.width - in_tci * a_tile_width);
+                uint ath = cth;
 
+                uint btw = ctw;
+                uint bth = atw;
+
+                os << "ltea " << '(' << "0x" << std::hex                //
+                   << A.addr + a_disp + in_tci * atw * A.elem_width     //
+                   << std::dec << ", " << atw << ", "                   //
+                   << ath << ", " << A.width << ", "                    //
+                   << A.elem_width << ')' << ", " << a_id << std::endl; //
+
+                if (is_prng_generator_) {
                     os << "ltea " << '(' << "0x" << std::hex                //
-                       << A.addr + a_disp + in_tci * atw * A.elem_width     //
-                       << std::dec << ", " << atw << ", "                   //
-                       << ath << ", " << A.width << ", "                    //
-                       << A.elem_width << ')' << ", " << a_id << std::endl; //
-
+                       << B.addr                                            //
+                       << std::dec << ", " << btw << ", "                   //
+                       << bth << ", " << B.width << ", "                    //
+                       << B.elem_width << ')' << ", " << b_id << std::endl; //
+                } else {
                     os << "ltea " << '(' << "0x" << std::hex                //
                        << B.addr + b_disp +                                 //
                               in_tri * B.width * bth * B.elem_width         //
                        << std::dec << ", " << btw << ", "                   //
                        << bth << ", " << B.width << ", "                    //
                        << B.elem_width << ')' << ", " << b_id << std::endl; //
-
-                    os << "tmulac " << a_id << ", " << b_id << ", " << c_id
-                       << std::endl;
-
-                    ++in_tci;
-                    ++in_tri;
                 }
 
-                os << "tmov " << '(' << "0x" << std::hex                //
-                   << C.addr + c_disp +                                 //
-                          tci * ctw * C.elem_width                      //
-                   << std::dec << ", " << ctw << ", "                   //
-                   << cth << ", " << C.width << ", "                    //
-                   << C.elem_width << ')' << ", " << c_id << std::endl; //
+                os << "tmulac " << a_id << ", " << b_id << ", " << c_id
+                   << std::endl;
 
-                ++tci;
-                if (tci * ctw >= C.width) {
-                    tci = 0;
-                    ++tri;
-                }
+                ++in_tci;
+                ++in_tri;
             }
-        } else { // non prng
-            while (tri * C.width * c_tile_height + tci * c_tile_width <
-                   C.total_elem_size) {
 
-                Addr c_disp = tri * C.width * c_tile_height * C.elem_width;
+            os << "tmov " << '(' << "0x" << std::hex                //
+               << C.addr + c_disp +                                 //
+                      tci * ctw * C.elem_width                      //
+               << std::dec << ", " << ctw << ", "                   //
+               << cth << ", " << C.width << ", "                    //
+               << C.elem_width << ')' << ", " << c_id << std::endl; //
 
-                uint ctw = std::min(c_tile_width, C.width - tci * c_tile_width);
-                uint cth =
-                    std::min(c_tile_height, C.height - tri * c_tile_height);
-
-                os << "ltea" << ' ' << '(' << "0x" << std::hex          //
-                   << C.addr + c_disp + tci * ctw * C.elem_width        //
-                   << std::dec << ", " << ctw << ", "                   //
-                   << cth << ", " << C.width << ", "                    //
-                   << C.elem_width << ')' << ", " << c_id << std::endl; //
-
-                int in_tci = 0;
-                int in_tri = 0;
-
-                while (in_tci * a_tile_width < A.width) {
-                    Addr a_disp = tri * A.width * a_tile_height * A.elem_width;
-                    Addr b_disp = tci * b_tile_width * B.elem_width;
-
-                    uint atw =
-                        std::min(a_tile_width, A.width - in_tci * a_tile_width);
-                    uint ath = cth;
-
-                    uint btw = ctw;
-                    uint bth = atw;
-
-                    os << "ltea " << '(' << "0x" << std::hex                //
-                       << A.addr + a_disp + in_tci * atw * A.elem_width     //
-                       << std::dec << ", " << atw << ", "                   //
-                       << ath << ", " << A.width << ", "                    //
-                       << A.elem_width << ')' << ", " << a_id << std::endl; //
-
-                    os << "ltea " << '(' << "0x" << std::hex                //
-                       << B.addr + b_disp +                                 //
-                              in_tri * B.width * bth * B.elem_width         //
-                       << std::dec << ", " << btw << ", "                   //
-                       << bth << ", " << B.width << ", "                    //
-                       << B.elem_width << ')' << ", " << b_id << std::endl; //
-
-                    os << "tmulac " << a_id << ", " << b_id << ", " << c_id
-                       << std::endl;
-
-                    ++in_tci;
-                    ++in_tri;
-                }
-
-                os << "tmov " << '(' << "0x" << std::hex                //
-                   << C.addr + c_disp +                                 //
-                          tci * ctw * C.elem_width                      //
-                   << std::dec << ", " << ctw << ", "                   //
-                   << cth << ", " << C.width << ", "                    //
-                   << C.elem_width << ')' << ", " << c_id << std::endl; //
-
-                ++tci;
-                if (tci * ctw >= C.width) {
-                    tci = 0;
-                    ++tri;
-                }
+            ++tci;
+            if (tci * ctw >= C.width) {
+                tci = 0;
+                ++tri;
             }
+        }
+
+        if (is_prng_generator_) {
+            os << "stprng" << std::endl; //
         }
     }
 
@@ -290,7 +248,6 @@ class InstGenerator
     GhostMat C;
 
     bool is_prng_generator_ = false;
-    Addr magic_addr_        = 0;
 };
 
 #endif

@@ -52,12 +52,18 @@ class Interpeter
         load_tile,
         move_tile,
         mul_acc,
+        start_rng,
+        stop_rng,
         eof,
     };
 
-    std::array<vec_reg, 3> vec_regs_;
-    int line_;
     std::ifstream in_stream_;
+    int line_;
+    Addr magic_addr_ = 0;
+
+    std::array<vec_reg, 3> vec_regs_;
+    SyncQueue<bool> prng_fifo_;
+    PrngDevSim prng_dev_;
     simulator& cache_sim_;
 
 #define INTERPRETER_SYNTEX_CHECK(ch, missing, error_msg)                       \
@@ -257,6 +263,9 @@ class Interpeter
         const vec_reg& rb = vec_regs_[tile_2];
         const vec_reg& rc = vec_regs_[tile_3];
 
+        bool use_magic = rb.base_addr == magic_addr_ ? true : false;
+        bool ok        = false;
+
         for (int a_row = 0; a_row < ra.t_height; ++a_row) {
             for (int b_col = 0; b_col < rb.t_width; ++b_col) {
                 Addr target_c =
@@ -265,11 +274,18 @@ class Interpeter
                 for (int t = 0; t < ra.t_width; ++t) {
                     Addr target_a =
                         ra.base_addr + (a_row * ra.stride + t) * ra.elem_width;
-                    Addr target_b =
-                        rb.base_addr + (t * rb.stride + b_col) * rb.elem_width;
+                    if (use_magic) {
+                        // TODO: create these functions
+
+                        prng_fifo_.waitAndPop(ok);
+                        prng_dev_.logPrngCycles();
+                    } else {
+                        Addr target_b = rb.base_addr +
+                                        (t * rb.stride + b_col) * rb.elem_width;
+                        cache_sim_.process_request('r', target_b);
+                    }
 
                     cache_sim_.process_request('r', target_a);
-                    cache_sim_.process_request('r', target_b);
                     // multiply A and B
                 }
 
@@ -278,6 +294,26 @@ class Interpeter
                 // accumulate in C
             }
         }
+    }
+
+    void startRng()
+    {
+        in_stream_ >> magic_addr_;
+
+        if (magic_addr_ == 0) {
+            std::cerr << "invalid MMIO magic address in line: " << line_
+                      << std::endl;
+            exit(1);
+        }
+
+        INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+    }
+
+    void stopRng()
+    {
+        magic_addr_ = 0;
+
+        INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
     }
 
     void handleCmd()
@@ -293,6 +329,12 @@ class Interpeter
             break;
         case mul_acc:
             handleMulAcc();
+            break;
+        case start_rng:
+            startRng();
+            break;
+        case stop_rng:
+            stopRng();
             break;
         case eof:
             return;
@@ -315,6 +357,10 @@ class Interpeter
             return mul_acc;
         } else if (cmd == "tmov") {
             return move_tile;
+        } else if (cmd == "strtrng") {
+            return start_rng;
+        } else if (cmd == "stprng") {
+            return stop_rng;
         } else if (in_stream_.eof()) {
             return eof;
         } else {
@@ -346,8 +392,27 @@ void generateInstructions(int m, int n, int k)
     gen.generate(m, n, k, ofs);
 }
 
+void generatePrngInstructions(int m, int n, int k)
+{
+    InstGenerator gen{500, 500, 8, 500, 500, 1, true};
+
+    std::ofstream ofs(instruction_path);
+
+    if (!ofs.is_open()) {
+        std::cerr << "error opening file" << std::endl;
+    }
+
+    gen.generate(m, n, k, ofs);
+}
+
 int main(int argc, char* argv[])
 {
+    if (argc == 1) {
+        generatePrngInstructions(4, 4, 4);
+
+        return 0;
+    }
+
     if (argc != 4) {
         std::cout << "There should be 4 arguments" << std::endl;
         exit(1);

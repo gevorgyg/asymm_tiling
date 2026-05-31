@@ -143,6 +143,10 @@ class simulator
     double calc_L1_miss_rate() const;
     double calc_L2_miss_rate() const;
     double calc_avg_access_time() const;
+    void logPrngCycles()
+    {
+        ++n_prng_access;
+    }
 
   private:
     simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,

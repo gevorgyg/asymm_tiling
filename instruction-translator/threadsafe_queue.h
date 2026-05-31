@@ -77,4 +77,32 @@ class SyncQueue
     std::queue<T> queue_;
 };
 
+class PrngDevSim
+{
+  public:
+    PrngDevSim(SyncQueue<bool>& fifo_queue) : prng_fifo_(fifo_queue)
+    {
+    }
+
+    void startContGen()
+    {
+        // create thread
+        // start loop
+    }
+
+  private:
+    static constexpr int access_cycle_cost = 3;
+
+    void logPrngCycles()
+    {
+        ++nr_access_cycles;
+    }
+
+    SyncQueue<bool>& prng_fifo_;
+
+    size_t nr_access_cycles = 0;
+
+    bool stop = true;
+};
+
 #endif
