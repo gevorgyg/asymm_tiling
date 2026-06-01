@@ -91,6 +91,8 @@ class PrngDevSim
             // now we pop the value (logically)
 
             last_cpu_cycles_ = rb_.total_access_cycles;
+        } else {
+            --cur_fifo_size_;
         }
     }
 
@@ -99,16 +101,16 @@ class PrngDevSim
     {
         size_t delta_cycles = rb_.total_access_cycles - last_cpu_cycles_;
 
-        size_t to_add = delta_cycles / generation_cost_;
+        uint to_add = delta_cycles / generation_cost_;
         if (!to_add) {
             return;
         }
 
         size_t leftover = delta_cycles % generation_cost_;
 
-        cur_fifo_size_ += to_add;
+        cur_fifo_size_ = std::min(cur_fifo_size_ + to_add, max_fifo_size_);
 
-        last_cpu_cycles_ = rb_.total_access_cycles + leftover;
+        last_cpu_cycles_ = rb_.total_access_cycles - leftover;
     }
 
     static constexpr int def_access_cost = 6;
