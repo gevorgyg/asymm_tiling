@@ -1,6 +1,5 @@
 #include "cachesim.h"
 #include "instgen.h"
-#include "threadsafe_queue.h"
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -14,8 +13,9 @@ static constexpr int block_size = 6;
 class Interpeter
 {
   public:
-    Interpeter(path input_file, simulator& cache_sim)
-        : in_stream_(input_file), line_(0), cache_sim_(cache_sim)
+    Interpeter(path input_file, simulator& cache_sim, RecordBook& rb)
+        : in_stream_(input_file), line_(0), cache_sim_(cache_sim),
+          prng_dev_(rb), rb_(rb)
     {
         if (!in_stream_.is_open()) {
             std::cerr << "error opening trace file" << std::endl;
@@ -60,11 +60,16 @@ class Interpeter
     std::ifstream in_stream_;
     int line_;
     Addr magic_addr_ = 0;
+    RecordBook& rb_;
 
     std::array<vec_reg, 3> vec_regs_;
-    SyncQueue<bool> prng_fifo_;
     PrngDevSim prng_dev_;
     simulator& cache_sim_;
+
+    void stall(size_t amount)
+    {
+        rb_.total_access_cycles += amount;
+    }
 
 #define INTERPRETER_SYNTEX_CHECK(ch, missing, error_msg)                       \
     do {                                                                       \
@@ -275,10 +280,7 @@ class Interpeter
                     Addr target_a =
                         ra.base_addr + (a_row * ra.stride + t) * ra.elem_width;
                     if (use_magic) {
-                        // TODO: create these functions
-
-                        prng_fifo_.waitAndPop(ok);
-                        prng_dev_.logPrngCycles();
+                        prng_dev_.pop();
                     } else {
                         Addr target_b = rb.base_addr +
                                         (t * rb.stride + b_col) * rb.elem_width;
@@ -420,12 +422,14 @@ int main(int argc, char* argv[])
 
     int dims[3] = {std::atoi(argv[1]), std::atoi(argv[2]), std::atoi(argv[3])};
 
+    static RecordBook rb;
+
     simulator& sim =
-        simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true);
+        simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true, rb);
 
     generateInstructions(dims[0], dims[1], dims[2]);
 
-    Interpeter inter(instruction_path, sim);
+    Interpeter inter(instruction_path, sim, rb);
 
     std::cout << "----------------------------" << std::endl;
 
@@ -435,11 +439,7 @@ int main(int argc, char* argv[])
 
     inter.run();
 
-    printf("--- Workload Statistics ---\n");
-    printf("L1 Miss Rate: %.03f\n", sim.calc_L1_miss_rate());
-    printf("L2 Miss Rate: %.03f\n", sim.calc_L2_miss_rate());
-    printf("Average Memory Access Time: %.03f cycles\n",
-           sim.calc_avg_access_time());
+    rb.printStats();
 
     return 0;
 };
