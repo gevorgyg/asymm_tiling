@@ -16,6 +16,6 @@ if [ ! -z "$bflag" ]; then
     make
 fi
 
-./test 4 1 4
-./test 4 4 1
-./test 1 4 4
+./test 125 500 125
+./test 125 125 500
+./test 500 125 125

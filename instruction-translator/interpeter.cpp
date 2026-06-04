@@ -349,12 +349,13 @@ void generateInstructions(int m, int n, int k)
         std::cerr << "error opening file" << std::endl;
     }
 
-    gen.generate(m, n, k, ofs);
+    InstGenerator::TileShape tile{(unsigned)m, (unsigned)n, (unsigned)k};
+    gen.generate(tile, ofs);
 }
 
 void generatePrngInstructions(int m, int n, int k)
 {
-    InstGenerator gen{500, 500, 8, 500, 500, 1, true};
+    InstGenerator gen{500, 500, 8, 500, 500, 1};
 
     std::ofstream ofs(instruction_path);
 
@@ -362,7 +363,8 @@ void generatePrngInstructions(int m, int n, int k)
         std::cerr << "error opening file" << std::endl;
     }
 
-    gen.generate(m, n, k, ofs);
+    InstGenerator::TileShape tile{(unsigned)m, (unsigned)n, (unsigned)k};
+    gen.generatePrng(tile, ofs);
 }
 
 int main(int argc, char* argv[])
