@@ -10,7 +10,7 @@
 class Interpeter
 {
   public:
-    Interpeter(std::filesystem::path input_file, simulator& cache_sim,
+    Interpeter(std::filesystem::path input_file, Simulator& cache_sim,
                RecordBook& rb);
 
     Interpeter(const Interpeter&)            = delete;
@@ -62,7 +62,7 @@ class Interpeter
 
     std::array<vec_reg, 3> vec_regs_;
     PrngDevSim prng_dev_;
-    simulator& cache_sim_;
+    Simulator& cache_sim_;
 };
 
 #endif

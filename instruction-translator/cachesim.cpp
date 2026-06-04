@@ -282,7 +282,7 @@ Insertion Cache::insert(const AddrParts& addr, RawAddr& evicted_addr,
     return sets_[addr.set].insert(addr, evicted_addr, evicted_dirty);
 }
 
-simulator& simulator::getInstance(int block_size, int mem_cycles, int l1_size,
+Simulator& Simulator::getInstance(int block_size, int mem_cycles, int l1_size,
                                   int l1_cycles, int l1_assoc, int l2_size,
                                   int l2_cycles, int l2_assoc, bool write_alloc,
                                   RecordBook& rb)
@@ -291,13 +291,13 @@ simulator& simulator::getInstance(int block_size, int mem_cycles, int l1_size,
     /* Creating a static instance of the simulator because we don't need
      * more than one
      */
-    static simulator instance(block_size, mem_cycles, l1_size, l1_cycles,
+    static Simulator instance(block_size, mem_cycles, l1_size, l1_cycles,
                               l1_assoc, l2_size, l2_cycles, l2_assoc,
                               write_alloc, rb);
     return instance;
 }
 
-void simulator::process_request(char operation, RawAddr address)
+void Simulator::process_request(char operation, RawAddr address)
 {
     switch (operation) {
     case 'r':
@@ -312,7 +312,7 @@ void simulator::process_request(char operation, RawAddr address)
     }
 }
 
-simulator::simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
+Simulator::Simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
                      int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
                      bool write_alloc, RecordBook& rb)
     : block_size_(block_size), mem_cycles_(mem_cycles), l1_size_(l1_size),
@@ -324,7 +324,7 @@ simulator::simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
 {
 }
 
-void simulator::do_read(RawAddr address)
+void Simulator::do_read(RawAddr address)
 {
     AddrParts l1_addr_parts = l1_.splitter(address);
     AddrParts l2_addr_parts = l2_.splitter(address);
@@ -420,7 +420,7 @@ void simulator::do_read(RawAddr address)
     }
 }
 
-void simulator::do_write(RawAddr address)
+void Simulator::do_write(RawAddr address)
 {
     if (write_alloc_) {
         do_write_allocate(address);
@@ -429,7 +429,7 @@ void simulator::do_write(RawAddr address)
     }
 }
 
-void simulator::do_write_allocate(RawAddr address)
+void Simulator::do_write_allocate(RawAddr address)
 {
     AddrParts l1_addr_parts = l1_.splitter(address);
     AddrParts l2_addr_parts = l2_.splitter(address);
@@ -528,7 +528,7 @@ void simulator::do_write_allocate(RawAddr address)
     }
 }
 
-void simulator::do_write_simple(RawAddr address)
+void Simulator::do_write_simple(RawAddr address)
 {
     AddrParts l1_addr_parts = l1_.splitter(address);
     AddrParts l2_addr_parts = l2_.splitter(address);
@@ -550,7 +550,7 @@ void simulator::do_write_simple(RawAddr address)
     log_mem_access();
 }
 
-void simulator::log_l1_access()
+void Simulator::log_l1_access()
 {
     /* only need to increment the access amount of the first access try,
      * that always starts at L1 */
@@ -558,11 +558,11 @@ void simulator::log_l1_access()
     br_.total_access_cycles += l1_cycles_;
 }
 
-void simulator::log_l2_access()
+void Simulator::log_l2_access()
 {
     br_.total_access_cycles += l2_cycles_;
 }
-void simulator::log_mem_access()
+void Simulator::log_mem_access()
 {
     br_.total_access_cycles += mem_cycles_;
 }

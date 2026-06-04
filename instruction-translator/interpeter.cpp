@@ -24,7 +24,7 @@ static constexpr int block_size = 6;
         }                                                                      \
     } while (0)
 
-Interpeter::Interpeter(path input_file, simulator& cache_sim, RecordBook& rb)
+Interpeter::Interpeter(path input_file, Simulator& cache_sim, RecordBook& rb)
     : in_stream_(input_file), line_(0), cache_sim_(cache_sim), prng_dev_(rb),
       rb_(rb)
 {
@@ -374,7 +374,7 @@ int main(int argc, char* argv[])
     }
 
     if (argc != 4) {
-        std::cout << "There should be 4 arguments" << std::endl;
+        std::cout << "There should be 3 arguments" << std::endl;
         exit(1);
     }
 
@@ -382,8 +382,8 @@ int main(int argc, char* argv[])
 
     static RecordBook rb;
 
-    simulator& sim =
-        simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true, rb);
+    Simulator& sim =
+        Simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true, rb);
 
     generateInstructions(dims[0], dims[1], dims[2]);
 

@@ -176,13 +176,13 @@ class Cache
     RecordBook::CacheStats& rb_;
 };
 
-class simulator
+class Simulator
 {
   public:
-    simulator(const simulator&)            = delete;
-    simulator& operator=(const simulator&) = delete;
+    Simulator(const Simulator&)            = delete;
+    Simulator& operator=(const Simulator&) = delete;
 
-    static simulator& getInstance(int block_size, int mem_cycles, int l1_size,
+    static Simulator& getInstance(int block_size, int mem_cycles, int l1_size,
                                   int l1_cycles, int l1_assoc, int l2_size,
                                   int l2_cycles, int l2_assoc, bool write_alloc,
                                   RecordBook& rb);
@@ -190,7 +190,7 @@ class simulator
     void process_request(char operation, RawAddr address);
 
   private:
-    simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
+    Simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
               int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
               bool write_alloc, RecordBook& rb);
 
