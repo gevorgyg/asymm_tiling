@@ -1,8 +1,7 @@
 #ifndef CACHE_SIM_H_
 #define CACHE_SIM_H_
 
-#include <cassert>
-#include <cstdio>
+#include <cstddef>
 #include <list>
 #include <unordered_map>
 #include <utility>
@@ -36,28 +35,11 @@ struct RecordBook {
     // prng gen
     size_t nr_fifo_access = 0;
 
-    // calc functions
-    double calc_L1_miss_rate() const
-    {
-        return (double)l1_book_.nr_misses / (double)l1_book_.nr_access;
-    }
-    double calc_L2_miss_rate() const
-    {
-        return (double)l2_book_.nr_misses / (double)l2_book_.nr_access;
-    }
-    double calc_avg_access_time() const
-    {
-        return (double)total_access_cycles / (double)nr_total_cache_access;
-    }
+    double calc_L1_miss_rate() const;
+    double calc_L2_miss_rate() const;
+    double calc_avg_access_time() const;
 
-    void printStats() const
-    {
-        printf("--- Workload Statistics ---\n");
-        printf("L1 Miss Rate: %.03f\n", calc_L1_miss_rate());
-        printf("L2 Miss Rate: %.03f\n", calc_L2_miss_rate());
-        printf("Average Memory Access Time: %.03f cycles\n",
-               calc_avg_access_time());
-    }
+    void printStats() const;
 };
 
 class PrngDevSim
@@ -65,53 +47,12 @@ class PrngDevSim
   public:
     explicit PrngDevSim(RecordBook& rb, uint max_fifo_size = def_size,
                         uint generation_cost = def_gen_cost,
-                        uint access_cost     = def_access_cost)
-        : rb_(rb), generation_cost_(generation_cost), access_cost_(access_cost),
-          max_fifo_size_(max_fifo_size)
-    {
-    }
+                        uint access_cost     = def_access_cost);
 
-    void pop()
-    {
-        size_t stall_amount = 0;
-
-        ++rb_.nr_fifo_access;
-        rb_.total_access_cycles += access_cost_;
-
-        addToFifo();
-
-        if (!cur_fifo_size_) {
-            size_t delta_cycles = rb_.total_access_cycles - last_cpu_cycles_;
-            stall_amount        = generation_cost_ - delta_cycles;
-
-            rb_.total_access_cycles += stall_amount;
-
-            // now we add the value
-            // and
-            // now we pop the value (logically)
-
-            last_cpu_cycles_ = rb_.total_access_cycles;
-        } else {
-            --cur_fifo_size_;
-        }
-    }
+    void pop();
 
   private:
-    void addToFifo()
-    {
-        size_t delta_cycles = rb_.total_access_cycles - last_cpu_cycles_;
-
-        uint to_add = delta_cycles / generation_cost_;
-        if (!to_add) {
-            return;
-        }
-
-        size_t leftover = delta_cycles % generation_cost_;
-
-        cur_fifo_size_ = std::min(cur_fifo_size_ + to_add, max_fifo_size_);
-
-        last_cpu_cycles_ = rb_.total_access_cycles - leftover;
-    }
+    void addToFifo();
 
     static constexpr int def_access_cost = 6;
     static constexpr int def_gen_cost    = 12;

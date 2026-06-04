@@ -26,7 +26,7 @@ InstGenerator::InstGenerator(uint a_width, uint a_height, uint a_elem_width,
   size_t a_byte_size = a_width * a_height * a_elem_width;
   size_t b_byte_size = b_width * b_height * b_elem_width;
 
-  ElemWidth c_elem_width = std::max(a_elem_width, b_elem_width);
+  uint c_elem_width = std::max(a_elem_width, b_elem_width);
   size_t c_byte_size = a_height * b_width * c_elem_width;
 
   std::mt19937 prng_addr_{std::random_device()()};
