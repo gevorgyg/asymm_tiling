@@ -1,6 +1,5 @@
 #include "cachesim.h"
 #include "instgen.h"
-#include "threadsafe_queue.h"
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -14,8 +13,9 @@ static constexpr int block_size = 6;
 class Interpeter
 {
   public:
-    Interpeter(path input_file, simulator& cache_sim)
-        : in_stream_(input_file), line_(0), cache_sim_(cache_sim)
+    Interpeter(path input_file, simulator& cache_sim, RecordBook& rb)
+        : in_stream_(input_file), line_(0), cache_sim_(cache_sim),
+          prng_dev_(rb), rb_(rb)
     {
         if (!in_stream_.is_open()) {
             std::cerr << "error opening trace file" << std::endl;
@@ -52,13 +52,24 @@ class Interpeter
         load_tile,
         move_tile,
         mul_acc,
+        start_rng,
+        stop_rng,
         eof,
     };
 
-    std::array<vec_reg, 3> vec_regs_;
-    int line_;
     std::ifstream in_stream_;
+    int line_;
+    Addr magic_addr_ = 0;
+    RecordBook& rb_;
+
+    std::array<vec_reg, 3> vec_regs_;
+    PrngDevSim prng_dev_;
     simulator& cache_sim_;
+
+    void stall(size_t amount)
+    {
+        rb_.total_access_cycles += amount;
+    }
 
 #define INTERPRETER_SYNTEX_CHECK(ch, missing, error_msg)                       \
     do {                                                                       \
@@ -257,6 +268,9 @@ class Interpeter
         const vec_reg& rb = vec_regs_[tile_2];
         const vec_reg& rc = vec_regs_[tile_3];
 
+        bool use_magic = rb.base_addr == magic_addr_ ? true : false;
+        bool ok        = false;
+
         for (int a_row = 0; a_row < ra.t_height; ++a_row) {
             for (int b_col = 0; b_col < rb.t_width; ++b_col) {
                 Addr target_c =
@@ -265,11 +279,15 @@ class Interpeter
                 for (int t = 0; t < ra.t_width; ++t) {
                     Addr target_a =
                         ra.base_addr + (a_row * ra.stride + t) * ra.elem_width;
-                    Addr target_b =
-                        rb.base_addr + (t * rb.stride + b_col) * rb.elem_width;
+                    if (use_magic) {
+                        prng_dev_.pop();
+                    } else {
+                        Addr target_b = rb.base_addr +
+                                        (t * rb.stride + b_col) * rb.elem_width;
+                        cache_sim_.process_request('r', target_b);
+                    }
 
                     cache_sim_.process_request('r', target_a);
-                    cache_sim_.process_request('r', target_b);
                     // multiply A and B
                 }
 
@@ -278,6 +296,26 @@ class Interpeter
                 // accumulate in C
             }
         }
+    }
+
+    void startRng()
+    {
+        in_stream_ >> magic_addr_;
+
+        if (magic_addr_ == 0) {
+            std::cerr << "invalid MMIO magic address in line: " << line_
+                      << std::endl;
+            exit(1);
+        }
+
+        INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+    }
+
+    void stopRng()
+    {
+        magic_addr_ = 0;
+
+        INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
     }
 
     void handleCmd()
@@ -293,6 +331,12 @@ class Interpeter
             break;
         case mul_acc:
             handleMulAcc();
+            break;
+        case start_rng:
+            startRng();
+            break;
+        case stop_rng:
+            stopRng();
             break;
         case eof:
             return;
@@ -315,6 +359,10 @@ class Interpeter
             return mul_acc;
         } else if (cmd == "tmov") {
             return move_tile;
+        } else if (cmd == "strtrng") {
+            return start_rng;
+        } else if (cmd == "stprng") {
+            return stop_rng;
         } else if (in_stream_.eof()) {
             return eof;
         } else {
@@ -346,8 +394,27 @@ void generateInstructions(int m, int n, int k)
     gen.generate(m, n, k, ofs);
 }
 
+void generatePrngInstructions(int m, int n, int k)
+{
+    InstGenerator gen{500, 500, 8, 500, 500, 1, true};
+
+    std::ofstream ofs(instruction_path);
+
+    if (!ofs.is_open()) {
+        std::cerr << "error opening file" << std::endl;
+    }
+
+    gen.generate(m, n, k, ofs);
+}
+
 int main(int argc, char* argv[])
 {
+    if (argc == 1) {
+        generatePrngInstructions(4, 4, 4);
+
+        return 0;
+    }
+
     if (argc != 4) {
         std::cout << "There should be 4 arguments" << std::endl;
         exit(1);
@@ -355,12 +422,14 @@ int main(int argc, char* argv[])
 
     int dims[3] = {std::atoi(argv[1]), std::atoi(argv[2]), std::atoi(argv[3])};
 
+    static RecordBook rb;
+
     simulator& sim =
-        simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true);
+        simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true, rb);
 
     generateInstructions(dims[0], dims[1], dims[2]);
 
-    Interpeter inter(instruction_path, sim);
+    Interpeter inter(instruction_path, sim, rb);
 
     std::cout << "----------------------------" << std::endl;
 
@@ -370,11 +439,7 @@ int main(int argc, char* argv[])
 
     inter.run();
 
-    printf("--- Workload Statistics ---\n");
-    printf("L1 Miss Rate: %.03f\n", sim.calc_L1_miss_rate());
-    printf("L2 Miss Rate: %.03f\n", sim.calc_L2_miss_rate());
-    printf("Average Memory Access Time: %.03f cycles\n",
-           sim.calc_avg_access_time());
+    rb.printStats();
 
     return 0;
 };

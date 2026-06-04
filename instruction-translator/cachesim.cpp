@@ -156,52 +156,53 @@ SetIndex AddrSplitter::create_index(RawAddr address) const
     return (address & set_mask_) >> block_size_;
 }
 
-cache::cache(int size, int block_size, int cycles, int assoc, bool write_alloc)
+Cache::Cache(int size, int block_size, int cycles, int assoc, bool write_alloc,
+             RecordBook::CacheStats& rb)
     : size_(size), cycles_(cycles), assoc_(ttp(assoc)),
       write_alloc_(write_alloc),
       sets_((ttp(size) / ttp(assoc)) / ttp(block_size), Set{ttp(assoc)}),
-      splitter((ttp(size) / ttp(assoc)) / ttp(block_size), block_size)
+      splitter((ttp(size) / ttp(assoc)) / ttp(block_size), block_size), rb_(rb)
 {
 }
 
-size_t cache::get_n_access() const
+size_t Cache::get_n_access() const
 {
-    return n_of_access;
+    return rb_.nr_access;
 }
-size_t cache::get_n_hits() const
+size_t Cache::get_n_hits() const
 {
-    return n_of_hits;
+    return rb_.nr_hits;
 }
-size_t cache::get_n_misses() const
+size_t Cache::get_n_misses() const
 {
-    return n_of_misses;
+    return rb_.nr_misses;
 }
 
-CacheLine* cache::lookup(const AddrParts& addr)
+CacheLine* Cache::lookup(const AddrParts& addr)
 {
-    ++n_of_access;
+    ++rb_.nr_access;
     CacheLine* target = sets_[addr.set].lookup(addr.tag);
 
     if (target) {
-        ++n_of_hits;
+        ++rb_.nr_hits;
     } else {
-        ++n_of_misses;
+        ++rb_.nr_misses;
     }
 
     return target;
 }
 
-CacheLine* cache::lookupNoUpdate(const AddrParts& addr)
+CacheLine* Cache::lookupNoUpdate(const AddrParts& addr)
 {
     return sets_[addr.set].lookup(addr.tag);
 }
 
-void cache::invalidate(const AddrParts& addr)
+void Cache::invalidate(const AddrParts& addr)
 {
     sets_[addr.set].invalidate(addr.tag);
 }
 
-Insertion cache::insert(const AddrParts& addr, RawAddr& evicted_addr,
+Insertion Cache::insert(const AddrParts& addr, RawAddr& evicted_addr,
                         DirtyBit& evicted_dirty)
 {
     return sets_[addr.set].insert(addr, evicted_addr, evicted_dirty);
@@ -209,7 +210,8 @@ Insertion cache::insert(const AddrParts& addr, RawAddr& evicted_addr,
 
 simulator& simulator::getInstance(int block_size, int mem_cycles, int l1_size,
                                   int l1_cycles, int l1_assoc, int l2_size,
-                                  int l2_cycles, int l2_assoc, bool write_alloc)
+                                  int l2_cycles, int l2_assoc, bool write_alloc,
+                                  RecordBook& rb)
 {
 
     /* Creating a static instance of the simulator because we don't need
@@ -217,7 +219,7 @@ simulator& simulator::getInstance(int block_size, int mem_cycles, int l1_size,
      */
     static simulator instance(block_size, mem_cycles, l1_size, l1_cycles,
                               l1_assoc, l2_size, l2_cycles, l2_assoc,
-                              write_alloc);
+                              write_alloc, rb);
     return instance;
 }
 
@@ -236,27 +238,15 @@ void simulator::process_request(char operation, RawAddr address)
     }
 }
 
-double simulator::calc_L1_miss_rate() const
-{
-    return (double)l1_.get_n_misses() / (double)l1_.get_n_access();
-}
-double simulator::calc_L2_miss_rate() const
-{
-    return (double)l2_.get_n_misses() / (double)l2_.get_n_access();
-}
-double simulator::calc_avg_access_time() const
-{
-    return (double)total_access_cycles / (double)n_of_access;
-}
-
 simulator::simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
                      int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
-                     bool write_alloc)
+                     bool write_alloc, RecordBook& rb)
     : block_size_(block_size), mem_cycles_(mem_cycles), l1_size_(l1_size),
       l1_cycles_(l1_cycles), l1_assoc_(l1_assoc), l2_size_(l2_size),
       l2_cycles_(l2_cycles), l2_assoc_(l2_assoc), write_alloc_(write_alloc),
-      l1_(l1_size, block_size, l1_cycles, l1_assoc, write_alloc),
-      l2_(l2_size, block_size, l2_cycles, l2_assoc, write_alloc)
+      l1_(l1_size, block_size, l1_cycles, l1_assoc, write_alloc, rb.l1_book_),
+      l2_(l2_size, block_size, l2_cycles, l2_assoc, write_alloc, rb.l2_book_),
+      br_(rb)
 {
 }
 
@@ -490,15 +480,15 @@ void simulator::log_l1_access()
 {
     /* only need to increment the access amount of the first access try,
      * that always starts at L1 */
-    n_of_access++;
-    total_access_cycles += l1_cycles_;
+    br_.nr_total_cache_access++;
+    br_.total_access_cycles += l1_cycles_;
 }
 
 void simulator::log_l2_access()
 {
-    total_access_cycles += l2_cycles_;
+    br_.total_access_cycles += l2_cycles_;
 }
 void simulator::log_mem_access()
 {
-    total_access_cycles += mem_cycles_;
+    br_.total_access_cycles += mem_cycles_;
 }
