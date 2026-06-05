@@ -24,7 +24,7 @@
        and ease of extension.
     6. The cache simulator itself is very large and it's workings are unclear, I
        think it can be simplified (especially for our purposes). Maybe there is
-       more room for simplification 
+       more room for simplification. 
 
 
 ## Q&A/Design Considerations:
@@ -85,5 +85,14 @@ maximum of precisions. It should be fixed.
 
 **A:**  The device gets called by a command `startprng <magic_addr> <seed>` ISA command: it declares the `magic_addr` such that loading from
 it tells the PRNG device to output data, and `seed` seeds the PRNG. For
-generation purposes, seed of a tile is defined by *the initial seed and the number of loads from the generator*. There are alternative approaches but we haven't
-researched it yet.
+generation purposes, seed of a tile is defined by *the initial seed and the number of loads from the generator*. 
+
+
+In the implementation, our idea is for the seed to be stored in a register and
+for the PRNG itself to track how many times it was called. In the simulator,
+currently, this is dead state and may probably me removed. The seeding cost is
+modeled in `PrngDevSim::reseed()` function.
+
+
+There are alternative approaches but we haven't
+researched it yet. 
