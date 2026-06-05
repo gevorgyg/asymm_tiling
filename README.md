@@ -76,4 +76,5 @@ maximum of precisions. It should be fixed.
 **A:**  The device gets called by a command `startprng <magic_addr> <seed>` ISA command: it declares the `magic_addr` such that loading from
 it tells the PRNG device to output data, and `seed` seeds the PRNG. For
 generation purposes, seed of a tile is defined by *the initial seed and the tile
-address* (or tile identifier).
+address* (or tile identifier). There are alternative approaches but we haven't
+researched it yet.
