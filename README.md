@@ -1,5 +1,14 @@
 # Asymmetric Matrix Multiplication Sim
 
+## Usage
+```
+./asimm <m> <n> <k> [--Bgenerated]
+```
+
+### Flags:
+- `--Bgenerated` - simulate generating B from a PRNG device (the default mode is
+  that both A and B are stored in memory)
+
 ## TODO:
 - block diagram.  
 - Add logic for:
@@ -55,3 +64,12 @@ General arithmetic / hardware multipliers: the natural result of multiplying an 
 
   Looking at your `instgen.cpp:29`, `c_elem_width = std::max(a_elem_width, b_elem_width)` — that's narrower than either of the conventions above. For a tile-MAC pipeline you'd more typically want `a_elem_width + b_elem_width` at minimum, or jump straight to a fixed wider accumulator (e.g. always 4 bytes regardless of input widths). Worth deciding which model your `TILE_MUL_ACC` is supposed to follow.
 
+
+**Addition:** In the meantime, the precision of resulting matrix is just the
+maximum of precisions. It should be fixed.
+
+**Q: What is the interface for the PRNG device?**
+**A:**  The device gets called by a command `startprng <magic_addr> <seed>` ISA command: it declares the `magic_addr` such that loading from
+it tells the PRNG device to output data, and `seed` seeds the PRNG. For
+generation purposes, seed of a tile is defined by *the initial seed and the tile
+address* (or tile identifier).

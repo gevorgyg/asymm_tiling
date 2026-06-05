@@ -11,37 +11,47 @@ InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
       total_elem_size(width * height),
       total_byte_size(width * height * elem_width), addr(a) {}
 
-InstGenerator::InstGenerator(uint a_width, uint a_height, uint a_elem_width,
-                             uint b_width, uint b_height, uint b_elem_width)
-    : a_w_(a_width), a_h_(a_height), a_ew_(a_elem_width), b_w_(b_width),
-      b_h_(b_height), b_ew_(b_elem_width) {
-  if (a_width != b_height) {
+InstGenerator::InstGenerator(GhostMat A, GhostMat B) : A_(A), B_(B) {
+  if (A_.width != B_.height) {
     std::cerr << "invalid matrix dimensions for multiplication" << std::endl;
     exit(1);
   }
 }
 
+void checkTileDivides(const InstGenerator::GhostMat &A,
+                             const InstGenerator::GhostMat &B,
+                            const InstGenerator::TileShape ts) {
+  if (A.height % ts.m != 0 || B.width % ts.n != 0 || A.width % ts.k != 0) {
+    std::cerr << "matrix dimensions must be divisible by tile dimensions"
+              << std::endl;
+    exit(1);
+  }
+}
+
 void InstGenerator::generate(TileShape ts, std::ostream &os) const {
-  const Addr a_bytes = a_w_ * a_h_ * a_ew_;
-  const Addr b_bytes = b_w_ * b_h_ * b_ew_;
-  const uint c_ew = std::max(a_ew_, b_ew_);
+  checkTileDivides(A_, B_, ts);
 
-  const GhostMat A{a_w_, a_h_, a_ew_, 0};
-  const GhostMat B{b_w_, b_h_, b_ew_, a_bytes};
-  const GhostMat C{a_h_, b_w_, c_ew, a_bytes + b_bytes};
+  // TODO such packing is not the only choice: what we are interested is how
+  // a simulation behaves when different matrix elements are at different
+  // addresses modulo cache set size
+  const uint c_ew = std::max(A_.elem_width, B_.elem_width);
+  const Addr c_addr = A_.addr + A_.total_byte_size + B_.total_byte_size;
 
-  emitTrace(A, B, C, ts, os, false);
+  const GhostMat C{A_.height, B_.width, c_ew, c_addr};
+
+  emitTrace(A_, B_, C, ts, os, false);
 }
 
 void InstGenerator::generatePrng(TileShape ts, std::ostream &os) const {
-  const Addr a_bytes = a_w_ * a_h_ * a_ew_;
-  const uint c_ew = std::max(a_ew_, b_ew_);
+  checkTileDivides(A_, B_, ts);
 
-  const GhostMat A{a_w_, a_h_, a_ew_, 0};
-  const GhostMat B{b_w_, b_h_, b_ew_, magic_addr};
-  const GhostMat C{a_h_, b_w_, c_ew, a_bytes};
+  const uint c_ew = std::max(A_.elem_width, B_.elem_width);
+  const Addr c_addr = A_.addr + A_.total_byte_size;
 
-  emitTrace(A, B, C, ts, os, true);
+  const GhostMat B_prng{B_.width, B_.height, B_.elem_width, magic_addr};
+  const GhostMat C{A_.height, B_.width, c_ew, c_addr};
+
+  emitTrace(A_, B_prng, C, ts, os, true);
 }
 
 void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
@@ -93,22 +103,22 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
 }
 
 InstGenerator::Addr InstGenerator::tileAddr(const GhostMat &M, uint row,
-                                            uint col) {
+                                            uint col) const {
   return M.addr + (row * M.width + col) * M.elem_width;
 }
 
 void InstGenerator::emit(std::ostream &os, const char *op, Addr addr, uint w,
-                         uint h, uint stride, uint ew, const char *reg) {
+                         uint h, uint stride, uint ew, const char *reg) const {
   os << op << " (0x" << std::hex << addr << std::dec << ", " << w << ", " << h
      << ", " << stride << ", " << ew << "), " << reg << std::endl;
 }
 
 void InstGenerator::load(std::ostream &os, const GhostMat &M, uint row,
-                         uint col, uint w, uint h, const char *reg) {
+                         uint col, uint w, uint h, const char *reg) const {
   emit(os, "ltea", tileAddr(M, row, col), w, h, M.width, M.elem_width, reg);
 }
 
 void InstGenerator::store(std::ostream &os, const GhostMat &M, uint row,
-                          uint col, uint w, uint h, const char *reg) {
+                          uint col, uint w, uint h, const char *reg) const {
   emit(os, "tmov", tileAddr(M, row, col), w, h, M.width, M.elem_width, reg);
 }

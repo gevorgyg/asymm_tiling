@@ -8,8 +8,6 @@
 #include <utility>
 #include <vector>
 
-namespace
-{
 
 constexpr int B_ADDR_SIZE  = 32;
 constexpr int B_ALIGN_SIZE = 2;
@@ -24,12 +22,11 @@ int my_log2(int size)
 }
 
 /* return 2^exponent */
-constexpr int ttp(int exponent)
+const int ttp(int exponent)
 {
     return (1 << exponent);
 }
 
-} // namespace
 
 double RecordBook::calc_L1_miss_rate() const
 {

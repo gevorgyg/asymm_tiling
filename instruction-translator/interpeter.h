@@ -20,7 +20,6 @@ class Interpeter
 
   private:
     using Addr = unsigned int;
-    using uint = unsigned int;
 
     inline static constexpr int nr_vec_regs = 3;
 

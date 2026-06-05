@@ -1,6 +1,8 @@
 #ifndef INSTRUCTION_GENERATOR_H_
 #define INSTRUCTION_GENERATOR_H_
 
+#include "../utils.h"
+
 #include <cstddef>
 #include <iosfwd>
 
@@ -14,7 +16,6 @@
 
 class InstGenerator {
 public:
-  using uint = unsigned int;
   using TileID = uint;
   using Addr = uint;
 
@@ -28,51 +29,46 @@ public:
     uint k;
   };
 
-  InstGenerator(uint a_width, uint a_height, uint a_elem_width, uint b_width,
-                uint b_height, uint b_elem_width);
+  struct GhostMat {
+    GhostMat(uint w, uint h, uint elem_w, Addr a);
+
+    uint width;
+    uint height;
+    uint elem_width;
+
+    const size_t total_elem_size;
+    const size_t total_byte_size;
+
+    Addr addr;
+  };
+
+  InstGenerator(GhostMat A, GhostMat B);
 
   void generate(TileShape tile, std::ostream &os) const;
 
   void generatePrng(TileShape tile, std::ostream &os) const;
 
 private:
-  struct GhostMat {
-    GhostMat() = default;
-    GhostMat(uint w, uint h, uint elem_w, Addr a);
-
-    uint width = 0;
-    uint height = 0;
-    uint elem_width = 0;
-
-    size_t total_elem_size = 0;
-    size_t total_byte_size = 0;
-
-    Addr addr = 0;
-  };
-
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                  TileShape tile, std::ostream &os, bool prng) const;
 
   // Byte address of element (row, col) inside matrix M.
-  static Addr tileAddr(const GhostMat &M, uint row, uint col);
+  Addr tileAddr(const GhostMat &M, uint row, uint col) const;
 
   // Emit one instruction: "<op> (0x<addr>, w, h, stride, ew), <reg>".
-  static void emit(std::ostream &os, const char *op, Addr addr, uint w, uint h,
-                   uint stride, uint ew, const char *reg);
+  void emit(std::ostream &os, const char *op, Addr addr, uint w, uint h,
+                   uint stride, uint ew, const char *reg) const;
 
   // ltea convenience: load tile from M at (row, col) into <reg>.
-  static void load(std::ostream &os, const GhostMat &M, uint row, uint col,
-                   uint w, uint h, const char *reg);
+  void load(std::ostream &os, const GhostMat &M, uint row, uint col,
+                   uint w, uint h, const char *reg) const;
 
   // tmov convenience: store tile from <reg> into M at (row, col).
-  static void store(std::ostream &os, const GhostMat &M, uint row, uint col,
-                    uint w, uint h, const char *reg);
+  void store(std::ostream &os, const GhostMat &M, uint row, uint col,
+                    uint w, uint h, const char *reg) const;
 
-  // *_w = width
-  // *_h = height
-  // *_ew = element_width
-  uint a_w_, a_h_, a_ew_;
-  uint b_w_, b_h_, b_ew_;
+  const GhostMat A_;
+  const GhostMat B_;
 };
 
 #endif

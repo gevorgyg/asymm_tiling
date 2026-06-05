@@ -7,10 +7,10 @@ all: main
 debug: main_d
 
 main: $(DEPS)
-	g++ $(SRCS) -o test -O3
+	g++ $(SRCS) -o asimm -O3
 
 main_d: $(DEPS)
-	g++ $(SRCS) -o test -g
+	g++ $(SRCS) -o asimm -g
 
 clean:
-	rm -f test matmul.matv
+	rm -f asimm matmul.matv

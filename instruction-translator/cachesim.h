@@ -1,13 +1,14 @@
 #ifndef CACHE_SIM_H_
 #define CACHE_SIM_H_
 
+#include "../utils.h"
+
 #include <cstddef>
 #include <list>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-using uint     = unsigned int;
 using Tag      = uint;
 using BitMask  = uint;
 using RawAddr  = uint;
