@@ -53,10 +53,18 @@ void RecordBook::printStats() const
 }
 
 PrngDevSim::PrngDevSim(RecordBook& rb, uint max_fifo_size, uint generation_cost,
-                       uint access_cost)
+                       uint access_cost, uint seed_cost)
     : max_fifo_size_(max_fifo_size), generation_cost_(generation_cost),
-      access_cost_(access_cost), rb_(rb)
+      access_cost_(access_cost), seed_cost_(seed_cost), rb_(rb)
 {
+}
+
+void PrngDevSim::reseed()
+{
+    ++tile_counter_;
+    rb_.total_access_cycles += seed_cost_;
+    cur_fifo_size_ = 0;
+    last_cpu_cycles_ = rb_.total_access_cycles;
 }
 
 void PrngDevSim::pop()

@@ -1,5 +1,4 @@
 # Asymmetric Matrix Multiplication Sim
-
 ## Usage
 ```
 ./asimm <m> <n> <k> [--Bgenerated]
@@ -12,9 +11,20 @@
 ## TODO:
 - block diagram.  
 - Add logic for:
-    1. generating the seed by the generator.
-    2. saving the seed in an agreed apon memory area between the generator and CPU.
-    3. "using" the seed to generate the prng numbers (logically).
+   ~~1. generating the seed by the generator.~~
+    ~~2. saving the seed in an agreed apon memory area between the generator and CPU.~~
+    ~~3. "using" the seed to generate the prng numbers (logically).~~ (although
+    I'm not sure what is meant here...)
+    4. For now the simulator only calculates cycle access to cache (I'm not even
+       sure it calculates cycle cost of going to memory). We need to
+       take into account cycle cost of calling the PRNG device. Maybe of
+       something else? 
+    5. It would be nice if memory objects, like register file, caches, the
+       memory, the PRNG device could be abstracted into a class, for clearness
+       and ease of extension.
+    6. The cache simulator itself is very large and it's workings are unclear, I
+       think it can be simplified (especially for our purposes). Maybe there is
+       more room for simplification 
 
 
 ## Q&A/Design Considerations:
@@ -75,6 +85,5 @@ maximum of precisions. It should be fixed.
 
 **A:**  The device gets called by a command `startprng <magic_addr> <seed>` ISA command: it declares the `magic_addr` such that loading from
 it tells the PRNG device to output data, and `seed` seeds the PRNG. For
-generation purposes, seed of a tile is defined by *the initial seed and the tile
-address* (or tile identifier). There are alternative approaches but we haven't
+generation purposes, seed of a tile is defined by *the initial seed and the number of loads from the generator*. There are alternative approaches but we haven't
 researched it yet.

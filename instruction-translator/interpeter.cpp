@@ -86,6 +86,11 @@ void Interpeter::handleTload() {
 
   INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
 
+  if (base_addr == magic_addr_) {
+    prng_dev_.reseed();
+    return;
+  }
+
   for (int row = 0; row < tile_height; ++row) {
     for (int col = 0; col < tile_width; ++col) {
       long target = base_addr + (row * stride + col) * elem_width;
@@ -246,7 +251,7 @@ void Interpeter::handleMulAcc() {
 }
 
 void Interpeter::startRng() {
-  in_stream_ >> magic_addr_;
+  in_stream_ >> std::hex >> magic_addr_ >> seed_reg_;
 
   if (magic_addr_ == 0) {
     std::cerr << "invalid MMIO magic address in line: " << line_ << std::endl;

@@ -57,6 +57,7 @@ class Interpeter
     std::ifstream in_stream_;
     int line_;
     Addr magic_addr_ = 0;
+    Addr seed_reg_   = 0;
     RecordBook& rb_;
 
     std::array<vec_reg, 3> vec_regs_;

@@ -5,6 +5,7 @@
 #include <iostream>
 
 const InstGenerator::Addr magic_addr = 0xFFFFF000;
+const InstGenerator::Addr init_seed = 0x1234;
 
 InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
     : width(w), height(h), elem_width(elem_w),
@@ -67,7 +68,8 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
   const uint K_tiles = A.width / tile.k;
 
   if (prng) {
-    os << "strtrng 0x" << std::hex << B.addr << std::dec << std::endl;
+    os << "strtrng 0x" << std::hex << B.addr << " 0x" << init_seed << std::dec
+       << std::endl;
   }
 
   for (uint ti = 0; ti < M_tiles; ++ti) {
