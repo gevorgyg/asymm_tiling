@@ -11,18 +11,24 @@
 ## TODO:
 - block diagram.  
 - Add logic for:
+
    ~~1. generating the seed by the generator.~~
+
     ~~2. saving the seed in an agreed apon memory area between the generator and CPU.~~
+
     ~~3. "using" the seed to generate the prng numbers (logically).~~ (although
     I'm not sure what is meant here...)
+
     4. For now the simulator only calculates cycle access to cache (I'm not even
        sure it calculates cycle cost of going to memory). We need to
        take into account cycle cost of calling the PRNG device. Maybe of
        something else? 
+
     5. It would be nice if memory objects, like register file, caches, the
        memory, the PRNG device could be abstracted into a class, for clearness
        and ease of extension.
-    6. The cache simulator itself is very large and it's workings are unclear, I
+
+    6. The cache simulator itself is probably larger than necessary and it's workings are not totally clear, I
        think it can be simplified (especially for our purposes). Maybe there is
        more room for simplification. 
 
