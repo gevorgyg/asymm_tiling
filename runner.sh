@@ -16,6 +16,6 @@ if [ ! -z "$bflag" ]; then
     make
 fi
 
-./asimm 125 500 125
-./asimm 125 125 500
-./asimm 500 125 125
+./asymm 125 500 125
+./asymm 125 125 500
+./asymm 500 125 125
