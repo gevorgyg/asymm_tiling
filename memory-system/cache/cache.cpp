@@ -1,46 +1,7 @@
 #include "cache.h"
 
-#include <algorithm>
 #include <cassert>
 #include <ostream>
-
-
-// --- Set ----------------------------------------------------------------
-
-CacheLine* Set::lookup(Addr line_addr)
-{
-    for (auto& line : lines_) {
-        if (line.lineAddr() == line_addr) {
-            return &line;
-        }
-    }
-    return nullptr;
-}
-
-void Set::insert(Addr line_addr)
-{
-    assert(!isFull());
-    lines_.emplace_back(line_addr);
-}
-
-void Set::remove(Addr line_addr)
-{
-    auto it = std::find_if(
-        lines_.begin(), lines_.end(),
-        [&](const CacheLine& l) { return l.lineAddr() == line_addr; });
-    assert(it != lines_.end());
-    lines_.erase(it);
-}
-
-
-// --- FifoPolicy ---------------------------------------------------------
-
-CacheLine* FifoPolicy::pickVictim(Set& set) const
-{
-    // Insertion-order list: front was inserted first, so it's the FIFO victim.
-    assert(!set.lines().empty());
-    return &set.lines().front();
-}
 
 
 // --- Cache --------------------------------------------------------------
@@ -106,10 +67,21 @@ Trace Cache::read(Addr addr, size_t size)
 
 Trace Cache::write(Addr addr, size_t size)
 {
-    // TODO: write policies (WriteBack/WriteThrough x Alloc/NoAlloc).
-    (void)addr;
-    (void)size;
-    return {};
+    // Write-through + no-allocate: a TagLookup updates hit/miss stats, then
+    // the write is forwarded to the next level regardless of the outcome.
+    // We never install the line locally, so there's no LineFill / Evict on
+    // the write path and the dirty bit stays unused.
+    Trace trace;
+
+    trace.push_back(std::make_unique<TagLookup>(*this, addr));
+    trace.back()->perform(trace);
+
+    Trace below = next_level_->write(addr, size);
+    for (auto& a : below) {
+        trace.push_back(std::move(a));
+    }
+
+    return trace;
 }
 
 

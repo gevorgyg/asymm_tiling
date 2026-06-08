@@ -48,8 +48,6 @@ void Interpeter::run() {
   }
 }
 
-void Interpeter::stall(size_t amount) { total_cycles_ += amount; }
-
 void Interpeter::handleTload() {
   Addr base_addr;
   uint tile_width;
@@ -261,7 +259,8 @@ void Interpeter::handleMulAcc() {
 }
 
 void Interpeter::startRng() {
-  in_stream_ >> std::hex >> magic_addr_ >> seed_reg_;
+  Addr seed_discard;
+  in_stream_ >> std::hex >> magic_addr_ >> seed_discard;
 
   if (magic_addr_ == 0) {
     std::cerr << "invalid MMIO magic address in line: " << line_ << std::endl;
