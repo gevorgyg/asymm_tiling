@@ -16,9 +16,6 @@
 
 class InstGenerator {
 public:
-  using TileID = uint;
-  using Addr = uint;
-
   // Tile sizes in elements.
   //   m = output rows per tile      (M direction, A.height direction)
   //   n = output cols per tile      (N direction, B.width  direction)

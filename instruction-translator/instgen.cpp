@@ -4,8 +4,8 @@
 #include <cstdlib>
 #include <iostream>
 
-const InstGenerator::Addr magic_addr = 0xFFFFF000;
-const InstGenerator::Addr init_seed = 0x1234;
+const Addr magic_addr = 0xFFFFF000;
+const Addr init_seed = 0x1234;
 
 InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
     : width(w), height(h), elem_width(elem_w),
@@ -104,8 +104,8 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
   }
 }
 
-InstGenerator::Addr InstGenerator::tileAddr(const GhostMat &M, uint row,
-                                            uint col) const {
+Addr InstGenerator::tileAddr(const GhostMat &M, uint row,
+                             uint col) const {
   return M.addr + (row * M.width + col) * M.elem_width;
 }
 

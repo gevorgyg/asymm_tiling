@@ -19,8 +19,6 @@ class Interpeter
     void run();
 
   private:
-    using Addr = unsigned int;
-
     inline static constexpr int nr_vec_regs = 3;
 
     struct vec_reg {

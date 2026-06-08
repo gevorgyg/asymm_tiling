@@ -1,11 +1,12 @@
 #pragma once
 
+#include "../utils.h"
+
 #include <cstddef>
 
 class MemoryObject
 {
   public:
-    using Addr   = unsigned long;
     using Cycles = unsigned long;
 
     explicit MemoryObject(Cycles access_cycles, MemoryObject* next) : access_cycles_(access_cycles), next_(next)
