@@ -102,3 +102,20 @@ modeled in `PrngDevSim::reseed()` function.
 
 There are alternative approaches but we haven't
 researched it yet. 
+
+**Q: What are the possible strategies to receive and store PRNG data?**
+
+**Copy-pasted AI Answer:**
+   There's a spectrum worth thinking about explicitly:
+
+  - Register model (FIFO size 1). PRNG fills a single staging register; CPU pops; refill runs in parallel. Simplest. Same shape as current FIFO model with depth 1 — useful as a sanity baseline.
+  - Scratchpad model. PRNG owns a small dedicated SRAM. startprng tells it "fill this region with the next tile of values." CPU reads from the scratchpad region as if it were memory, paying scratchpad
+  access cost. Stall iff CPU outruns the fill. Cleaner than touching the cache; PRNG-generated data doesn't compete with A-data for cache capacity.
+  - Cache-streaming model. PRNG behaves like a DMA engine that writes generated lines directly into L1 (or L2) at a configured address range. CPU then reads those lines through normal cache paths. This is
+   the architecturally most interesting one for your asymmetric-cost project: PRNG data now competes with A-data for cache lines, evictions become consequential, and the tile-shape choice has visible
+  second-order effects. It also raises a real question: if a generated line gets evicted, can you re-fetch it (PRNG would need to be re-seeded to the right offset), or do you mark them non-evictable /
+  pinned? That decision is a hardware design choice worth modeling.
+
+  The FIFO model you have now is essentially a 1D version of the scratchpad — it hides latency but doesn't interact with cache state. The cache-streaming model is what would actually expose the tradeoffs
+  your simulator is built to study. Worth picking which one you want before sketching the PRNG class surface, because the interface differs significantly (pop() vs start_fill(region, seed) + normal reads
+  through the hierarchy).
