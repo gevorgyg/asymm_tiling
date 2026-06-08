@@ -1,12 +1,13 @@
 # Asymmetric Matrix Multiplication Sim
 ## Usage
 ```
-./asimm <m> <n> <k> [--Bgenerated]
+./asimm <m> <n> <k> [--Bgenerated] [--trace_file <file>]
 ```
 
 ### Flags:
 - `--Bgenerated` - simulate generating B from a PRNG device (the default mode is
   that both A and B are stored in memory)
+- `--trace_file <file>` - store trace (cache actions) into a file
 
 ## TODO:
 - block diagram.  
@@ -24,13 +25,13 @@
        take into account cycle cost of calling the PRNG device. Maybe of
        something else? 
 
-    5. It would be nice if memory objects, like register file, caches, the
+    ~~5. It would be nice if memory objects, like register file, caches, the
        memory, the PRNG device could be abstracted into a class, for clearness
-       and ease of extension.
+       and ease of extension~~
 
-    6. The cache simulator itself is probably larger than necessary and it's workings are not totally clear, I
+    ~~6. The cache simulator itself is probably larger than necessary and it's workings are not totally clear, I
        think it can be simplified (especially for our purposes). Maybe there is
-       more room for simplification. 
+       more room for simplification.~~
 
 
 ## Q&A/Design Considerations:

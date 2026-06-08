@@ -24,22 +24,41 @@ const int block_size = 6;
     }                                                                          \
   } while (0)
 
-Interpeter::Interpeter(path input_file, MemoryHierarchy &mem)
+Interpeter::Interpeter(path input_file, MemoryHierarchy &mem,
+                       const std::string &trace_file_path)
     : in_stream_(input_file), line_(0), prng_dev_(total_cycles_), mem_(mem) {
   if (!in_stream_.is_open()) {
     std::cerr << "error opening trace file" << std::endl;
     exit(1);
+  }
+  if (!trace_file_path.empty()) {
+    trace_out_.open(trace_file_path, std::ios::trunc);
+    if (!trace_out_.is_open()) {
+      std::cerr << "error opening --trace_file: " << trace_file_path
+                << std::endl;
+      exit(1);
+    }
   }
 }
 
 void Interpeter::doRead(Addr addr) {
   Trace t = mem_.read(addr, 1);
   total_cycles_ += totalCycles(t);
+  logTrace(t);
 }
 
 void Interpeter::doWrite(Addr addr) {
   Trace t = mem_.write(addr, 1);
   total_cycles_ += totalCycles(t);
+  logTrace(t);
+}
+
+void Interpeter::logTrace(const Trace &t) {
+  if (!trace_out_.is_open()) return;
+  for (const auto &a : t) {
+    a->print(trace_out_);
+    trace_out_ << '\n';
+  }
 }
 
 void Interpeter::run() {
@@ -370,11 +389,18 @@ int main(int argc, char *argv[]) {
   bool b_generated = false;
   uint dims[3];
   int positional = 0;
+  std::string trace_file_path;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
     if (arg == "--Bgenerated") {
       b_generated = true;
+    } else if (arg == "--trace_file") {
+      if (i + 1 >= argc) {
+        std::cerr << "--trace_file requires a filename" << std::endl;
+        exit(1);
+      }
+      trace_file_path = argv[++i];
     } else if (positional < 3) {
       dims[positional++] = std::atoi(argv[i]);
     } else {
@@ -384,7 +410,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (positional != 3) {
-    std::cerr << "usage: " << argv[0] << " [--Bgenerated] <m> <n> <k>"
+    std::cerr << "usage: " << argv[0]
+              << " [--Bgenerated] [--trace_file <file>] <m> <n> <k>"
               << std::endl;
     exit(1);
   }
@@ -413,7 +440,7 @@ int main(int argc, char *argv[]) {
     generateInstructions(dims[0], dims[1], dims[2]);
   }
 
-  Interpeter inter(instruction_path, mem);
+  Interpeter inter(instruction_path, mem, trace_file_path);
 
   std::cout << "----------------------------" << std::endl;
 
