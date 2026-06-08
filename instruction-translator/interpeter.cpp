@@ -1,6 +1,7 @@
 #include "interpeter.h"
 #include "instgen.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -23,13 +24,22 @@ const int block_size = 6;
     }                                                                          \
   } while (0)
 
-Interpeter::Interpeter(path input_file, Simulator &cache_sim, RecordBook &rb)
-    : in_stream_(input_file), line_(0), cache_sim_(cache_sim), prng_dev_(rb),
-      rb_(rb) {
+Interpeter::Interpeter(path input_file, MemoryHierarchy &mem)
+    : in_stream_(input_file), line_(0), prng_dev_(total_cycles_), mem_(mem) {
   if (!in_stream_.is_open()) {
     std::cerr << "error opening trace file" << std::endl;
     exit(1);
   }
+}
+
+void Interpeter::doRead(Addr addr) {
+  Trace t = mem_.read(addr, 1);
+  total_cycles_ += totalCycles(t);
+}
+
+void Interpeter::doWrite(Addr addr) {
+  Trace t = mem_.write(addr, 1);
+  total_cycles_ += totalCycles(t);
 }
 
 void Interpeter::run() {
@@ -38,7 +48,7 @@ void Interpeter::run() {
   }
 }
 
-void Interpeter::stall(size_t amount) { rb_.total_access_cycles += amount; }
+void Interpeter::stall(size_t amount) { total_cycles_ += amount; }
 
 void Interpeter::handleTload() {
   Addr base_addr;
@@ -95,7 +105,7 @@ void Interpeter::handleTload() {
     for (int col = 0; col < tile_width; ++col) {
       long target = base_addr + (row * stride + col) * elem_width;
 
-      cache_sim_.process_request('r', target);
+      doRead(target);
     }
   }
 }
@@ -150,7 +160,7 @@ void Interpeter::handleTmove() {
     for (int col = 0; col < tile_width; ++col) {
       long target = base_addr + (row * stride + col) * elem_width;
 
-      cache_sim_.process_request('w', target);
+      doWrite(target);
     }
   }
 }
@@ -236,15 +246,15 @@ void Interpeter::handleMulAcc() {
         } else {
           Addr target_b =
               rb.base_addr + (t * rb.stride + b_col) * rb.elem_width;
-          cache_sim_.process_request('r', target_b);
+          doRead(target_b);
         }
 
-        cache_sim_.process_request('r', target_a);
+        doRead(target_a);
         // multiply A and B
       }
 
-      cache_sim_.process_request('r', target_c);
-      cache_sim_.process_request('w', target_c);
+      doRead(target_c);
+      doWrite(target_c);
       // accumulate in C
     }
   }
@@ -380,10 +390,23 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  static RecordBook rb;
-
-  Simulator &sim =
-      Simulator::getInstance(block_size, 180, 15, 4, 2, 18, 24, 2, true, rb);
+  // Translation of the legacy Simulator config:
+  //   block_size=6 -> line_size=2^6=64
+  //   l1_size=15   -> 2^15=32768 bytes
+  //   l1_assoc=2   -> 2^2=4 ways
+  //   l1_cycles=4
+  //   mem_cycles=180
+  // L2 from the original (size=2^18, cycles=24) is not modelled in the new
+  // MemoryHierarchy yet -- a single L1 + main memory for now.
+  MemoryHierarchy::Parameters mp{
+      .l1               = {.name      = "L1",
+                           .size      = 1u << 15,
+                           .line_size = 1u << block_size,
+                           .assoc     = 1u << 2},
+      .l1_access_cycles = 4,
+      .mem_access_cycles = 180,
+  };
+  MemoryHierarchy mem(mp);
 
   if (b_generated) {
     generatePrngInstructions(dims[0], dims[1], dims[2]);
@@ -391,7 +414,7 @@ int main(int argc, char *argv[]) {
     generateInstructions(dims[0], dims[1], dims[2]);
   }
 
-  Interpeter inter(instruction_path, sim, rb);
+  Interpeter inter(instruction_path, mem);
 
   std::cout << "----------------------------" << std::endl;
 
@@ -401,7 +424,16 @@ int main(int argc, char *argv[]) {
 
   inter.run();
 
-  rb.printStats();
+  const size_t l1_hits   = mem.l1Hits();
+  const size_t l1_misses = mem.l1Misses();
+  const size_t l1_total  = l1_hits + l1_misses;
+  const double hit_rate  = l1_total ? (double)l1_hits / (double)l1_total : 0.0;
+
+  printf("--- L1 ---\n");
+  printf("Hit rate:  %.03f\n", hit_rate);
+  printf("TagLookup: %llu\n", (unsigned long long)Cache::TagLookup::count_);
+  printf("LineFill:  %llu\n", (unsigned long long)Cache::LineFill::count_);
+  printf("Evict:     %llu\n", (unsigned long long)Cache::Evict::count_);
 
   return 0;
 };

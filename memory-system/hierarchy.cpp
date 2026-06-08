@@ -35,9 +35,8 @@ void MemoryAccess::print(std::ostream& os) const
 
 MemoryHierarchy::MemoryHierarchy(Parameters p)
     : MemoryObject(0),
-      policy_(),
       mem_(p.mem_access_cycles),
-      l1_(p.l1_access_cycles, p.l1, policy_, &mem_)
+      l1_(p.l1_access_cycles, p.l1, std::make_unique<FifoPolicy>(), &mem_)
 {
 }
 

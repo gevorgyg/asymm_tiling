@@ -1,7 +1,8 @@
 #ifndef INTERPETER_H_
 #define INTERPETER_H_
 
-#include "cachesim.h"
+#include "../memory-system/hierarchy.h"
+#include "prng_record.h"
 
 #include <array>
 #include <filesystem>
@@ -10,8 +11,7 @@
 class Interpeter
 {
   public:
-    Interpeter(std::filesystem::path input_file, Simulator& cache_sim,
-               RecordBook& rb);
+    Interpeter(std::filesystem::path input_file, MemoryHierarchy& mem);
 
     Interpeter(const Interpeter&)            = delete;
     Interpeter& operator=(const Interpeter&) = delete;
@@ -19,8 +19,6 @@ class Interpeter
     void run();
 
   private:
-    inline static constexpr int nr_vec_regs = 3;
-
     struct vec_reg {
         Addr base_addr;
 
@@ -39,8 +37,6 @@ class Interpeter
         eof,
     };
 
-    void stall(size_t amount);
-
     void handleTload();
     void handleTmove();
     void handleMulAcc();
@@ -52,15 +48,20 @@ class Interpeter
 
     void trim_prefix_spaces();
 
+    void doRead(Addr addr);
+    void doWrite(Addr addr);
+
     std::ifstream in_stream_;
     int line_;
     Addr magic_addr_ = 0;
-    Addr seed_reg_   = 0;
-    RecordBook& rb_;
+
+    // Cumulative cycle count; only kept because PrngDevSim's stall model
+    // needs a running CPU-time reference. Not printed anywhere.
+    size_t total_cycles_ = 0;
 
     std::array<vec_reg, 3> vec_regs_;
     PrngDevSim prng_dev_;
-    Simulator& cache_sim_;
+    MemoryHierarchy& mem_;
 };
 
 #endif

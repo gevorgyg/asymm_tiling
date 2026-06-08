@@ -3,7 +3,9 @@
 #include "memory_object.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <list>
+#include <memory>
 #include <vector>
 
 
@@ -46,10 +48,6 @@ class Set
 
 
 // --- Eviction policy ----------------------------------------------------
-//
-// A policy looks at the lines in a (full) set and returns the one to evict.
-// It never mutates the set itself -- the caller (LineFill::perform) does the
-// removal via the cache's API.
 
 class EvictionPolicy
 {
@@ -70,6 +68,10 @@ class FifoPolicy : public EvictionPolicy
 
 
 // --- Cache --------------------------------------------------------------
+//
+// Cache-emitted actions are nested as Cache::TagLookup, Cache::LineFill,
+// Cache::Evict. They have private access to Cache (nested classes are
+// members), so Cache's public surface stays minimal -- read/write/stats.
 
 class Cache : public MemoryObject
 {
@@ -81,53 +83,44 @@ class Cache : public MemoryObject
         size_t      assoc;       // ways per set
     };
 
-    Cache(uint access_cycles, InitParameters p, EvictionPolicy& policy,
-          MemoryObject* next_level);
+    Cache(uint access_cycles, InitParameters p,
+          std::unique_ptr<EvictionPolicy> policy, MemoryObject* next_level);
 
     Trace read(Addr addr, size_t size)  override;
     Trace write(Addr addr, size_t size) override;
 
-    // --- API used by Actions ------------------------------------------
-    const char*     levelName() const { return name_; }
-    Addr            lineAddr(Addr byte_addr) const;
-    Set&            setFor(Addr byte_addr);
-    EvictionPolicy& evictionPolicy()  { return policy_; }
-    MemoryObject*   nextLevel()       { return next_level_; }
-
-    CacheLine* lookup(Addr line_addr);
-    void       installLine(Addr line_addr);
-    void       removeLine(Addr line_addr);
-
-    void       countHit()  { ++hits_; }
-    void       countMiss() { ++misses_; }
-
     size_t hits()   const { return hits_; }
     size_t misses() const { return misses_; }
 
+    // Nested actions -- defined below.
+    class TagLookup;
+    class LineFill;
+    class Evict;
+
   private:
-    const char*      name_;
-    size_t           size_;
-    size_t           line_size_;
-    size_t           assoc_;
-    EvictionPolicy&  policy_;
-    MemoryObject*    next_level_;
-    std::vector<Set> sets_;
+    Addr lineAddr(Addr byte_addr) const;
+    Set& setFor(Addr byte_addr);
+
+    const char*                     name_;
+    size_t                          size_;
+    size_t                          line_size_;
+    size_t                          assoc_;
+    std::unique_ptr<EvictionPolicy> policy_;
+    MemoryObject*                   next_level_;
+    std::vector<Set>                sets_;
 
     size_t hits_   = 0;
     size_t misses_ = 0;
 };
 
 
-// --- Cache-emitted actions ----------------------------------------------
-//
-// Each action holds a Cache& and mutates it inside perform(). The driver
-// (Cache::read / LineFill::perform) is responsible for appending the action
-// to the trace; perform() only handles state changes and any sub-actions it
-// triggers (e.g. LineFill -> Evict).
+// --- Cache::TagLookup ---------------------------------------------------
 
-class TagLookup : public Action
+class Cache::TagLookup : public Action
 {
   public:
+    inline static uint64_t count_ = 0;
+
     TagLookup(Cache& cache, Addr byte_addr);
 
     void perform(Trace& trace) override;
@@ -146,9 +139,13 @@ class TagLookup : public Action
 };
 
 
-class LineFill : public Action
+// --- Cache::LineFill ----------------------------------------------------
+
+class Cache::LineFill : public Action
 {
   public:
+    inline static size_t count_ = 0;
+
     LineFill(Cache& cache, Addr byte_addr);
 
     void perform(Trace& trace) override;
@@ -163,9 +160,13 @@ class LineFill : public Action
 };
 
 
-class Evict : public Action
+// --- Cache::Evict -------------------------------------------------------
+
+class Cache::Evict : public Action
 {
   public:
+    inline static size_t count_ = 0;
+
     Evict(Cache& cache, Addr victim_line_addr, bool dirty);
 
     void perform(Trace& trace) override;

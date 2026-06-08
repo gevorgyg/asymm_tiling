@@ -37,13 +37,14 @@ class MemoryAccess : public Action
 
 // Top-level facade the CPU talks to. For now: a single L1 (FIFO eviction)
 // backed by main memory. Routing for the PRNG device hooks in here later.
+// Policies live inside their Cache -- a hierarchy doesn't own one.
 class MemoryHierarchy : public MemoryObject
 {
   public:
     struct Parameters {
         Cache::InitParameters l1;
-        uint              l1_access_cycles;
-        uint              mem_access_cycles;
+        uint                  l1_access_cycles;
+        uint                  mem_access_cycles;
     };
 
     explicit MemoryHierarchy(Parameters p);
@@ -51,8 +52,10 @@ class MemoryHierarchy : public MemoryObject
     Trace read(Addr addr, size_t size)  override;
     Trace write(Addr addr, size_t size) override;
 
+    size_t l1Hits()   const { return l1_.hits(); }
+    size_t l1Misses() const { return l1_.misses(); }
+
   private:
-    FifoPolicy policy_;
     MainMemory mem_;
     Cache      l1_;
 };
