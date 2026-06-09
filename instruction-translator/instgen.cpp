@@ -9,7 +9,6 @@ const Addr init_seed = 0x1234;
 
 InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
     : width(w), height(h), elem_width(elem_w),
-      total_elem_size(width * height),
       total_byte_size(width * height * elem_width), addr(a) {}
 
 InstGenerator::InstGenerator(GhostMat A, GhostMat B) : A_(A), B_(B) {

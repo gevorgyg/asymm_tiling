@@ -35,7 +35,6 @@ class PrngDevSim
 
     uint   cur_fifo_size_   = 0;
     size_t last_cpu_cycles_ = 0;
-    uint   tile_counter_    = 0;
 
     size_t& cpu_cycles_;
 };

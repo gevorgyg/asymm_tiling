@@ -249,7 +249,6 @@ void Interpeter::handleMulAcc() {
   const vec_reg &rc = vec_regs_[tile_3];
 
   bool use_magic = rb.base_addr == magic_addr_ ? true : false;
-  bool ok = false;
 
   for (int a_row = 0; a_row < ra.t_height; ++a_row) {
     for (int b_col = 0; b_col < rb.t_width; ++b_col) {
@@ -316,7 +315,6 @@ void Interpeter::handleCmd() {
     break;
   case eof:
     return;
-    break;
   }
 
   ++line_;

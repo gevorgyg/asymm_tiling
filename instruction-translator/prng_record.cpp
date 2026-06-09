@@ -12,7 +12,6 @@ PrngDevSim::PrngDevSim(size_t& cpu_cycles, uint max_fifo_size,
 
 void PrngDevSim::reseed()
 {
-    ++tile_counter_;
     cpu_cycles_ += seed_cost_;
     cur_fifo_size_   = 0;
     last_cpu_cycles_ = cpu_cycles_;
