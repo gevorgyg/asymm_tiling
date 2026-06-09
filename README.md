@@ -20,7 +20,7 @@
     ~~3. "using" the seed to generate the prng numbers (logically).~~ (although
     I'm not sure what is meant here...)
 
-      4. For now the simulator only calculates cycle access to cache (I'm not even
+  4. For now the simulator only calculates cycle access to cache (I'm not even
        sure it calculates cycle cost of going to memory). We need to
        take into account cycle cost of calling the PRNG device. Maybe of
        something else? 
