@@ -25,14 +25,22 @@ class Cache : public MemoryObject
         size_t      assoc;       // ways per set
     };
 
+    struct Stats {
+        uint64_t tag_lookups = 0;
+        uint64_t line_fills  = 0;
+        uint64_t evicts      = 0;
+        size_t   hits        = 0;
+        size_t   misses      = 0;
+    };
+
     Cache(uint access_cycles, InitParameters p,
           std::unique_ptr<EvictionPolicy> policy, MemoryObject* next_level);
 
     Trace read(Addr addr, size_t size)  override;
     Trace write(Addr addr, size_t size) override;
 
-    size_t hits()   const { return hits_; }
-    size_t misses() const { return misses_; }
+    const char*  name()  const { return name_; }
+    const Stats& stats() const { return stats_; }
 
     // Nested actions -- defined below.
     class TagLookup;
@@ -51,8 +59,7 @@ class Cache : public MemoryObject
     MemoryObject*                   next_level_;
     std::vector<Set>                sets_;
 
-    size_t hits_   = 0;
-    size_t misses_ = 0;
+    Stats stats_;
 };
 
 
@@ -61,8 +68,6 @@ class Cache : public MemoryObject
 class Cache::TagLookup : public Action
 {
   public:
-    inline static uint64_t count_ = 0;
-
     TagLookup(Cache& cache, Addr byte_addr);
 
     void perform(Trace& trace) override;
@@ -86,8 +91,6 @@ class Cache::TagLookup : public Action
 class Cache::LineFill : public Action
 {
   public:
-    inline static uint64_t count_ = 0;
-
     LineFill(Cache& cache, Addr byte_addr);
 
     void perform(Trace& trace) override;
@@ -107,8 +110,6 @@ class Cache::LineFill : public Action
 class Cache::Evict : public Action
 {
   public:
-    inline static uint64_t count_ = 0;
-
     Evict(Cache& cache, Addr victim_line_addr, bool dirty);
 
     void perform(Trace& trace) override;

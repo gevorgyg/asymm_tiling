@@ -20,8 +20,7 @@ class MemoryHierarchy : public MemoryObject
     Trace read(Addr addr, size_t size)  override;
     Trace write(Addr addr, size_t size) override;
 
-    size_t l1Hits()   const { return l1_.hits(); }
-    size_t l1Misses() const { return l1_.misses(); }
+    const Cache& l1() const { return l1_; }
 
   private:
     MainMemory mem_;

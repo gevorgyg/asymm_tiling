@@ -94,15 +94,15 @@ Cache::TagLookup::TagLookup(Cache& cache, Addr byte_addr)
 
 void Cache::TagLookup::perform(Trace& /*trace*/)
 {
-    ++count_;
+    ++cache_.stats_.tag_lookups;
 
     const Addr line = cache_.lineAddr(byte_addr_);
     if (cache_.setFor(byte_addr_).lookup(line)) {
         hit_ = true;
-        ++cache_.hits_;
+        ++cache_.stats_.hits;
     } else {
         hit_ = false;
-        ++cache_.misses_;
+        ++cache_.stats_.misses;
     }
 }
 
@@ -122,7 +122,7 @@ Cache::LineFill::LineFill(Cache& cache, Addr byte_addr)
 
 void Cache::LineFill::perform(Trace& trace)
 {
-    ++count_;
+    ++cache_.stats_.line_fills;
 
     Set& set = cache_.setFor(byte_addr_);
 
@@ -155,7 +155,7 @@ Cache::Evict::Evict(Cache& cache, Addr victim_line_addr, bool dirty)
 
 void Cache::Evict::perform(Trace& /*trace*/)
 {
-    ++count_;
+    ++cache_.stats_.evicts;
 
     cache_.sets_[victim_line_addr_ % cache_.sets_.size()].remove(
         victim_line_addr_);

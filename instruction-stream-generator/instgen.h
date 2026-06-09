@@ -33,7 +33,7 @@ public:
     uint height;
     uint elem_width;
 
-    const size_t total_byte_size;
+    const uint total_byte_size;
 
     Addr addr;
   };
