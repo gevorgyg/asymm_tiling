@@ -66,7 +66,8 @@ void generateInstructions(uint m, uint n, uint k)
         .b_width         = getConfig("B_WIDTH_DIM", 100),
         .a_precision     = getConfig("A_PRECISION_BYTES", 8),
         .b_precision     = getConfig("B_PRECISION_BYTES", 2),
-        .align_page_size = (uint)g_page_size};
+        .align_page_size = (uint)g_page_size,
+    };
 
     InstGenerator gen{p};
 
@@ -87,7 +88,8 @@ void generatePrngInstructions(uint m, uint n, uint k)
         .b_width         = getConfig("B_WIDTH_DIM", 100),
         .a_precision     = getConfig("A_PRECISION_BYTES", 8),
         .b_precision     = getConfig("B_PRECISION_BYTES", 2),
-        .align_page_size = (uint)g_page_size};
+        .align_page_size = (uint)g_page_size,
+    };
 
     InstGenerator gen{p};
 

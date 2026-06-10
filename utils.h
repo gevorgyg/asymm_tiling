@@ -15,13 +15,4 @@ using Addr = unsigned int;
 
 constexpr int g_page_size = 1024 * 4;
 
-#define CACHESIM_ALIGN(addr, page_size)                                        \
-    do {                                                                       \
-        if ((addr) % (page_size) != 0) {                                       \
-            if ((addr) / (page_size) == 0) {                                   \
-                (addr) = 0;                                                    \
-            } else {                                                           \
-                (addr) = (((addr) / (page_size)) + 1) * (page_size);           \
-            }                                                                  \
-        }                                                                      \
-    } while (0)
+

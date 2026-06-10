@@ -53,8 +53,7 @@ void InstGenerator::generate(TileShape ts, std::ostream& os) const
     // a simulation behaves when different matrix elements are at different
     // addresses modulo cache set size
     const uint c_ew = std::max(A_.elem_width, B_.elem_width);
-    Addr c_addr     = A_.addr + A_.total_byte_size + B_.total_byte_size;
-    CACHESIM_ALIGN(c_addr, g_page_size);
+    Addr c_addr     = alignAddr(A_.addr + A_.total_byte_size + B_.total_byte_size, g_page_size);
 
     const GhostMat C{A_.height, B_.width, c_ew, c_addr};
 
@@ -67,8 +66,7 @@ void InstGenerator::generatePrng(TileShape ts, std::ostream& os) const
     // checkTileDivides(A_, B_, ts);
 
     const uint c_ew = std::max(A_.elem_width, B_.elem_width);
-    Addr c_addr     = A_.addr + A_.total_byte_size;
-    CACHESIM_ALIGN(c_addr, g_page_size);
+    Addr c_addr     = alignAddr(A_.addr + A_.total_byte_size, g_page_size);
 
     const GhostMat B_prng{B_.width, B_.height, B_.elem_width, magic_addr};
     const GhostMat C{A_.height, B_.width, c_ew, c_addr};
