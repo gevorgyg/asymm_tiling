@@ -206,6 +206,8 @@ int main(int argc, char* argv[])
     printf("TagLookup: %llu\n", (unsigned long long)s2.tag_lookups);
     printf("LineFill:  %llu\n", (unsigned long long)s2.line_fills);
     printf("Evict:     %llu\n", (unsigned long long)s2.evicts);
+    printf("--- System ---\n");
+    printf("Cycles:    %llu\n", (unsigned long long)cpu_cycles);
 
     return 0;
 }
