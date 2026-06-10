@@ -130,6 +130,6 @@ ax2.legend(fontsize=10, loc="best")
 plt.suptitle("Performance Comparison: Standard vs. On-the-Fly PRNG Matrix Multiplication\n(Matrix A: 128x128 [8B precision] | Matrix B: 128x128 [2B precision] | Cache: 512B L1, 2KB L2)", fontsize=14, fontweight='bold')
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 
-output_filename = "asymmetric_prng_performance_comparison.png"
+output_filename = "plots/asymmetric_prng_performance_comparison.png"
 plt.savefig(output_filename, dpi=300, bbox_inches='tight')
 print(f"Success! Performance chart generated: '{output_filename}'")
