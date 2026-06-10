@@ -31,7 +31,7 @@ Interpeter::Interpeter(path input_file, MemoryHierarchy& mem,
     if (!trace_file_path.empty()) {
         trace_out_.open(trace_file_path, std::ios::trunc);
         if (!trace_out_.is_open()) {
-            std::cerr << "error opening --trace_file: " << trace_file_path
+            std::cerr << "error opening trace_file: " << trace_file_path
                       << std::endl;
             exit(1);
         }
@@ -273,12 +273,12 @@ void Interpeter::handleMulAcc()
                 Addr target_a =
                     ra.base_addr + (a_row * ra.stride + t) * ra.elem_width;
                 doRead(target_a);
-                // multiply A and B
+                // multiply A and B and accumulate
             }
 
             doRead(target_c);
             doWrite(target_c);
-            // accumulate in C
+            // accumulate to C
         }
     }
 }

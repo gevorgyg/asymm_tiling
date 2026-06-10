@@ -47,7 +47,7 @@ class MemoryHierarchy : public MemoryObject
         return magic_addr_;
     }
 
-    static constexpr Addr seed_mem_base = 0xFFFFD000;
+    static constexpr Addr seed_mem_base = 0x80000000;
 
   private:
     MainMemory mem_;

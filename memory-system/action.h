@@ -23,20 +23,19 @@ class Action
   public:
     virtual ~Action() = default;
 
-    virtual uint        cyclesToPerform() const       = 0;
-    virtual const char* name() const                  = 0;
-    virtual void        print(std::ostream& os) const = 0;
+    virtual uint cyclesToPerform() const       = 0;
+    virtual const char* name() const           = 0;
+    virtual void print(std::ostream& os) const = 0;
 
     // Mutates the device this action belongs to. May append further actions
     // (e.g. an Evict triggered by a LineFill on a full set) to `trace`.
-    virtual void        perform(Trace& trace) = 0;
+    virtual void perform(Trace& trace) = 0;
 };
 
-inline uint totalCycles(const Trace& trace)
+inline static uint totalCycles(const Trace& trace)
 {
-    return std::accumulate(
-        trace.begin(), trace.end(), 0u,
-        [](uint acc, const std::unique_ptr<Action>& a) {
-            return acc + a->cyclesToPerform();
-        });
+    return std::accumulate(trace.begin(), trace.end(), 0u,
+                           [](uint acc, const std::unique_ptr<Action>& a) {
+                               return acc + a->cyclesToPerform();
+                           });
 }

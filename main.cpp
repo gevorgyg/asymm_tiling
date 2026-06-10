@@ -65,8 +65,14 @@ void generateInstructions(uint m, uint n, uint k)
     uint a_pw = getConfig("A_PRECISION_BYTES", 8);
     uint b_pw = getConfig("B_PRECISION_BYTES", 2);
 
-    InstGenerator::GhostMat A{a_w, a_h, a_pw, 0};
-    InstGenerator::GhostMat B{a_w, a_w, b_pw, (uint)A.total_byte_size};
+    Addr a_addr = 1024;
+    CACHESIM_ALIGN(a_addr, g_page_size);
+    InstGenerator::GhostMat A{a_w, a_h, a_pw, a_addr};
+
+    Addr b_addr = A.total_byte_size;
+    CACHESIM_ALIGN(b_addr, g_page_size);
+    InstGenerator::GhostMat B{a_w, a_w, b_pw, b_addr};
+
     InstGenerator gen{A, B};
 
     std::ofstream ofs(instruction_path);
@@ -164,6 +170,7 @@ int main(int argc, char* argv[])
         .mem_access_cycles = getConfig("MEM_ACCESS_CYCLES", 180),
 
     };
+
     size_t cpu_cycles = 0;
     MemoryHierarchy mem(mp, cpu_cycles);
 
