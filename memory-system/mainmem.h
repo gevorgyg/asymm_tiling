@@ -13,8 +13,8 @@ class MainMemory : public MemoryObject
   public:
     explicit MainMemory(uint access_cycles) : MemoryObject(access_cycles) {}
 
-    Trace read(Addr addr, size_t size)  override;
-    Trace write(Addr addr, size_t size) override;
+    void read(Addr addr, size_t size, Trace& trace)  override;
+    void write(Addr addr, size_t size, Trace& trace) override;
 };
 
 

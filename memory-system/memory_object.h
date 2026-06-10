@@ -18,8 +18,8 @@ class MemoryObject
 
     uint accessCycles() const { return access_cycles_; }
 
-    virtual Trace read(Addr addr, size_t size)  = 0;
-    virtual Trace write(Addr addr, size_t size) = 0;
+    virtual void read(Addr addr, size_t size, Trace& trace)  = 0;
+    virtual void write(Addr addr, size_t size, Trace& trace) = 0;
 
   protected:
     uint access_cycles_;

@@ -40,48 +40,36 @@ Set& Cache::setFor(Addr byte_addr)
     return sets_[lineAddr(byte_addr) % sets_.size()];
 }
 
-Trace Cache::read(Addr addr, size_t size)
+void Cache::read(Addr addr, size_t size, Trace& trace)
 {
-    Trace trace;
+    size_t start_idx = trace.size();
 
     trace.push_back(std::make_unique<TagLookup>(*this, addr));
     trace.back()->perform(trace);
-    const bool hit = static_cast<TagLookup*>(trace.back().get())->wasHit();
+    const bool hit = static_cast<TagLookup*>(trace[start_idx].get())->wasHit();
 
     if (hit) {
-        return trace;
+        return;
     }
 
-    // Miss: defer to the next level, then splice its trace in.
-    Trace below = next_level_->read(addr, size);
-    for (auto& a : below) {
-        trace.push_back(std::move(a));
-    }
+    // Miss: defer to the next level, then append to trace.
+    next_level_->read(addr, size, trace);
 
     // Install the line locally. LineFill::perform decides whether to evict.
     trace.push_back(std::make_unique<LineFill>(*this, addr));
     trace.back()->perform(trace);
-
-    return trace;
 }
 
-Trace Cache::write(Addr addr, size_t size)
+void Cache::write(Addr addr, size_t size, Trace& trace)
 {
     // Write-through + no-allocate: a TagLookup updates hit/miss stats, then
     // the write is forwarded to the next level regardless of the outcome.
     // We never install the line locally, so there's no LineFill / Evict on
     // the write path and the dirty bit stays unused.
-    Trace trace;
-
     trace.push_back(std::make_unique<TagLookup>(*this, addr));
     trace.back()->perform(trace);
 
-    Trace below = next_level_->write(addr, size);
-    for (auto& a : below) {
-        trace.push_back(std::move(a));
-    }
-
-    return trace;
+    next_level_->write(addr, size, trace);
 }
 
 

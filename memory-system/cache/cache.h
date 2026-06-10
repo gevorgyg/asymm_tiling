@@ -36,8 +36,8 @@ class Cache : public MemoryObject
     Cache(uint access_cycles, InitParameters p,
           std::unique_ptr<EvictionPolicy> policy, MemoryObject* next_level);
 
-    Trace read(Addr addr, size_t size)  override;
-    Trace write(Addr addr, size_t size) override;
+    void read(Addr addr, size_t size, Trace& trace)  override;
+    void write(Addr addr, size_t size, Trace& trace) override;
 
     const char*  name()  const { return name_; }
     const Stats& stats() const { return stats_; }

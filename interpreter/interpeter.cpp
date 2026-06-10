@@ -40,16 +40,18 @@ Interpeter::Interpeter(path input_file, MemoryHierarchy& mem,
 
 void Interpeter::doRead(Addr addr)
 {
-    Trace t = mem_.read(addr, 1);
-    total_cycles_ += totalCycles(t);
-    logTrace(t);
+    trace_buffer_.clear();
+    mem_.read(addr, 1, trace_buffer_);
+    total_cycles_ += totalCycles(trace_buffer_);
+    logTrace(trace_buffer_);
 }
 
 void Interpeter::doWrite(Addr addr)
 {
-    Trace t = mem_.write(addr, 1);
-    total_cycles_ += totalCycles(t);
-    logTrace(t);
+    trace_buffer_.clear();
+    mem_.write(addr, 1, trace_buffer_);
+    total_cycles_ += totalCycles(trace_buffer_);
+    logTrace(trace_buffer_);
 }
 
 void Interpeter::logTrace(const Trace& t)
@@ -118,9 +120,10 @@ void Interpeter::handleTload()
     INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
 
     if (mem_.getMagicAddr() != 0 && base_addr >= mem_.getMagicAddr()) {
-        Trace t = mem_.reseedPrng(base_addr);
-        total_cycles_ += totalCycles(t);
-        logTrace(t);
+        trace_buffer_.clear();
+        mem_.reseedPrng(base_addr, trace_buffer_);
+        total_cycles_ += totalCycles(trace_buffer_);
+        logTrace(trace_buffer_);
         return;
     }
 

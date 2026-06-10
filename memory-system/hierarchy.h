@@ -19,8 +19,8 @@ class MemoryHierarchy : public MemoryObject
 
     explicit MemoryHierarchy(Parameters p, size_t& cpu_cycles);
 
-    Trace read(Addr addr, size_t size) override;
-    Trace write(Addr addr, size_t size) override;
+    void read(Addr addr, size_t size, Trace& trace) override;
+    void write(Addr addr, size_t size, Trace& trace) override;
 
     const Cache& l1() const
     {
@@ -41,7 +41,7 @@ class MemoryHierarchy : public MemoryObject
     {
         magic_addr_ = 0;
     }
-    Trace reseedPrng(Addr base_addr);
+    void reseedPrng(Addr base_addr, Trace& trace);
     Addr getMagicAddr() const
     {
         return magic_addr_;

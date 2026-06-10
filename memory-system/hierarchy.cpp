@@ -36,33 +36,30 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, size_t& cpu_cycles)
 {
 }
 
-Trace MemoryHierarchy::read(Addr addr, size_t size)
+void MemoryHierarchy::read(Addr addr, size_t size, Trace& trace)
 {
     if (magic_addr_ != 0 && addr >= magic_addr_) {
         prng_dev_.pop();
-        Trace trace;
         trace.push_back(std::make_unique<PrngAction>(addr));
-        return trace;
+        return;
     }
-    return l1_.read(addr, size);
+    l1_.read(addr, size, trace);
 }
 
-Trace MemoryHierarchy::write(Addr addr, size_t size)
+void MemoryHierarchy::write(Addr addr, size_t size, Trace& trace)
 {
     if (magic_addr_ != 0 && addr >= magic_addr_) {
-        Trace trace;
         trace.push_back(std::make_unique<PrngAction>(addr));
-        return trace;
+        return;
     }
-    return l1_.write(addr, size);
+    l1_.write(addr, size, trace);
 }
 
-Trace MemoryHierarchy::reseedPrng(Addr base_addr)
+void MemoryHierarchy::reseedPrng(Addr base_addr, Trace& trace)
 {
     Addr tile_offset = base_addr - magic_addr_;
     Addr seed_addr   = seed_mem_base + tile_offset;
 
-    Trace trace = read(seed_addr, 4);
+    read(seed_addr, 4, trace);
     prng_dev_.reseed();
-    return trace;
 }

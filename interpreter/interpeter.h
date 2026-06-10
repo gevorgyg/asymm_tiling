@@ -65,6 +65,7 @@ class Interpeter
     std::ofstream trace_out_;
 
     std::array<vec_reg, 3> vec_regs_;
+    Trace trace_buffer_;
     MemoryHierarchy& mem_;
 };
 

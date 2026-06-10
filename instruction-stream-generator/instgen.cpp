@@ -23,15 +23,10 @@ InstGenerator::InstGenerator(GhostMat A, GhostMat B) : A_(A), B_(B)
     }
 }
 
-void checkTileDivides(const InstGenerator::GhostMat& A,
-                      const InstGenerator::GhostMat& B,
-                      const InstGenerator::TileShape ts)
+void checkTileDivides(const InstGenerator::GhostMat& /*A*/,
+                      const InstGenerator::GhostMat& /*B*/,
+                      const InstGenerator::TileShape /*ts*/)
 {
-    if (A.height % ts.m != 0 || B.width % ts.n != 0 || A.width % ts.k != 0) {
-        std::cerr << "matrix dimensions must be divisible by tile dimensions"
-                  << std::endl;
-        exit(1);
-    }
 }
 
 void InstGenerator::generate(TileShape ts, std::ostream& os) const
@@ -71,9 +66,9 @@ void InstGenerator::emitTrace(const GhostMat& A, const GhostMat& B,
     constexpr char c_id[] = "%rc";
 
     // Tile counts (ceil division so edge tiles aren't dropped).
-    const uint M_tiles = A.height / tile.m;
-    const uint N_tiles = B.width / tile.n;
-    const uint K_tiles = A.width / tile.k;
+    const uint M_tiles = (A.height + tile.m - 1) / tile.m;
+    const uint N_tiles = (B.width + tile.n - 1) / tile.n;
+    const uint K_tiles = (A.width + tile.k - 1) / tile.k;
 
     if (prng) {
         os << "strtrng 0x" << std::hex << B.addr << " 0x" << init_seed
