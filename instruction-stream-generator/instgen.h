@@ -39,7 +39,16 @@ class InstGenerator
         Addr addr;
     };
 
-    InstGenerator(GhostMat A, GhostMat B);
+    struct Params {
+        uint a_height;
+        uint a_width;
+        uint b_width;
+        uint a_precision;
+        uint b_precision;
+        uint align_page_size = 4096;
+    };
+
+    InstGenerator(Params params);
 
     void generate(TileShape tile, std::ostream& os) const;
 

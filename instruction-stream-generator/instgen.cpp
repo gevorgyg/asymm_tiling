@@ -14,7 +14,22 @@ InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
 {
 }
 
-InstGenerator::InstGenerator(GhostMat A, GhostMat B) : A_(A), B_(B)
+namespace {
+Addr alignAddr(Addr addr, uint page_size)
+{
+    if (addr % page_size != 0) {
+        if (addr / page_size == 0) {
+            return 0;
+        }
+        return ((addr / page_size) + 1) * page_size;
+    }
+    return addr;
+}
+}
+
+InstGenerator::InstGenerator(Params p)
+    : A_(p.a_width, p.a_height, p.a_precision, alignAddr(1024, p.align_page_size)),
+      B_(p.b_width, p.a_width, p.b_precision, alignAddr(A_.total_byte_size, p.align_page_size))
 {
     if (A_.width != B_.height) {
         std::cerr << "invalid matrix dimensions for multiplication"

@@ -60,20 +60,15 @@ uint getConfig(const std::string& key, uint default_val)
 
 void generateInstructions(uint m, uint n, uint k)
 {
-    uint a_h  = getConfig("A_HEIGHT_DIM", 100);
-    uint a_w  = getConfig("A_WIDTH_DIM", 100);
-    uint a_pw = getConfig("A_PRECISION_BYTES", 8);
-    uint b_pw = getConfig("B_PRECISION_BYTES", 2);
+    InstGenerator::Params p{
+        .a_height        = getConfig("A_HEIGHT_DIM", 100),
+        .a_width         = getConfig("A_WIDTH_DIM", 100),
+        .b_width         = getConfig("B_WIDTH_DIM", 100),
+        .a_precision     = getConfig("A_PRECISION_BYTES", 8),
+        .b_precision     = getConfig("B_PRECISION_BYTES", 2),
+        .align_page_size = (uint)g_page_size};
 
-    Addr a_addr = 1024;
-    CACHESIM_ALIGN(a_addr, g_page_size);
-    InstGenerator::GhostMat A{a_w, a_h, a_pw, a_addr};
-
-    Addr b_addr = A.total_byte_size;
-    CACHESIM_ALIGN(b_addr, g_page_size);
-    InstGenerator::GhostMat B{a_w, a_w, b_pw, b_addr};
-
-    InstGenerator gen{A, B};
+    InstGenerator gen{p};
 
     std::ofstream ofs(instruction_path);
     if (!ofs.is_open()) {
@@ -86,15 +81,15 @@ void generateInstructions(uint m, uint n, uint k)
 
 void generatePrngInstructions(uint m, uint n, uint k)
 {
-    uint a_h  = getConfig("A_HEIGHT_DIM", 100);
-    uint a_w  = getConfig("A_WIDTH_DIM", 100);
-    uint a_pw = getConfig("A_PRECISION_BYTES", 8);
-    uint b_w  = getConfig("B_WIDTH_DIM", 100);
-    uint b_pw = getConfig("B_PRECISION_BYTES", 2);
+    InstGenerator::Params p{
+        .a_height        = getConfig("A_HEIGHT_DIM", 100),
+        .a_width         = getConfig("A_WIDTH_DIM", 100),
+        .b_width         = getConfig("B_WIDTH_DIM", 100),
+        .a_precision     = getConfig("A_PRECISION_BYTES", 8),
+        .b_precision     = getConfig("B_PRECISION_BYTES", 2),
+        .align_page_size = (uint)g_page_size};
 
-    InstGenerator::GhostMat A{a_w, a_h, a_pw, 0};
-    InstGenerator::GhostMat B{b_w, a_w, b_pw, 0};
-    InstGenerator gen{A, B};
+    InstGenerator gen{p};
 
     std::ofstream ofs(instruction_path);
     if (!ofs.is_open()) {
