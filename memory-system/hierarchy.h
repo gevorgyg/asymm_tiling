@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../interpreter/prng_record.h"
 #include "cache/cache.h"
 #include "mainmem.h"
 #include "memory_object.h"
+#include "prng_record.h"
 
 // PRNG device will live here later
 class MemoryHierarchy : public MemoryObject
