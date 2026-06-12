@@ -8,10 +8,10 @@ EXECUTABLE = "./asymm"
 TEMP_CONFIG = "size_sweep_temp.conf"
 
 # Matrix sizes and tile sizes to sweep
-matrix_sizes = [100, 200, 300]
-tile_sizes = [4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64]
+matrix_sizes = [64, 128, 256]
+tile_sizes = [4, 8, 16, 32, 64]
 
-def write_temporary_config(mat_dim, l1_size=512, l1_line=16, l2_size=2048, l2_line=16):
+def write_temporary_config(mat_dim, l1_size=512, l1_line=8, l2_size=2048, l2_line=8):
     """Generates a transient configuration file for the current matrix dimensions."""
     with open(TEMP_CONFIG, "w") as f:
         f.write(f"A_HEIGHT_DIM={mat_dim}\n")
@@ -33,6 +33,8 @@ def write_temporary_config(mat_dim, l1_size=512, l1_line=16, l2_size=2048, l2_li
         f.write("L2_ACCESS_CYCLES=15\n")
         
         f.write("MEM_ACCESS_CYCLES=180\n")
+        f.write("PRNG_ACCESS_CYCLES=2\n")
+        f.write("PRNG_GEN_COST_PER_LINE=64\n")
 
 def run_simulation(tile):
     """Runs a single simulation and parses L1 hit rate and CPU cycles."""

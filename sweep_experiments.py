@@ -13,7 +13,7 @@ A_WIDTH = 128
 B_WIDTH = 128
 
 # The parameter we want to sweep: Tile Size (M = N = K)
-tile_sizes = [4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64]
+tile_sizes = [4, 8, 16, 32, 64]
 l1_hit_rates = []
 l2_hit_rates = []
 
@@ -39,13 +39,15 @@ def write_temporary_config(l1_size=512, l1_line=16, l2_size=2048, l2_line=16):
         f.write("L2_ACCESS_CYCLES=15\n")
         
         f.write("MEM_ACCESS_CYCLES=180\n")
-
+        f.write("PRNG_ACCESS_CYCLES=2\n")
+        f.write("PRNG_GEN_COST_PER_LINE=64\n")
+        
 print("====================================================")
 print("Starting Asymmetric Tiling Hierarchy Sweep Execution")
 print("====================================================")
 
 # Establish architecture characteristics
-write_temporary_config(l1_size=512, l1_line=16, l2_size=2048, l2_line=16)
+write_temporary_config(l1_size=512, l1_line=8, l2_size=2048, l2_line=8)
 
 for tile in tile_sizes:
     cmd = [
@@ -94,6 +96,7 @@ plt.xlim(min(tile_sizes) - 2, max(tile_sizes) + 2)
 plt.ylim(-0.05, 1.05)
 plt.legend(fontsize=11, loc="best")
 
+os.makedirs("plots", exist_ok=True)
 graph_output_name = "plots/asymmetric_hierarchy_sweep_results.png"
 plt.savefig(graph_output_name, dpi=300, bbox_inches='tight')
 print(f"Execution finished. Chart successfully generated: '{graph_output_name}'")

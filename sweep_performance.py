@@ -13,9 +13,9 @@ A_WIDTH = 128
 B_WIDTH = 128
 
 # Tile sizes to sweep
-tile_sizes = [4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64]
+tile_sizes = [4, 8, 16, 32, 64]
 
-def write_temporary_config(l1_size=512, l1_line=16, l2_size=2048, l2_line=16):
+def write_temporary_config(l1_size=512, l1_line=8, l2_size=2048, l2_line=8):
     """Generates a transient configuration file including both L1 and L2 parameters."""
     with open(TEMP_CONFIG, "w") as f:
         f.write(f"A_HEIGHT_DIM={A_HEIGHT}\n")
@@ -37,6 +37,8 @@ def write_temporary_config(l1_size=512, l1_line=16, l2_size=2048, l2_line=16):
         f.write("L2_ACCESS_CYCLES=15\n")
         
         f.write("MEM_ACCESS_CYCLES=180\n")
+        f.write("PRNG_ACCESS_CYCLES=2\n")
+        f.write("PRNG_GEN_COST_PER_LINE=64\n")
 
 def run_simulation(tile, prng=False):
     """Runs a single simulation and parses hit rates and CPU cycles."""
@@ -130,6 +132,7 @@ ax2.legend(fontsize=10, loc="best")
 plt.suptitle("Performance Comparison: Standard vs. On-the-Fly PRNG Matrix Multiplication\n(Matrix A: 128x128 [8B precision] | Matrix B: 128x128 [2B precision] | Cache: 512B L1, 2KB L2)", fontsize=14, fontweight='bold')
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 
+os.makedirs("plots", exist_ok=True)
 output_filename = "plots/asymmetric_prng_performance_comparison.png"
 plt.savefig(output_filename, dpi=300, bbox_inches='tight')
 print(f"Success! Performance chart generated: '{output_filename}'")
