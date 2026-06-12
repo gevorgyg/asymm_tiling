@@ -88,16 +88,16 @@ for T in sweep_values:
     print(f"Running sweep index T={T}...")
     for cfg in configs:
         # Tall Sweep (T x 16 x 16)
-        _, _, cyc_m = run_sim(T, 16, 16, cfg["b_stationary"], True, cfg["write_policy"], "LRU")
-        m_results[cfg["name"]].append(cyc_m / 1e6)
+        l1_hit_m, _, _ = run_sim(T, 16, 16, cfg["b_stationary"], True, cfg["write_policy"], "LRU")
+        m_results[cfg["name"]].append(l1_hit_m)
         
         # Wide Sweep (16 x T x 16)
-        _, _, cyc_n = run_sim(16, T, 16, cfg["b_stationary"], True, cfg["write_policy"], "LRU")
-        n_results[cfg["name"]].append(cyc_n / 1e6)
+        l1_hit_n, _, _ = run_sim(16, T, 16, cfg["b_stationary"], True, cfg["write_policy"], "LRU")
+        n_results[cfg["name"]].append(l1_hit_n)
         
         # Deep Sweep (16 x 16 x T)
-        _, _, cyc_k = run_sim(16, 16, T, cfg["b_stationary"], True, cfg["write_policy"], "LRU")
-        k_results[cfg["name"]].append(cyc_k / 1e6)
+        l1_hit_k, _, _ = run_sim(16, 16, T, cfg["b_stationary"], True, cfg["write_policy"], "LRU")
+        k_results[cfg["name"]].append(l1_hit_k)
 
 if os.path.exists(TEMP_CONFIG):
     os.remove(TEMP_CONFIG)
@@ -119,7 +119,8 @@ for name, data in m_results.items():
              linestyle=styles[name]["ls"], color=styles[name]["color"], linewidth=2)
 ax1.set_title("M Sweep (Tx16x16: Tall Tiles)", fontsize=11, fontweight="bold")
 ax1.set_xlabel("Tile Dimension T", fontsize=10)
-ax1.set_ylabel("Execution Cycles (Millions)", fontsize=10)
+ax1.set_ylabel("L1 Cache Hit Rate", fontsize=10)
+ax1.set_ylim(0.0, 1.0)
 ax1.grid(True, linestyle="--", alpha=0.5)
 ax1.legend(fontsize=9)
 
@@ -129,6 +130,8 @@ for name, data in n_results.items():
              linestyle=styles[name]["ls"], color=styles[name]["color"], linewidth=2)
 ax2.set_title("N Sweep (16xTx16: Wide Tiles)", fontsize=11, fontweight="bold")
 ax2.set_xlabel("Tile Dimension T", fontsize=10)
+ax2.set_ylabel("L1 Cache Hit Rate", fontsize=10)
+ax2.set_ylim(0.0, 1.0)
 ax2.grid(True, linestyle="--", alpha=0.5)
 ax2.legend(fontsize=9)
 
@@ -138,6 +141,8 @@ for name, data in k_results.items():
              linestyle=styles[name]["ls"], color=styles[name]["color"], linewidth=2)
 ax3.set_title("K Sweep (16x16xT: Deep Tiles)", fontsize=11, fontweight="bold")
 ax3.set_xlabel("Tile Dimension T", fontsize=10)
+ax3.set_ylabel("L1 Cache Hit Rate", fontsize=10)
+ax3.set_ylim(0.0, 1.0)
 ax3.grid(True, linestyle="--", alpha=0.5)
 ax3.legend(fontsize=9)
 
