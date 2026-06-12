@@ -16,7 +16,9 @@ if [ ! -z "$bflag" ]; then
     make
 fi
 
-# ./asymm 125 500 125 --trace_file output.trace
-# ./asymm 125 125 500 --trace_file output.trace
-# ./asymm 500 125 125 --trace_file output.trace
+echo "---NO PRNG---"
+./asymm 3 4 3 --config default.config
+echo " "
+echo "---PRNG---"
+./asymm 3 4 3 --config default.config --Bgenerated
 

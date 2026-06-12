@@ -21,9 +21,8 @@ void loadConfigFile(const std::string& path)
 {
     std::ifstream infile(path);
     if (!infile.is_open()) {
-        std::cerr << "Warning: Could not open config file: " << path
-                  << ". Using defaults." << std::endl;
-        return;
+        std::cerr << "error: could not open config file: " << path << std::endl;
+        exit(1);
     }
     std::string line;
     while (std::getline(infile, line)) {
@@ -48,28 +47,32 @@ void loadConfigFile(const std::string& path)
     }
 }
 
-// Helper function to get config values with fallback defaults
-uint getConfig(const std::string& key, uint default_val)
+// Get a config value. Missing keys are a hard error -- the config file is the
+// single source of truth.
+uint getConfig(const std::string& key)
 {
     auto it = g_config.find(key);
-    if (it != g_config.end()) {
-        return it->second;
+    if (it == g_config.end()) {
+        std::cerr << "error: missing required config key: " << key << std::endl;
+        exit(1);
     }
-    return default_val;
+    return it->second;
+}
+
+static InstGenerator makeGen()
+{
+    return InstGenerator{InstGenerator::Params{
+        .a_height    = getConfig("A_HEIGHT_DIM"),
+        .a_width     = getConfig("A_WIDTH_DIM"),
+        .b_width     = getConfig("B_WIDTH_DIM"),
+        .a_precision = getConfig("A_PRECISION_BYTES"),
+        .b_precision = getConfig("B_PRECISION_BYTES"),
+    }};
 }
 
 void generateInstructions(uint m, uint n, uint k)
 {
-    InstGenerator::Params p{
-        .a_height        = getConfig("A_HEIGHT_DIM", 100),
-        .a_width         = getConfig("A_WIDTH_DIM", 100),
-        .b_width         = getConfig("B_WIDTH_DIM", 100),
-        .a_precision     = getConfig("A_PRECISION_BYTES", 8),
-        .b_precision     = getConfig("B_PRECISION_BYTES", 2),
-        .align_page_size = (uint)g_page_size,
-    };
-
-    InstGenerator gen{p};
+    InstGenerator gen = makeGen();
 
     std::ofstream ofs(instruction_path);
     if (!ofs.is_open()) {
@@ -82,16 +85,7 @@ void generateInstructions(uint m, uint n, uint k)
 
 void generatePrngInstructions(uint m, uint n, uint k)
 {
-    InstGenerator::Params p{
-        .a_height        = getConfig("A_HEIGHT_DIM", 100),
-        .a_width         = getConfig("A_WIDTH_DIM", 100),
-        .b_width         = getConfig("B_WIDTH_DIM", 100),
-        .a_precision     = getConfig("A_PRECISION_BYTES", 8),
-        .b_precision     = getConfig("B_PRECISION_BYTES", 2),
-        .align_page_size = (uint)g_page_size,
-    };
-
-    InstGenerator gen{p};
+    InstGenerator gen = makeGen();
 
     std::ofstream ofs(instruction_path);
     if (!ofs.is_open()) {
@@ -148,23 +142,21 @@ int main(int argc, char* argv[])
         loadConfigFile(config_file_path);
     }
 
-    // Dynamically assign parameters from our configuration file or map
     MemoryHierarchy::Parameters mp{
 
         .l1               = {.name      = "L1",
-                             .size      = getConfig("L1_SIZE_BYTES", 256),
-                             .line_size = getConfig("L1_LINE_SIZE_BYTES", 16),
-                             .assoc     = getConfig("L1_ASSOC", 4)},
-        .l1_access_cycles = getConfig("L1_ACCESS_CYCLES", 4),
+                             .size      = getConfig("L1_SIZE_BYTES"),
+                             .line_size = getConfig("L1_LINE_SIZE_BYTES"),
+                             .assoc     = getConfig("L1_ASSOC")},
+        .l1_access_cycles = getConfig("L1_ACCESS_CYCLES"),
 
-        .l2 = {.name      = "L2",
-               .size      = getConfig("L2_SIZE_BYTES", 1024),
-               .line_size = getConfig("L2_LINE_SIZE_BYTES",
-                                      16), // usually matches L1 line size
-               .assoc     = getConfig("L2_ASSOC", 8)},
-        .l2_access_cycles = getConfig("L2_ACCESS_CYCLES", 15),
+        .l2               = {.name      = "L2",
+                             .size      = getConfig("L2_SIZE_BYTES"),
+                             .line_size = getConfig("L2_LINE_SIZE_BYTES"),
+                             .assoc     = getConfig("L2_ASSOC")},
+        .l2_access_cycles = getConfig("L2_ACCESS_CYCLES"),
 
-        .mem_access_cycles = getConfig("MEM_ACCESS_CYCLES", 180),
+        .mem_access_cycles = getConfig("MEM_ACCESS_CYCLES"),
 
     };
 

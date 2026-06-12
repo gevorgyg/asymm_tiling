@@ -20,8 +20,9 @@ using std::filesystem::path;
   } while (0)
 
 Interpeter::Interpeter(path input_file, MemoryHierarchy &mem,
-                       const std::string &trace_file_path)
-    : in_stream_(input_file), line_(0), prng_dev_(total_cycles_), mem_(mem) {
+                       const std::string &trace_file_path, size_t &cpu_cycles)
+    : in_stream_(input_file), line_(0), cpu_cycles_(cpu_cycles),
+      vec_regs_{}, mem_(mem) {
   if (!in_stream_.is_open()) {
     std::cerr << "error opening trace file" << std::endl;
     exit(1);
@@ -37,14 +38,16 @@ Interpeter::Interpeter(path input_file, MemoryHierarchy &mem,
 }
 
 void Interpeter::doRead(Addr addr) {
-  Trace t = mem_.read(addr, 1);
-  total_cycles_ += totalCycles(t);
+  Trace t;
+  mem_.read(addr, 1, t);
+  cpu_cycles_ += totalCycles(t);
   logTrace(t);
 }
 
 void Interpeter::doWrite(Addr addr) {
-  Trace t = mem_.write(addr, 1);
-  total_cycles_ += totalCycles(t);
+  Trace t;
+  mem_.write(addr, 1, t);
+  cpu_cycles_ += totalCycles(t);
   logTrace(t);
 }
 
@@ -108,8 +111,12 @@ void Interpeter::handleTload() {
 
   INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
 
-  if (base_addr == magic_addr_) {
-    prng_dev_.reseed();
+  Addr magic = mem_.getMagicAddr();
+  if (magic != 0 && base_addr >= magic) {
+    Trace t;
+    mem_.reseedPrng(base_addr, t);
+    cpu_cycles_ += totalCycles(t);
+    logTrace(t);
     return;
   }
 
@@ -243,8 +250,6 @@ void Interpeter::handleMulAcc() {
   const vec_reg &rb = vec_regs_[tile_2];
   const vec_reg &rc = vec_regs_[tile_3];
 
-  bool use_magic = rb.base_addr == magic_addr_ ? true : false;
-
   for (int a_row = 0; a_row < ra.t_height; ++a_row) {
     for (int b_col = 0; b_col < rb.t_width; ++b_col) {
       Addr target_c =
@@ -252,39 +257,37 @@ void Interpeter::handleMulAcc() {
 
       for (int t = 0; t < ra.t_width; ++t) {
         Addr target_a = ra.base_addr + (a_row * ra.stride + t) * ra.elem_width;
-        if (use_magic) {
-          prng_dev_.pop();
-        } else {
-          Addr target_b =
-              rb.base_addr + (t * rb.stride + b_col) * rb.elem_width;
-          doRead(target_b);
-        }
+        Addr target_b = rb.base_addr + (t * rb.stride + b_col) * rb.elem_width;
 
+        // MemoryHierarchy::read routes target_b into PRNG.pop() when in the
+        // magic window, into L1 otherwise.
+        doRead(target_b);
         doRead(target_a);
-        // multiply A and B
       }
 
       doRead(target_c);
       doWrite(target_c);
-      // accumulate in C
     }
   }
 }
 
 void Interpeter::startRng() {
+  Addr magic_addr;
   Addr seed_discard;
-  in_stream_ >> std::hex >> magic_addr_ >> seed_discard;
+  in_stream_ >> std::hex >> magic_addr >> seed_discard;
 
-  if (magic_addr_ == 0) {
+  if (magic_addr == 0) {
     std::cerr << "invalid MMIO magic address in line: " << line_ << std::endl;
     exit(1);
   }
+
+  mem_.startPrng(magic_addr);
 
   INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
 }
 
 void Interpeter::stopRng() {
-  magic_addr_ = 0;
+  mem_.stopPrng();
 
   INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
 }

@@ -11,7 +11,9 @@ InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
     : width(w), height(h), elem_width(elem_w),
       total_byte_size(width * height * elem_width), addr(a) {}
 
-InstGenerator::InstGenerator(GhostMat A, GhostMat B) : A_(A), B_(B) {
+InstGenerator::InstGenerator(Params p)
+    : A_(p.a_width, p.a_height, p.a_precision, 0),
+      B_(p.b_width, p.a_width, p.b_precision, A_.total_byte_size) {
   if (A_.width != B_.height) {
     std::cerr << "invalid matrix dimensions for multiplication" << std::endl;
     exit(1);

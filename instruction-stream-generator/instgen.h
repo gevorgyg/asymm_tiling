@@ -38,7 +38,17 @@ public:
     Addr addr;
   };
 
-  InstGenerator(GhostMat A, GhostMat B);
+  // Driven entirely by main.cpp's config file. Addresses are laid out
+  // sequentially with no alignment -- A at 0, B right after A.
+  struct Params {
+    uint a_height;
+    uint a_width;
+    uint b_width;
+    uint a_precision;
+    uint b_precision;
+  };
+
+  explicit InstGenerator(Params p);
 
   void generate(TileShape tile, std::ostream &os) const;
 
