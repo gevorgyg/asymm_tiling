@@ -1,13 +1,24 @@
 # Asymmetric Matrix Multiplication Sim
 ## Usage
 ```
-./asimm <m> <n> <k> [--Bgenerated] [--trace_file <file>]
+./asymm <m> <n> <k> [--Bgenerated] [--config <file>] [--trace_file <file>] [--trace_level <0|1|2>]
 ```
 
 ### Flags:
 - `--Bgenerated` - simulate generating B from a PRNG device (the default mode is
   that both A and B are stored in memory)
-- `--trace_file <file>` - store trace (cache actions) into a file
+- `--config <file>` - configuration file with hardware parameters (see
+  `default.config`); required
+- `--trace_file <file>` - store the execution trace into a file
+- `--trace_level <0|1|2>` - trace verbosity (only meaningful with
+  `--trace_file`); each level includes everything from the levels above it.
+  Default is 2.
+  - `0` (instructions): one line per ISA instruction with its cycle total, e.g.
+    `ltea (0x480, 8, 3, 24, 2), %rb    # 532 cy`
+  - `1` (accesses): adds one indented line per element read/write, e.g.
+    `  read  @0x480 (70 cy)`
+  - `2` (actions): adds every device Action, e.g.
+    `    L1 TagLookup @0x480 MISS (4 cy)` / `    PRNG Generate line @0x480 (64 cy)`
 
 ## TODO:
 - block diagram.  
@@ -66,10 +77,10 @@
   │  readCmd() ── ltea ───> handleTload():  check PRNG tile-row % line_size == 0;                                     │
   │            │            set vec_reg; doRead() per element of tile                                                 │
   │            ├─ tmov ───> handleTmove():  set vec_reg; doWrite() per element                                        │
-  │            └─ tmulac ─> handleMulAcc(): per output elem: doRead(B), doRead(A), doRead(C), doWrite(C)              │
+  │            └─ tmulac ─> handleMulAcc(): register-only -- validates tile shapes, no memory traffic                 │
   │                                                                                                                   │
-  │  doRead/doWrite: Trace t; mem_.read/write(addr, 1, t);                                                            │
-  │                  cpu_cycles_ += totalCycles(t);  logTrace(t) ──────────────> --trace_file (one line per Action)   │
+  │  doRead/doWrite: Trace t; mem_.read/write(addr, elem_width, t);                                                   │
+  │                  cpu_cycles_ += totalCycles(t);  buffered per instruction ──> --trace_file (per --trace_level)    │
   └───────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┘
                                       v
   ┌────────────────────────── MemoryHierarchy ───────────────────────────────────┐
