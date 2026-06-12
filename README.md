@@ -20,6 +20,18 @@
   - `2` (actions): adds every device Action, e.g.
     `    L1 TagLookup @0x480 MISS (4 cy)` / `    PRNG Generate line @0x480 (64 cy)`
 
+### Input constraints:
+- Tile dims must divide matrix dims: `m | A_HEIGHT_DIM`, `n | B_WIDTH_DIM`,
+  `k | A_WIDTH_DIM`.
+- With `--Bgenerated`, a B tile row must be a whole number of cache lines:
+  `n * B_PRECISION_BYTES` must be a multiple of `L1_LINE_SIZE_BYTES`
+  (e.g. with a line of 8 and 2-byte B elements, n must be a multiple of 4).
+  Partial-line tile rows are deliberately unsupported for now.
+- With `--Bgenerated`, the PRNG window (B's address range, which starts right
+  after A at `A_HEIGHT_DIM * A_WIDTH_DIM * A_PRECISION_BYTES`) must be
+  line-aligned: A's byte size and B's byte size must be multiples of
+  `L1_LINE_SIZE_BYTES`.
+
 ## TODO:
 - block diagram.  
 - Add logic for:
