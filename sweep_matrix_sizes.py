@@ -104,9 +104,10 @@ for idx, size in enumerate(matrix_sizes):
     ax2.plot(tile_sizes, cycles_m, marker=markers[idx], linestyle='-', 
              color=colors[idx], linewidth=2.5, label=f'{size}x{size} Matrix')
 
-ax2.set_title("Simulated Clock Cycles (Millions)", fontsize=12, fontweight='bold', pad=10)
+ax2.set_title("Simulated Clock Cycles", fontsize=12, fontweight='bold', pad=10)
 ax2.set_xlabel("Tile Block Size Parameters (M = N = K)", fontsize=11)
-ax2.set_ylabel("Execution Cycles (Millions)", fontsize=11)
+ax2.set_ylabel("Execution Cycles (Log Scale)", fontsize=11)
+ax2.set_yscale('log')
 ax2.grid(True, linestyle='--', alpha=0.5)
 ax2.legend(fontsize=10, loc="best")
 
