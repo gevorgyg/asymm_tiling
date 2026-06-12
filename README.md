@@ -33,7 +33,76 @@
        think it can be simplified (especially for our purposes). Maybe there is
        more room for simplification.~~
 
+## Code Map (WARNING! AI-GENERATED!)
+```
+                                    ./asymm [--Bgenerated] [--config f] [--trace_file f] <m> <n> <k>
+                                                            │
+                                                            v
+  ┌──────────────────────────────────────────────────── main.cpp ────────────────────────────────────────────────────┐
+  │                                                                                                                  │
+  │   default.config ──> loadConfigFile() ──> g_config map ──> getConfig(key)                                        │
+  │        │                                                                                                         │
+  │        ├────────────> matrix dims/precisions ──────────────┐                                                     │
+  │        └────────────> cache + mem + prng parameters ───────┼──────────────┐                                      │
+  │                                                            │              │                                      │
+  │   --Bgenerated ──> prng.window_bytes = B bytes (else 0) ───┘              │                                      │
+  └───────────────────────────────────────────────────────────┼──────────────┼──────────────────────────────────────┘
+                                                               │              │
+                              ┌────────────────────────────────┘              │
+                              v                                               v
+                ┌── InstGenerator ──────────────┐                ┌── MemoryHierarchy ctor ──┐
+                │ GhostMat A @0x0               │                │ builds devices, wires    │
+                │ GhostMat B @A.bytes           │                │ the topology below       │
+                │ GhostMat C @A.bytes+B.bytes   │                └──────────────────────────┘
+                │                               │
+                │ emitTrace(tile m,n,k):        │
+                │   ltea / tmulac / tmov stream │      (stream is identical with and
+                └───────────────┬───────────────┘       without PRNG -- routing is hardware)
+                                v
+                          matmul.matv  (text ISA)
+                                │
+                                v
+  ┌─────────────────────────── Interpeter::run() ────────────────────────────────────────────────────────────────────┐
+  │  readCmd() ── ltea ───> handleTload():  check PRNG tile-row % line_size == 0;                                     │
+  │            │            set vec_reg; doRead() per element of tile                                                 │
+  │            ├─ tmov ───> handleTmove():  set vec_reg; doWrite() per element                                        │
+  │            └─ tmulac ─> handleMulAcc(): per output elem: doRead(B), doRead(A), doRead(C), doWrite(C)              │
+  │                                                                                                                   │
+  │  doRead/doWrite: Trace t; mem_.read/write(addr, 1, t);                                                            │
+  │                  cpu_cycles_ += totalCycles(t);  logTrace(t) ──────────────> --trace_file (one line per Action)   │
+  └───────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┘
+                                      v
+  ┌────────────────────────── MemoryHierarchy ───────────────────────────────────┐
+  │                                                                              │
+  │      read/write(addr)                                                        │
+  │            │                                                                 │
+  │            v                                                                 │
+  │        ┌────────┐  hit: TagLookup, done                                      │
+  │        │   L1   │ ───────────────────────────> Trace: [TagLookup]            │
+  │        └───┬────┘                                                            │
+  │            │ miss                                                            │
+  │            v                                                                 │
+  │      ┌────────────┐   addr in [B_base, B_end)?                               │
+  │      │ AddrRouter │ ──────────────┬──────────────────┐                       │
+  │      └────────────┘               │ yes               │ no                   │
+  │                                   v                   v                      │
+  │                            ┌────────────┐       ┌────────┐ miss  ┌─────────┐ │
+  │                            │  PrngDev   │       │   L2   │ ────> │ MainMem │ │
+  │                            │ IsGenerated│       └────────┘       └─────────┘ │
+  │                            │ Generate   │                                    │
+  │                            └────────────┘                                    │
+  │                                   │                   │                      │
+  │            ┌──────────────────────┴───────────────────┘                      │
+  │            v                                                                 │
+  │   back in L1: LineFill (+ Evict if set full)                                 │
+  │   Trace: [TagLookup, IsGenerated, Generate, LineFill, Evict?]   (PRNG path)  │
+  │   Trace: [TagLookup, TagLookup, MemoryAccess?, LineFill(s), …]  (mem path)   │
+  └───────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      v
+                    main: print L1/L2 stats, PRNG gen/regen, total cycles
 
+```
 ## Q&A/Design Considerations:
 
 **Q: What is the input? (m,n,k)**

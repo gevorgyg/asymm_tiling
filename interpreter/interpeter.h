@@ -6,13 +6,29 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
 
 class Interpeter
 {
   public:
+    // Trace verbosity: each level includes everything above it.
+    //   instructions -- one line per ISA instruction with its cycle total
+    //   accesses     -- + one line per element read/write
+    //   actions      -- + every device Action (TagLookup, Generate, ...)
+    enum TraceLevel {
+        trace_instructions = 0,
+        trace_accesses     = 1,
+        trace_actions      = 2,
+    };
+
+    struct Options {
+        std::string trace_file_path;
+        TraceLevel  trace_level;
+    };
+
     Interpeter(std::filesystem::path input_file, MemoryHierarchy& mem,
-               const std::string& trace_file_path, size_t& cpu_cycles);
+               Options opts, size_t& cpu_cycles);
 
     Interpeter(const Interpeter&)            = delete;
     Interpeter& operator=(const Interpeter&) = delete;
@@ -33,36 +49,38 @@ class Interpeter
         load_tile,
         move_tile,
         mul_acc,
-        start_rng,
-        stop_rng,
         eof,
     };
 
     void handleTload();
     void handleTmove();
     void handleMulAcc();
-    void startRng();
-    void stopRng();
 
     void handleCmd();
     cmd readCmd();
 
+    uint parseReg();
     void trim_prefix_spaces();
 
-    void doRead(Addr addr);
-    void doWrite(Addr addr);
-
-    void logTrace(const Trace& t);
+    void doRead(Addr addr, size_t size);
+    void doWrite(Addr addr, size_t size);
+    void logAccess(const char* op, Addr addr, uint cycles, const Trace& t);
 
     std::ifstream in_stream_;
     int line_;
 
-    // Externally-owned running CPU-cycle counter. The PRNG device lives in
-    // MemoryHierarchy and writes into the same counter via its own reference.
+    // Externally-owned running CPU-cycle counter.
     size_t& cpu_cycles_;
 
-    // Open iff the user passed --trace_file; one line per performed Action.
+    // Open iff the user passed --trace_file.
     std::ofstream trace_out_;
+    TraceLevel    trace_level_;
+
+    // Per-instruction trace state: the header is written once the
+    // instruction completes (so its cycle total is known), followed by the
+    // buffered access/action details.
+    std::string        inst_header_;
+    std::ostringstream inst_detail_;
 
     std::array<vec_reg, 3> vec_regs_;
     MemoryHierarchy& mem_;
