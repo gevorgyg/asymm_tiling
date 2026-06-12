@@ -13,7 +13,7 @@ class Interpeter
 {
   public:
     Interpeter(std::filesystem::path input_file, MemoryHierarchy& mem,
-               const std::string& trace_file_path, size_t& cpu_cycles);
+               const std::string& trace_file_path);
 
     Interpeter(const Interpeter&)            = delete;
     Interpeter& operator=(const Interpeter&) = delete;
@@ -57,15 +57,17 @@ class Interpeter
 
     std::ifstream in_stream_;
     int line_;
+    Addr magic_addr_ = 0;
 
-    // Cumulative cycle count reference.
-    size_t& total_cycles_;
+    // Cumulative cycle count; only kept because PrngDevSim's stall model
+    // needs a running CPU-time reference. Not printed anywhere.
+    size_t total_cycles_ = 0;
 
     // Open iff the user passed --trace_file; one line per performed Action.
     std::ofstream trace_out_;
 
     std::array<vec_reg, 3> vec_regs_;
-    Trace trace_buffer_;
+    PrngDevSim prng_dev_;
     MemoryHierarchy& mem_;
 };
 

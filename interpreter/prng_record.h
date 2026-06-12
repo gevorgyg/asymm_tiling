@@ -33,7 +33,7 @@ class PrngDevSim
     const uint access_cost_;
     const uint seed_cost_;
 
-    uint cur_fifo_size_     = 0;
+    uint   cur_fifo_size_   = 0;
     size_t last_cpu_cycles_ = 0;
 
     size_t& cpu_cycles_;
