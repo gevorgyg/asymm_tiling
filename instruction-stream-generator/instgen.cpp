@@ -27,7 +27,7 @@ void checkTileDivides(const InstGenerator::GhostMat &A,
   }
 }
 
-void InstGenerator::generate(TileShape ts, std::ostream &os) const {
+void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary) const {
   checkTileDivides(A_, B_, ts);
 
   // TODO such packing is not the only choice: what we are interested is how
@@ -38,12 +38,12 @@ void InstGenerator::generate(TileShape ts, std::ostream &os) const {
 
   const GhostMat C{B_.width, A_.height, c_ew, c_addr};
 
-  emitTrace(A_, B_, C, ts, os);
+  emitTrace(A_, B_, C, ts, os, b_stationary);
 }
 
 void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
                               const GhostMat &C, TileShape tile,
-                              std::ostream &os) const {
+                              std::ostream &os, bool b_stationary) const {
   constexpr char a_id[] = "%ra";
   constexpr char b_id[] = "%rb";
   constexpr char c_id[] = "%rc";
@@ -53,25 +53,49 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
   const uint N_tiles = B.width / tile.n;
   const uint K_tiles = A.width / tile.k;
 
-  for (uint ti = 0; ti < M_tiles; ++ti) {
-    const uint cth = std::min(tile.m, A.height - ti * tile.m);
+  if (b_stationary) {
+    for (uint tk = 0; tk < K_tiles; ++tk) {
+      const uint atw = std::min(tile.k, A.width - tk * tile.k);
 
-    for (uint tj = 0; tj < N_tiles; ++tj) {
-      const uint ctw = std::min(tile.n, B.width - tj * tile.n);
-
-      load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
-
-      for (uint tk = 0; tk < K_tiles; ++tk) {
-        const uint atw = std::min(tile.k, A.width - tk * tile.k);
-
-        load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
+      for (uint tj = 0; tj < N_tiles; ++tj) {
+        const uint ctw = std::min(tile.n, B.width - tj * tile.n);
 
         load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
 
-        os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
-      }
+        for (uint ti = 0; ti < M_tiles; ++ti) {
+          const uint cth = std::min(tile.m, A.height - ti * tile.m);
 
-      store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+          load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
+
+          load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+
+          os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+
+          store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+        }
+      }
+    }
+  } else {
+    for (uint ti = 0; ti < M_tiles; ++ti) {
+      const uint cth = std::min(tile.m, A.height - ti * tile.m);
+
+      for (uint tj = 0; tj < N_tiles; ++tj) {
+        const uint ctw = std::min(tile.n, B.width - tj * tile.n);
+
+        load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+
+        for (uint tk = 0; tk < K_tiles; ++tk) {
+          const uint atw = std::min(tile.k, A.width - tk * tile.k);
+
+          load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
+
+          load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
+
+          os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+        }
+
+        store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+      }
     }
   }
 }

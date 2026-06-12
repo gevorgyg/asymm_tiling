@@ -34,6 +34,8 @@ def write_temporary_config(mat_dim, l1_size=512, l1_line=8, l2_size=2048, l2_lin
         
         f.write("L1_REPLACEMENT_POLICY=FIFO\n")
         f.write("L2_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L1_WRITE_POLICY=WRITE_THROUGH\n")
+        f.write("L2_WRITE_POLICY=WRITE_THROUGH\n")
         
         f.write("MEM_ACCESS_CYCLES=180\n")
         f.write("PRNG_ACCESS_CYCLES=2\n")

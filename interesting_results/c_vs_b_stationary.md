@@ -1,6 +1,6 @@
 # C-Stationary vs. B-Stationary Cache Performance Analysis
 
-This document analyzes the architectural tradeoffs between **C-Stationary** (output stationary) and **B-Stationary** (weight stationary) loop orderings in the asymmetric tiled matrix multiplication cache simulator.
+This document analyzes the architectural tradeoffs between **C-Stationary** (output stationary) and **B-Stationary** (weight stationary) loop orderings in the asymmetric tiled matrix multiplication cache simulator, under both **Write-Through** and **Write-Back** policies.
 
 ---
 
@@ -46,49 +46,44 @@ In this approach, the innermost loop runs along the **M-direction** (matrix A he
 
 ---
 
-## Experimental Setup
-* **Matrix Size**: $A$ ($12 \times 12$ elements, 8-byte precision) | $B$ ($12 \times 24$ elements, 2-byte precision)
-* **Tile Size**: $4 \times 8 \times 4$
-* **Tile Count**: $M_{\text{tiles}} = 3$ | $N_{\text{tiles}} = 3$ | $K_{\text{tiles}} = 3$
+## Simulation Results ($16 \times 16$ Matrix, $4 \times 4 \times 4$ Tiles, Large Cache)
+To isolate the effects of the write policies without capacity issues, we evaluated both loop orderings using:
+* **Matrix Size**: $A$ ($16 \times 16$, 8B precision) | $B$ ($16 \times 16$, 2B precision)
+* **Tile Size**: $4 \times 4 \times 4$
 * **Cache Setup**: 8 KB L1 (LRU) | 32 KB L2 (LRU)
-* **Memory Policy**: Write-through, no-allocate
 
----
+### 1. Memory-backed B Matrix (Normal Mode)
+| Policy | Loop Ordering | Total L1 Lookups | Total Cycles | Comparison |
+| :--- | :--- | :---: | :---: | :---: |
+| **Write-Through** | C-Stationary | 1,152 | **172,480** | Baseline |
+| **Write-Through** | B-Stationary | 1,440 | **325,312** | **1.89x slower** |
+| **Write-Back** | C-Stationary | 1,856 | **122,560** | **1.41x speedup** |
+| **Write-Back** | B-Stationary | 2,176 | **125,632** | **2.59x speedup** (Almost matches C-Stationary) |
 
-## Simulation Results
-
-### 1. Normal Mode (Memory-backed B Matrix)
-| Metric | C-Stationary | B-Stationary | Comparison |
-| :--- | :---: | :---: | :---: |
-| **L1 Hit Rate** | 34.6% | 44.1% | +9.5% for B-Stationary |
-| **L2 Hit Rate** | 35.3% | 38.7% | +3.4% for B-Stationary |
-| **L1 Tag Lookups** | 1,872 | 2,448 | +30.8% for B-Stationary |
-| **Total Cycles** | **220,248** | **445,032** | **2.02x slower** for B-Stationary |
-
-### 2. PRNG Mode (On-the-Fly B Generation)
-| Metric | C-Stationary | B-Stationary | Comparison |
-| :--- | :---: | :---: | :---: |
-| **L1 Hit Rate** | 34.6% | 44.1% | +9.5% for B-Stationary |
-| **L2 Hit Rate** | 57.1% | 40.0% | -17.1% for B-Stationary |
-| **PRNG Generations** | 28 | 36 | +28.5% for B-Stationary |
-| **PRNG Regenerations** | **188** | **36** | **5.2x fewer** for B-Stationary |
-| **Total Cycles** | **166,464** | **435,744** | **2.62x slower** for B-Stationary |
+### 2. On-the-Fly B Generation (PRNG Mode)
+| Policy | Loop Ordering | PRNG Regenerations | Total Cycles | Comparison |
+| :--- | :--- | :---: | :---: | :---: |
+| **Write-Through** | C-Stationary | 64 | **164,224** | Baseline |
+| **Write-Through** | B-Stationary | 16 | **317,056** | **1.93x slower** (Despite 4x fewer regenerations) |
+| **Write-Back** | C-Stationary | 64 | **114,304** | **1.44x speedup** |
+| **Write-Back** | B-Stationary | 16 | **117,376** | **2.70x speedup** (Almost matches C-Stationary) |
 
 ---
 
 ## Analysis & Architectural Conclusions
 
-### Why B-Stationary succeeded in its goal:
-In the standard C-stationary mode under PRNG generation, B elements are evicted from L1 and must be re-generated constantly because B tiles are loaded repeatedly across M-tiles. This causes a massive **188 regenerations** on the PRNG device.
-Under B-stationary mode, since a B tile is kept stationary in the register file, we only load it once. The PRNG regenerations drop down to **36** (a 5.2x reduction), proving the weight-stationary approach holds B in the register file exactly as intended.
+### 1. The Write-Through Bottleneck in B-Stationary
+Under a **Write-Through** policy, B-Stationary performs poorly because it writes Matrix $C$'s partial sums to memory at every innermost loop step (64 writes vs. 1 write per tile in C-Stationary). Since $C$ has high precision (8 bytes) and writes always propagate to main memory, the write latency dominates the execution time, making B-Stationary nearly **2x slower** than C-Stationary.
 
-### Why B-Stationary performed worse overall:
-Despite the reduction in PRNG regenerations and better L1 hit rates, B-stationary takes **more than double the clock cycles**. This is due to the interaction of two factors:
-1. **Partial Sum Traffic**: C-stationary reads and writes each tile of $C$ exactly once ($2 \times M_{\text{tiles}} \times N_{\text{tiles}} = 18$ tile accesses). B-stationary must read and write $C$ at *every* outer $K$-step to accumulate the partial sums, resulting in $2 \times M_{\text{tiles}} \times N_{\text{tiles}} \times K_{\text{tiles}} = 54$ tile accesses (a 3x increase in $C$ memory traffic).
-2. **Write-Through Penalty**: Because matrix $C$ is stored with 8-byte precision and the cache uses a write-through policy, every store of $C$ must traverse to L2 and Main Memory. The latency of these high-frequency writes completely dominates the execution time, eclipsing any benefits from PRNG generation savings.
+### 2. The Write-Back Solution
+When we enable a **Write-Back + Write-Allocate** policy:
+* Writes to $C$ are cached in L1 and marked as dirty. They do **not** generate write traffic to L2 or Main Memory until the line is evicted.
+* Since the tile footprint fits in the 8 KB L1 cache, L1 absorbs all write traffic.
+* This resolves the write bottleneck of B-Stationary, causing its cycle count to drop from **317,056 to 117,376** (a **2.7x performance speedup**).
 
-### Design Recommendation:
-For architectures with write-through/no-allocate policies and high-precision output matrices, **Output-Stationary (C-Stationary)** loop nesting is superior due to its minimization of write-traffic. B-Stationary would only become viable if:
-* The cache used a **write-back** policy (absorbing partial sum updates locally in L1/L2).
-* Matrix $C$ had lower precision than Matrix $B$.
-* PRNG regeneration cost was extremely high (e.g. $> 500$ cycles per line).
+### 3. Why B-Stationary is still slightly slower under Write-Back
+Even when all accesses are L1 cache hits, B-Stationary requires **272 instructions** to process the tiles (due to loading/storing $C$ inside the innermost loops) whereas C-Stationary only requires **194 instructions** (since $C$ stays stationary in a register). The extra 78 instructions add a small overhead of ~3,000 clock cycles.
+
+### Summary
+* Use **C-Stationary** if the hardware has a **Write-Through** cache to minimize write traffic.
+* If the hardware supports a **Write-Back** cache, **B-Stationary** becomes highly competitive and is the superior choice if B-matrix generations are exceptionally expensive.

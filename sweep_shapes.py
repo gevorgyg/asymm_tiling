@@ -36,6 +36,8 @@ def write_config():
         
         f.write("L1_REPLACEMENT_POLICY=FIFO\n")
         f.write("L2_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L1_WRITE_POLICY=WRITE_THROUGH\n")
+        f.write("L2_WRITE_POLICY=WRITE_THROUGH\n")
         
         f.write("MEM_ACCESS_CYCLES=180\n")
         f.write("PRNG_ACCESS_CYCLES=2\n")

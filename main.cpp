@@ -85,6 +85,19 @@ std::string getConfigStr(const std::string& key)
     return it->second;
 }
 
+
+WritePolicy parseWritePolicy(const std::string& str)
+{
+    if (str == "WRITE_THROUGH") {
+        return WritePolicy::WRITE_THROUGH;
+    } else if (str == "WRITE_BACK") {
+        return WritePolicy::WRITE_BACK;
+    } else {
+        std::cerr << "error: unknown write policy: " << str << std::endl;
+        exit(1);
+    }
+}
+
 static InstGenerator makeGen()
 {
     return InstGenerator{InstGenerator::Params{
@@ -96,7 +109,7 @@ static InstGenerator makeGen()
     }};
 }
 
-void generateInstructions(uint m, uint n, uint k)
+void generateInstructions(uint m, uint n, uint k, bool b_stationary)
 {
     InstGenerator gen = makeGen();
 
@@ -106,12 +119,13 @@ void generateInstructions(uint m, uint n, uint k)
     }
 
     InstGenerator::TileShape tile{m, n, k};
-    gen.generate(tile, ofs);
+    gen.generate(tile, ofs, b_stationary);
 }
 
 int main(int argc, char* argv[])
 {
     bool b_generated = false;
+    bool b_stationary = false;
     uint dims[3];
     int positional = 0;
     std::string trace_file_path;
@@ -122,6 +136,8 @@ int main(int argc, char* argv[])
         std::string arg = argv[i];
         if (arg == "--Bgenerated") {
             b_generated = true;
+        } else if (arg == "--Bstationary") {
+            b_stationary = true;
         } else if (arg == "--trace_file") {
             if (i + 1 >= argc) {
                 std::cerr << "--trace_file requires a filename" << std::endl;
@@ -158,7 +174,7 @@ int main(int argc, char* argv[])
 
     if (positional != 3) {
         std::cerr << "usage: " << argv[0]
-                  << " [--Bgenerated] [--trace_file <file>] "
+                  << " [--Bgenerated] [--Bstationary] [--trace_file <file>] "
                      "[--trace_level <0|1|2>] [--config <file>] <m> <n> <k>"
                   << std::endl;
         exit(1);
@@ -178,17 +194,19 @@ int main(int argc, char* argv[])
 
     MemoryHierarchy::Parameters mp{
 
-        .l1               = {.name      = "L1",
-                             .size      = getConfig("L1_SIZE_BYTES"),
-                             .line_size = getConfig("L1_LINE_SIZE_BYTES"),
-                             .assoc     = getConfig("L1_ASSOC")},
+        .l1               = {.name         = "L1",
+                             .size         = getConfig("L1_SIZE_BYTES"),
+                             .line_size    = getConfig("L1_LINE_SIZE_BYTES"),
+                             .assoc        = getConfig("L1_ASSOC"),
+                             .write_policy = parseWritePolicy(getConfigStr("L1_WRITE_POLICY"))},
         .l1_access_cycles = getConfig("L1_ACCESS_CYCLES"),
         .l1_policy        = getConfigStr("L1_REPLACEMENT_POLICY"),
 
-        .l2               = {.name      = "L2",
-                             .size      = getConfig("L2_SIZE_BYTES"),
-                             .line_size = getConfig("L2_LINE_SIZE_BYTES"),
-                             .assoc     = getConfig("L2_ASSOC")},
+        .l2               = {.name         = "L2",
+                             .size         = getConfig("L2_SIZE_BYTES"),
+                             .line_size    = getConfig("L2_LINE_SIZE_BYTES"),
+                             .assoc        = getConfig("L2_ASSOC"),
+                             .write_policy = parseWritePolicy(getConfigStr("L2_WRITE_POLICY"))},
         .l2_access_cycles = getConfig("L2_ACCESS_CYCLES"),
         .l2_policy        = getConfigStr("L2_REPLACEMENT_POLICY"),
 
@@ -205,7 +223,7 @@ int main(int argc, char* argv[])
     size_t cpu_cycles = 0;
     MemoryHierarchy mem(mp);
 
-    generateInstructions(dims[0], dims[1], dims[2]);
+    generateInstructions(dims[0], dims[1], dims[2], b_stationary);
 
     Interpeter::Options opts{
         .trace_file_path = trace_file_path,
