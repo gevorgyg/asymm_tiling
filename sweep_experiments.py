@@ -17,7 +17,7 @@ tile_sizes = [4, 8, 16, 32, 64]
 l1_hit_rates = []
 l2_hit_rates = []
 
-def write_temporary_config(l1_size=512, l1_line=16, l2_size=2048, l2_line=16):
+def write_temporary_config(l1_size=8192, l1_line=16, l2_size=32768, l2_line=16):
     """Generates a transient configuration file including both L1 and L2 parameters."""
     with open(TEMP_CONFIG, "w") as f:
         f.write(f"A_HEIGHT_DIM={A_HEIGHT}\n")
@@ -38,6 +38,9 @@ def write_temporary_config(l1_size=512, l1_line=16, l2_size=2048, l2_line=16):
         f.write("L2_ASSOC=8\n")
         f.write("L2_ACCESS_CYCLES=15\n")
         
+        f.write("L1_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L2_REPLACEMENT_POLICY=FIFO\n")
+        
         f.write("MEM_ACCESS_CYCLES=180\n")
         f.write("PRNG_ACCESS_CYCLES=2\n")
         f.write("PRNG_GEN_COST_PER_LINE=64\n")
@@ -47,7 +50,7 @@ print("Starting Asymmetric Tiling Hierarchy Sweep Execution")
 print("====================================================")
 
 # Establish architecture characteristics
-write_temporary_config(l1_size=512, l1_line=8, l2_size=2048, l2_line=8)
+write_temporary_config(l1_size=8192, l1_line=8, l2_size=32768, l2_line=8)
 
 for tile in tile_sizes:
     cmd = [
@@ -85,8 +88,8 @@ print("\nProcessing multi-level analytical performance plots...")
 
 # Render both curves
 plt.figure(figsize=(10, 6))
-plt.plot(tile_sizes, l1_hit_rates, marker='o', linestyle='-', color='#1f77b4', linewidth=2.5, label='L1 Cache (512 B)')
-plt.plot(tile_sizes, l2_hit_rates, marker='s', linestyle='--', color='#ff7f0e', linewidth=2.5, label='L2 Cache (2 KB)')
+plt.plot(tile_sizes, l1_hit_rates, marker='o', linestyle='-', color='#1f77b4', linewidth=2.5, label='L1 Cache (8 KB)')
+plt.plot(tile_sizes, l2_hit_rates, marker='s', linestyle='--', color='#ff7f0e', linewidth=2.5, label='L2 Cache (32 KB)')
 
 plt.title("Multi-Level Cache Footprint Analysis on Swept Tiling Layouts\n(Asymmetric Mixed-Precision Stream Matrix Multiplication)", fontsize=12, fontweight='bold', pad=12)
 plt.xlabel("Tile Block Size Parameters (M = N = K)", fontsize=11)

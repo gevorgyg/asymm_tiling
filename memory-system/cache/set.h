@@ -30,6 +30,7 @@ class Set
     CacheLine* lookup(Addr line_addr);
     void       insert(Addr line_addr);
     void       remove(Addr line_addr);
+    void       touch(Addr line_addr);
 
     // Exposed so eviction policies can iterate in insertion order
     // (front = oldest, back = newest).

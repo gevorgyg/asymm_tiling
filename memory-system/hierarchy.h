@@ -5,6 +5,8 @@
 #include "memory_object.h"
 #include "prng.h"
 
+#include <string>
+
 
 // Sits between L1 and L2: addresses inside the PRNG window are served by the
 // generator, everything else falls through to L2. Pure wiring, zero cost.
@@ -33,11 +35,14 @@ class MemoryHierarchy : public MemoryObject
     struct Parameters {
         Cache::InitParameters l1;
         uint l1_access_cycles;
+        std::string l1_policy;
         Cache::InitParameters l2;
         uint l2_access_cycles;
+        std::string l2_policy;
         uint mem_access_cycles;
         PrngDev::InitParameters prng;
     };
+
 
     explicit MemoryHierarchy(Parameters p);
 

@@ -85,9 +85,11 @@ void Cache::TagLookup::perform(Trace& /*trace*/)
     ++cache_.stats_.tag_lookups;
 
     const Addr line = cache_.lineAddr(byte_addr_);
-    if (cache_.setFor(byte_addr_).lookup(line)) {
+    Set& set = cache_.setFor(byte_addr_);
+    if (set.lookup(line)) {
         hit_ = true;
         ++cache_.stats_.hits;
+        cache_.policy_->recordAccess(set, line);
     } else {
         hit_ = false;
         ++cache_.stats_.misses;

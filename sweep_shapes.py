@@ -34,6 +34,9 @@ def write_config():
         f.write("L2_ASSOC=8\n")
         f.write("L2_ACCESS_CYCLES=15\n")
         
+        f.write("L1_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L2_REPLACEMENT_POLICY=FIFO\n")
+        
         f.write("MEM_ACCESS_CYCLES=180\n")
         f.write("PRNG_ACCESS_CYCLES=2\n")
         f.write("PRNG_GEN_COST_PER_LINE=64\n")

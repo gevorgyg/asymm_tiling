@@ -15,7 +15,7 @@ B_WIDTH = 128
 # Tile sizes to sweep
 tile_sizes = [4, 8, 16, 32, 64]
 
-def write_temporary_config(l1_size=512, l1_line=8, l2_size=2048, l2_line=8):
+def write_temporary_config(l1_size=8192, l1_line=8, l2_size=32768, l2_line=8):
     """Generates a transient configuration file including both L1 and L2 parameters."""
     with open(TEMP_CONFIG, "w") as f:
         f.write(f"A_HEIGHT_DIM={A_HEIGHT}\n")
@@ -35,6 +35,9 @@ def write_temporary_config(l1_size=512, l1_line=8, l2_size=2048, l2_line=8):
         f.write(f"L2_LINE_SIZE_BYTES={l2_line}\n")
         f.write("L2_ASSOC=8\n")
         f.write("L2_ACCESS_CYCLES=15\n")
+        
+        f.write("L1_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L2_REPLACEMENT_POLICY=FIFO\n")
         
         f.write("MEM_ACCESS_CYCLES=180\n")
         f.write("PRNG_ACCESS_CYCLES=2\n")
@@ -104,10 +107,15 @@ print("\nGenerating performance plots...")
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7.5))
 
 # Plot Cache Hit Rates
-ax1.plot(tile_sizes, normal_l1_hits, marker='o', linestyle='-', color='#1f77b4', linewidth=2, label='Normal L1 (512 B)')
-ax1.plot(tile_sizes, normal_l2_hits, marker='s', linestyle='--', color='#ff7f0e', linewidth=2, label='Normal L2 (2 KB)')
-ax1.plot(tile_sizes, prng_l1_hits, marker='^', linestyle='-', color='#2ca02c', linewidth=2, label='PRNG L1 (512 B)')
-ax1.plot(tile_sizes, prng_l2_hits, marker='d', linestyle='--', color='#d62728', linewidth=2, label='PRNG L2 (2 KB)')
+# Offset PRNG slightly to prevent perfect overlap with Normal (since values are identical)
+prng_l1_hits_offset = [h + 0.008 for h in prng_l1_hits]
+prng_l2_hits_offset = [h + 0.008 for h in prng_l2_hits]
+
+ax1.plot(tile_sizes, normal_l1_hits, marker='o', markersize=8, linestyle='-', color='#1f77b4', linewidth=3, label='Normal L1 (8 KB)')
+ax1.plot(tile_sizes, normal_l2_hits, marker='s', markersize=8, linestyle='--', color='#ff7f0e', linewidth=3, label='Normal L2 (32 KB)')
+ax1.plot(tile_sizes, prng_l1_hits_offset, marker='^', markersize=5, linestyle=':', color='#2ca02c', linewidth=1.5, label='PRNG L1 (8 KB, offset +0.008)')
+ax1.plot(tile_sizes, prng_l2_hits_offset, marker='d', markersize=5, linestyle=':', color='#d62728', linewidth=1.5, label='PRNG L2 (32 KB, offset +0.008)')
+
 
 ax1.set_title("Cache Hit Rates Comparison", fontsize=12, fontweight='bold', pad=10)
 ax1.set_xlabel("Tile Block Size Parameters (M = N = K)", fontsize=11)
@@ -129,7 +137,7 @@ ax2.set_ylabel("Execution Cycles (Millions)", fontsize=11)
 ax2.grid(True, linestyle='--', alpha=0.5)
 ax2.legend(fontsize=10, loc="best")
 
-plt.suptitle("Performance Comparison: Standard vs. On-the-Fly PRNG Matrix Multiplication\n(Matrix A: 128x128 [8B precision] | Matrix B: 128x128 [2B precision] | Cache: 512B L1, 2KB L2)", fontsize=14, fontweight='bold')
+plt.suptitle("Performance Comparison: Standard vs. On-the-Fly PRNG Matrix Multiplication\n(Matrix A: 128x128 [8B precision] | Matrix B: 128x128 [2B precision] | Cache: 8KB L1, 32KB L2)", fontsize=14, fontweight='bold')
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 
 os.makedirs("plots", exist_ok=True)

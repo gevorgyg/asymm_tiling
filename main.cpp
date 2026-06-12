@@ -16,6 +16,7 @@ constexpr char instruction_path[] = "./matmul.matv";
 
 // Global dictionary to hold configuration key-value pairs
 std::map<std::string, uint> g_config;
+std::map<std::string, std::string> g_config_str;
 
 void loadConfigFile(const std::string& path)
 {
@@ -39,6 +40,21 @@ void loadConfigFile(const std::string& path)
         std::string key     = line.substr(0, sep);
         std::string val_str = line.substr(sep + 1);
 
+        // Trim horizontal whitespaces from key and value
+        size_t key_start = key.find_first_not_of(" \t");
+        size_t key_end = key.find_last_not_of(" \t");
+        if (key_start != std::string::npos && key_end != std::string::npos) {
+            key = key.substr(key_start, key_end - key_start + 1);
+        }
+
+        size_t val_start = val_str.find_first_not_of(" \t");
+        size_t val_end = val_str.find_last_not_of(" \t");
+        if (val_start != std::string::npos && val_end != std::string::npos) {
+            val_str = val_str.substr(val_start, val_end - val_start + 1);
+        }
+
+        g_config_str[key] = val_str;
+
         std::stringstream ss(val_str);
         uint val;
         if (ss >> val) {
@@ -53,6 +69,16 @@ uint getConfig(const std::string& key)
 {
     auto it = g_config.find(key);
     if (it == g_config.end()) {
+        std::cerr << "error: missing required config key: " << key << std::endl;
+        exit(1);
+    }
+    return it->second;
+}
+
+std::string getConfigStr(const std::string& key)
+{
+    auto it = g_config_str.find(key);
+    if (it == g_config_str.end()) {
         std::cerr << "error: missing required config key: " << key << std::endl;
         exit(1);
     }
@@ -157,12 +183,14 @@ int main(int argc, char* argv[])
                              .line_size = getConfig("L1_LINE_SIZE_BYTES"),
                              .assoc     = getConfig("L1_ASSOC")},
         .l1_access_cycles = getConfig("L1_ACCESS_CYCLES"),
+        .l1_policy        = getConfigStr("L1_REPLACEMENT_POLICY"),
 
         .l2               = {.name      = "L2",
                              .size      = getConfig("L2_SIZE_BYTES"),
                              .line_size = getConfig("L2_LINE_SIZE_BYTES"),
                              .assoc     = getConfig("L2_ASSOC")},
         .l2_access_cycles = getConfig("L2_ACCESS_CYCLES"),
+        .l2_policy        = getConfigStr("L2_REPLACEMENT_POLICY"),
 
         .mem_access_cycles = getConfig("MEM_ACCESS_CYCLES"),
 
