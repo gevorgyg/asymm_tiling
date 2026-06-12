@@ -129,6 +129,7 @@ int main(int argc, char* argv[])
     uint dims[3];
     int positional = 0;
     std::string trace_file_path;
+    std::string trace_input_path = "";
     std::string config_file_path = "";
     int trace_level = Interpeter::trace_actions;
 
@@ -144,6 +145,12 @@ int main(int argc, char* argv[])
                 exit(1);
             }
             trace_file_path = argv[++i];
+        } else if (arg == "--trace_input") {
+            if (i + 1 >= argc) {
+                std::cerr << "--trace_input requires a filename" << std::endl;
+                exit(1);
+            }
+            trace_input_path = argv[++i];
         } else if (arg == "--trace_level") {
             if (i + 1 >= argc) {
                 std::cerr << "--trace_level requires a level (0=instructions, "
@@ -175,7 +182,7 @@ int main(int argc, char* argv[])
     if (positional != 3) {
         std::cerr << "usage: " << argv[0]
                   << " [--Bgenerated] [--Bstationary] [--trace_file <file>] "
-                     "[--trace_level <0|1|2>] [--config <file>] <m> <n> <k>"
+                     "[--trace_level <0|1|2>] [--config <file>] [--trace_input <file>] <m> <n> <k>"
                   << std::endl;
         exit(1);
     }
@@ -223,13 +230,18 @@ int main(int argc, char* argv[])
     size_t cpu_cycles = 0;
     MemoryHierarchy mem(mp);
 
-    generateInstructions(dims[0], dims[1], dims[2], b_stationary);
+    std::string run_path = instruction_path;
+    if (!trace_input_path.empty()) {
+        run_path = trace_input_path;
+    } else {
+        generateInstructions(dims[0], dims[1], dims[2], b_stationary);
+    }
 
     Interpeter::Options opts{
         .trace_file_path = trace_file_path,
         .trace_level     = static_cast<Interpeter::TraceLevel>(trace_level),
     };
-    Interpeter inter(instruction_path, mem, opts, cpu_cycles);
+    Interpeter inter(run_path, mem, opts, cpu_cycles);
 
     std::cout << "----------------------------" << std::endl;
     std::cout << dims[0] << ' ' << dims[1] << ' ' << dims[2] << std::endl;

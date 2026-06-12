@@ -14,6 +14,10 @@ DEPS := $(GEN_DIR)/instgen.h \
         $(CACHE_DIR)/set.h $(CACHE_DIR)/eviction_policy.h $(CACHE_DIR)/cache.h \
         utils.h
 
+TEST_SRCS := tests/unit_tests.cpp \
+             $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp $(CACHE_DIR)/cache.cpp \
+             $(MEM_DIR)/mainmem.cpp $(MEM_DIR)/hierarchy.cpp $(MEM_DIR)/prng.cpp
+
 all: main
 
 debug: main_d
@@ -24,5 +28,13 @@ main: $(DEPS)
 main_d: $(DEPS)
 	g++ -std=c++17 $(SRCS) -o asymm -g
 
+unit_tests: $(DEPS) tests/unit_tests.cpp
+	g++ -std=c++17 $(TEST_SRCS) -o tests/unit_tests -I. -g
+
+test: main unit_tests
+	./tests/unit_tests
+	.venv/bin/python3 tests/run_tests.py
+
 clean:
-	rm -f asymm matmul.matv
+	rm -f asymm matmul.matv tests/unit_tests
+
