@@ -4,6 +4,8 @@ This report compares execution cycles and L1 cache hit rates between the **PRNG 
 
 The experiment is conducted under **C-Stationary** loop ordering with a Write-Back cache policy.
 
+![PRNG vs. Non-PRNG Cycles Comparison](prng_vs_mem_comparison.png)
+
 ---
 
 ## 1. Experimental Results
@@ -45,7 +47,7 @@ The experiment is conducted under **C-Stationary** loop ordering with a Write-Ba
 ### 2. PRNG Speedup Scales with Precision
 * As B precision increases, the PRNG speedup grows significantly:
   * At **1 Byte**, B is compact, so spatial reuse in cache lines is high. This keeps the number of B cache misses relatively low, yielding a **1.14x to 1.20x** speedup.
-  * At **8 Bytes**, B elements are double-precision, which means zero spatial reuse (only 1 element fits per cache line). This triggers a massive number of cache misses on B. In Non-PRNG mode, each miss costs 180 cycles. In PRNG mode, we only pay the 64-cycle line generation cost once, and subsequent hits cost 2 cycles. This results in a massive **1.70x to 2.16x** speedup (saving up to 11.2 million cycles!).
+  * At **8 Bytes**, B elements are double-precision, which means zero spatial reuse (only 1 element fits per cache line). This triggers a massive number of cache misses on B. In Non-PRNG mode, every miss costs 180 cycles. In PRNG mode, we only pay the 64-cycle line generation cost once, and subsequent hits cost 2 cycles. This results in a massive **1.70x to 2.16x** speedup (saving up to 11.2 million cycles!).
 
 ### 3. Tiling footprint bottleneck in Combined (24x48x16)
 * Even though $M=24$ and $N=48$ were the best individual sweep coordinates, combining them to $24 \times 48 \times 16$ is actually slower than the $16 \times 48 \times 16$ shape (e.g. 7.749M vs 6.066M cycles for 1B PRNG).
