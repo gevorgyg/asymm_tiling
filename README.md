@@ -1,13 +1,36 @@
 # Asymmetric Matrix Multiplication Sim
 ## Usage
 ```
-./asimm <m> <n> <k> [--Bgenerated] [--trace_file <file>]
+./asymm <m> <n> <k> [--Bgenerated] [--config <file>] [--trace_file <file>] [--trace_level <0|1|2>]
 ```
 
 ### Flags:
 - `--Bgenerated` - simulate generating B from a PRNG device (the default mode is
   that both A and B are stored in memory)
-- `--trace_file <file>` - store trace (cache actions) into a file
+- `--config <file>` - configuration file with hardware parameters (see
+  `default.config`); required
+- `--trace_file <file>` - store the execution trace into a file
+- `--trace_level <0|1|2>` - trace verbosity (only meaningful with
+  `--trace_file`); each level includes everything from the levels above it.
+  Default is 2.
+  - `0` (instructions): one line per ISA instruction with its cycle total, e.g.
+    `ltea (0x480, 8, 3, 24, 2), %rb    # 532 cy`
+  - `1` (accesses): adds one indented line per element read/write, e.g.
+    `  read  @0x480 (70 cy)`
+  - `2` (actions): adds every device Action, e.g.
+    `    L1 TagLookup @0x480 MISS (4 cy)` / `    PRNG Generate line @0x480 (64 cy)`
+
+### Input constraints:
+- Tile dims must divide matrix dims: `m | A_HEIGHT_DIM`, `n | B_WIDTH_DIM`,
+  `k | A_WIDTH_DIM`.
+- With `--Bgenerated`, a B tile row must be a whole number of cache lines:
+  `n * B_PRECISION_BYTES` must be a multiple of `L1_LINE_SIZE_BYTES`
+  (e.g. with a line of 8 and 2-byte B elements, n must be a multiple of 4).
+  Partial-line tile rows are deliberately unsupported for now.
+- With `--Bgenerated`, the PRNG window (B's address range, which starts right
+  after A at `A_HEIGHT_DIM * A_WIDTH_DIM * A_PRECISION_BYTES`) must be
+  line-aligned: A's byte size and B's byte size must be multiples of
+  `L1_LINE_SIZE_BYTES`.
 
 ## TODO:
 - block diagram.  
@@ -33,7 +56,76 @@
        think it can be simplified (especially for our purposes). Maybe there is
        more room for simplification.~~
 
+## Code Map (WARNING! AI-GENERATED!)
+```
+                                    ./asymm [--Bgenerated] [--config f] [--trace_file f] <m> <n> <k>
+                                                            │
+                                                            v
+  ┌──────────────────────────────────────────────────── main.cpp ────────────────────────────────────────────────────┐
+  │                                                                                                                  │
+  │   default.config ──> loadConfigFile() ──> g_config map ──> getConfig(key)                                        │
+  │        │                                                                                                         │
+  │        ├────────────> matrix dims/precisions ──────────────┐                                                     │
+  │        └────────────> cache + mem + prng parameters ───────┼──────────────┐                                      │
+  │                                                            │              │                                      │
+  │   --Bgenerated ──> prng.window_bytes = B bytes (else 0) ───┘              │                                      │
+  └───────────────────────────────────────────────────────────┼──────────────┼──────────────────────────────────────┘
+                                                               │              │
+                              ┌────────────────────────────────┘              │
+                              v                                               v
+                ┌── InstGenerator ──────────────┐                ┌── MemoryHierarchy ctor ──┐
+                │ GhostMat A @0x0               │                │ builds devices, wires    │
+                │ GhostMat B @A.bytes           │                │ the topology below       │
+                │ GhostMat C @A.bytes+B.bytes   │                └──────────────────────────┘
+                │                               │
+                │ emitTrace(tile m,n,k):        │
+                │   ltea / tmulac / tmov stream │      (stream is identical with and
+                └───────────────┬───────────────┘       without PRNG -- routing is hardware)
+                                v
+                          matmul.matv  (text ISA)
+                                │
+                                v
+  ┌─────────────────────────── Interpeter::run() ────────────────────────────────────────────────────────────────────┐
+  │  readCmd() ── ltea ───> handleTload():  check PRNG tile-row % line_size == 0;                                     │
+  │            │            set vec_reg; doRead() per element of tile                                                 │
+  │            ├─ tmov ───> handleTmove():  set vec_reg; doWrite() per element                                        │
+  │            └─ tmulac ─> handleMulAcc(): register-only -- validates tile shapes, no memory traffic                 │
+  │                                                                                                                   │
+  │  doRead/doWrite: Trace t; mem_.read/write(addr, elem_width, t);                                                   │
+  │                  cpu_cycles_ += totalCycles(t);  buffered per instruction ──> --trace_file (per --trace_level)    │
+  └───────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┘
+                                      v
+  ┌────────────────────────── MemoryHierarchy ───────────────────────────────────┐
+  │                                                                              │
+  │      read/write(addr)                                                        │
+  │            │                                                                 │
+  │            v                                                                 │
+  │        ┌────────┐  hit: TagLookup, done                                      │
+  │        │   L1   │ ───────────────────────────> Trace: [TagLookup]            │
+  │        └───┬────┘                                                            │
+  │            │ miss                                                            │
+  │            v                                                                 │
+  │      ┌────────────┐   addr in [B_base, B_end)?                               │
+  │      │ AddrRouter │ ──────────────┬──────────────────┐                       │
+  │      └────────────┘               │ yes               │ no                   │
+  │                                   v                   v                      │
+  │                            ┌────────────┐       ┌────────┐ miss  ┌─────────┐ │
+  │                            │  PrngDev   │       │   L2   │ ────> │ MainMem │ │
+  │                            │ IsGenerated│       └────────┘       └─────────┘ │
+  │                            │ Generate   │                                    │
+  │                            └────────────┘                                    │
+  │                                   │                   │                      │
+  │            ┌──────────────────────┴───────────────────┘                      │
+  │            v                                                                 │
+  │   back in L1: LineFill (+ Evict if set full)                                 │
+  │   Trace: [TagLookup, IsGenerated, Generate, LineFill, Evict?]   (PRNG path)  │
+  │   Trace: [TagLookup, TagLookup, MemoryAccess?, LineFill(s), …]  (mem path)   │
+  └───────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      v
+                    main: print L1/L2 stats, PRNG gen/regen, total cycles
 
+```
 ## Q&A/Design Considerations:
 
 **Q: What is the input? (m,n,k)**

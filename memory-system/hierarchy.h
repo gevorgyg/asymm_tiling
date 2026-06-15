@@ -1,23 +1,50 @@
 #pragma once
 
-#include "../interpreter/prng_record.h"
 #include "cache/cache.h"
 #include "mainmem.h"
 #include "memory_object.h"
+#include "prng.h"
 
-// PRNG device will live here later
+#include <string>
+
+
+// Sits between L1 and L2: addresses inside the PRNG window are served by the
+// generator, everything else falls through to L2. Pure wiring, zero cost.
+class AddrRouter : public MemoryObject
+{
+  public:
+    AddrRouter(PrngDev& prng, MemoryObject& fallthrough)
+        : MemoryObject(0), prng_(prng), fallthrough_(fallthrough)
+    {
+    }
+
+    void read(Addr addr, size_t size, Trace& trace) override;
+    void write(Addr addr, size_t size, Trace& trace) override;
+
+  private:
+    PrngDev&      prng_;
+    MemoryObject& fallthrough_;
+};
+
+
+// L1 -> AddrRouter -> { PrngDev | L2 -> MainMemory }. PRNG data never reaches
+// L2; an evicted PRNG line is clean and simply regenerated on the next miss.
 class MemoryHierarchy : public MemoryObject
 {
   public:
     struct Parameters {
         Cache::InitParameters l1;
         uint l1_access_cycles;
+        std::string l1_policy;
         Cache::InitParameters l2;
         uint l2_access_cycles;
+        std::string l2_policy;
         uint mem_access_cycles;
+        PrngDev::InitParameters prng;
     };
 
-    explicit MemoryHierarchy(Parameters p, size_t& cpu_cycles);
+
+    explicit MemoryHierarchy(Parameters p);
 
     void read(Addr addr, size_t size, Trace& trace) override;
     void write(Addr addr, size_t size, Trace& trace) override;
@@ -32,28 +59,15 @@ class MemoryHierarchy : public MemoryObject
         return l2_;
     }
 
-    // Public MMIO window controls
-    void startPrng(Addr magic_addr)
+    const PrngDev& prng() const
     {
-        magic_addr_ = magic_addr;
+        return prng_;
     }
-    void stopPrng()
-    {
-        magic_addr_ = 0;
-    }
-    void reseedPrng(Addr base_addr, Trace& trace);
-    Addr getMagicAddr() const
-    {
-        return magic_addr_;
-    }
-
-    static constexpr Addr seed_mem_base = 0x80000000;
 
   private:
     MainMemory mem_;
     Cache l2_;
+    PrngDev prng_;
+    AddrRouter router_;
     Cache l1_;
-
-    PrngDevSim prng_dev_;
-    Addr magic_addr_ = 0;
 };

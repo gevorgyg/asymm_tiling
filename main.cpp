@@ -16,6 +16,7 @@ constexpr char instruction_path[] = "./matmul.matv";
 
 // Global dictionary to hold configuration key-value pairs
 std::map<std::string, uint> g_config;
+std::map<std::string, std::string> g_config_str;
 
 void loadConfigFile(const std::string& path)
 {
@@ -39,6 +40,21 @@ void loadConfigFile(const std::string& path)
         std::string key     = line.substr(0, sep);
         std::string val_str = line.substr(sep + 1);
 
+        // Trim horizontal whitespaces from key and value
+        size_t key_start = key.find_first_not_of(" \t");
+        size_t key_end = key.find_last_not_of(" \t");
+        if (key_start != std::string::npos && key_end != std::string::npos) {
+            key = key.substr(key_start, key_end - key_start + 1);
+        }
+
+        size_t val_start = val_str.find_first_not_of(" \t");
+        size_t val_end = val_str.find_last_not_of(" \t");
+        if (val_start != std::string::npos && val_end != std::string::npos) {
+            val_str = val_str.substr(val_start, val_end - val_start + 1);
+        }
+
+        g_config_str[key] = val_str;
+
         std::stringstream ss(val_str);
         uint val;
         if (ss >> val) {
@@ -59,6 +75,29 @@ uint getConfig(const std::string& key)
     return it->second;
 }
 
+std::string getConfigStr(const std::string& key)
+{
+    auto it = g_config_str.find(key);
+    if (it == g_config_str.end()) {
+        std::cerr << "error: missing required config key: " << key << std::endl;
+        exit(1);
+    }
+    return it->second;
+}
+
+
+WritePolicy parseWritePolicy(const std::string& str)
+{
+    if (str == "WRITE_THROUGH") {
+        return WritePolicy::WRITE_THROUGH;
+    } else if (str == "WRITE_BACK") {
+        return WritePolicy::WRITE_BACK;
+    } else {
+        std::cerr << "error: unknown write policy: " << str << std::endl;
+        exit(1);
+    }
+}
+
 static InstGenerator makeGen()
 {
     return InstGenerator{InstGenerator::Params{
@@ -70,7 +109,7 @@ static InstGenerator makeGen()
     }};
 }
 
-void generateInstructions(uint m, uint n, uint k)
+void generateInstructions(uint m, uint n, uint k, bool b_stationary)
 {
     InstGenerator gen = makeGen();
 
@@ -80,40 +119,51 @@ void generateInstructions(uint m, uint n, uint k)
     }
 
     InstGenerator::TileShape tile{m, n, k};
-    gen.generate(tile, ofs);
-}
-
-void generatePrngInstructions(uint m, uint n, uint k)
-{
-    InstGenerator gen = makeGen();
-
-    std::ofstream ofs(instruction_path);
-    if (!ofs.is_open()) {
-        std::cerr << "error opening file" << std::endl;
-    }
-
-    InstGenerator::TileShape tile{m, n, k};
-    gen.generatePrng(tile, ofs);
+    gen.generate(tile, ofs, b_stationary);
 }
 
 int main(int argc, char* argv[])
 {
     bool b_generated = false;
+    bool b_stationary = false;
     uint dims[3];
     int positional = 0;
     std::string trace_file_path;
+    std::string trace_input_path = "";
     std::string config_file_path = "";
+    int trace_level = Interpeter::trace_actions;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--Bgenerated") {
             b_generated = true;
+        } else if (arg == "--Bstationary") {
+            b_stationary = true;
         } else if (arg == "--trace_file") {
             if (i + 1 >= argc) {
                 std::cerr << "--trace_file requires a filename" << std::endl;
                 exit(1);
             }
             trace_file_path = argv[++i];
+        } else if (arg == "--trace_input") {
+            if (i + 1 >= argc) {
+                std::cerr << "--trace_input requires a filename" << std::endl;
+                exit(1);
+            }
+            trace_input_path = argv[++i];
+        } else if (arg == "--trace_level") {
+            if (i + 1 >= argc) {
+                std::cerr << "--trace_level requires a level (0=instructions, "
+                             "1=accesses, 2=actions)"
+                          << std::endl;
+                exit(1);
+            }
+            trace_level = std::atoi(argv[++i]);
+            if (trace_level < Interpeter::trace_instructions ||
+                trace_level > Interpeter::trace_actions) {
+                std::cerr << "--trace_level must be 0, 1 or 2" << std::endl;
+                exit(1);
+            }
         } else if (arg == "--config") {
             if (i + 1 >= argc) {
                 std::cerr << "--config requires a configuration filename"
@@ -131,8 +181,8 @@ int main(int argc, char* argv[])
 
     if (positional != 3) {
         std::cerr << "usage: " << argv[0]
-                  << " [--Bgenerated] [--trace_file <file>] [--config <file>] "
-                     "<m> <n> <k>"
+                  << " [--Bgenerated] [--Bstationary] [--trace_file <file>] "
+                     "[--trace_level <0|1|2>] [--config <file>] [--trace_input <file>] <m> <n> <k>"
                   << std::endl;
         exit(1);
     }
@@ -142,34 +192,56 @@ int main(int argc, char* argv[])
         loadConfigFile(config_file_path);
     }
 
+    // B lives right after A; with --Bgenerated those addresses are served by
+    // the PRNG device instead of L2/memory. A zero-byte window disables it.
+    const uint a_bytes = getConfig("A_HEIGHT_DIM") * getConfig("A_WIDTH_DIM") *
+                         getConfig("A_PRECISION_BYTES");
+    const uint b_bytes = getConfig("A_WIDTH_DIM") * getConfig("B_WIDTH_DIM") *
+                         getConfig("B_PRECISION_BYTES");
+
     MemoryHierarchy::Parameters mp{
 
-        .l1               = {.name      = "L1",
-                             .size      = getConfig("L1_SIZE_BYTES"),
-                             .line_size = getConfig("L1_LINE_SIZE_BYTES"),
-                             .assoc     = getConfig("L1_ASSOC")},
+        .l1               = {.name         = "L1",
+                             .size         = getConfig("L1_SIZE_BYTES"),
+                             .line_size    = getConfig("L1_LINE_SIZE_BYTES"),
+                             .assoc        = getConfig("L1_ASSOC"),
+                             .write_policy = parseWritePolicy(getConfigStr("L1_WRITE_POLICY"))},
         .l1_access_cycles = getConfig("L1_ACCESS_CYCLES"),
+        .l1_policy        = getConfigStr("L1_REPLACEMENT_POLICY"),
 
-        .l2               = {.name      = "L2",
-                             .size      = getConfig("L2_SIZE_BYTES"),
-                             .line_size = getConfig("L2_LINE_SIZE_BYTES"),
-                             .assoc     = getConfig("L2_ASSOC")},
+        .l2               = {.name         = "L2",
+                             .size         = getConfig("L2_SIZE_BYTES"),
+                             .line_size    = getConfig("L2_LINE_SIZE_BYTES"),
+                             .assoc        = getConfig("L2_ASSOC"),
+                             .write_policy = parseWritePolicy(getConfigStr("L2_WRITE_POLICY"))},
         .l2_access_cycles = getConfig("L2_ACCESS_CYCLES"),
+        .l2_policy        = getConfigStr("L2_REPLACEMENT_POLICY"),
 
         .mem_access_cycles = getConfig("MEM_ACCESS_CYCLES"),
+
+        .prng = {.base_addr         = a_bytes,
+                 .window_bytes      = b_generated ? b_bytes : 0,
+                 .line_size         = getConfig("L1_LINE_SIZE_BYTES"),
+                 .access_cycles     = getConfig("PRNG_ACCESS_CYCLES"),
+                 .gen_cost_per_line = getConfig("PRNG_GEN_COST_PER_LINE")},
 
     };
 
     size_t cpu_cycles = 0;
-    MemoryHierarchy mem(mp, cpu_cycles);
+    MemoryHierarchy mem(mp);
 
-    if (b_generated) {
-        generatePrngInstructions(dims[0], dims[1], dims[2]);
+    std::string run_path = instruction_path;
+    if (!trace_input_path.empty()) {
+        run_path = trace_input_path;
     } else {
-        generateInstructions(dims[0], dims[1], dims[2]);
+        generateInstructions(dims[0], dims[1], dims[2], b_stationary);
     }
 
-    Interpeter inter(instruction_path, mem, trace_file_path, cpu_cycles);
+    Interpeter::Options opts{
+        .trace_file_path = trace_file_path,
+        .trace_level     = static_cast<Interpeter::TraceLevel>(trace_level),
+    };
+    Interpeter inter(run_path, mem, opts, cpu_cycles);
 
     std::cout << "----------------------------" << std::endl;
     std::cout << dims[0] << ' ' << dims[1] << ' ' << dims[2] << std::endl;
@@ -195,6 +267,14 @@ int main(int argc, char* argv[])
     printf("TagLookup: %llu\n", (unsigned long long)s2.tag_lookups);
     printf("LineFill:  %llu\n", (unsigned long long)s2.line_fills);
     printf("Evict:     %llu\n", (unsigned long long)s2.evicts);
+
+    if (b_generated) {
+        const PrngDev::Stats& ps = mem.prng().stats();
+        printf("--- PRNG ---\n");
+        printf("Generate:   %llu\n", (unsigned long long)ps.generates);
+        printf("Regenerate: %llu\n", (unsigned long long)ps.regenerates);
+    }
+
     printf("--- System ---\n");
     printf("Cycles:    %llu\n", (unsigned long long)cpu_cycles);
 

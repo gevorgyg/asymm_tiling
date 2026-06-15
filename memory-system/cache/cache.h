@@ -15,6 +15,12 @@
 // Cache::Evict. They have private access to Cache (nested classes are
 // members), so Cache's public surface stays minimal -- read/write/stats.
 
+enum class WritePolicy {
+    WRITE_THROUGH,
+    WRITE_BACK
+};
+
+
 class Cache : public MemoryObject
 {
   public:
@@ -23,6 +29,7 @@ class Cache : public MemoryObject
         size_t      size;        // total bytes
         size_t      line_size;   // bytes per line
         size_t      assoc;       // ways per set
+        WritePolicy write_policy;
     };
 
     struct Stats {
@@ -55,6 +62,7 @@ class Cache : public MemoryObject
     size_t                          size_;
     size_t                          line_size_;
     size_t                          assoc_;
+    WritePolicy                     write_policy_;
     std::unique_ptr<EvictionPolicy> policy_;
     MemoryObject*                   next_level_;
     std::vector<Set>                sets_;

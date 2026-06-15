@@ -10,9 +10,10 @@
 // LOAD_TILE <Tile ID> <Base Addr> <Width> <Height> <Stride> <Element Width>
 // STORE_TILE <Tile ID> <Dest Addr> <Width> <Height> <Stride> <Element Width>
 // TILE_MUL_ACC <SrcTile1 ID> <SrcTile2 ID> <DestTile ID>
-// START_PRNG_LOADER <magic address>
-// PRNG_LOAD <magic address>
 //
+// Whether B is memory-backed or PRNG-generated is a hardware property (the
+// PRNG window covers B's addresses), so the instruction stream is identical
+// in both modes.
 
 class InstGenerator {
 public:
@@ -50,13 +51,11 @@ public:
 
   explicit InstGenerator(Params p);
 
-  void generate(TileShape tile, std::ostream &os) const;
-
-  void generatePrng(TileShape tile, std::ostream &os) const;
+  void generate(TileShape tile, std::ostream &os, bool b_stationary = false) const;
 
 private:
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                 TileShape tile, std::ostream &os, bool prng) const;
+                 TileShape tile, std::ostream &os, bool b_stationary) const;
 
   // Byte address of element (row, col) inside matrix M.
   Addr tileAddr(const GhostMat &M, uint row, uint col) const;

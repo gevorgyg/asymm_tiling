@@ -28,3 +28,14 @@ void Set::remove(Addr line_addr)
     assert(it != lines_.end());
     lines_.erase(it);
 }
+
+void Set::touch(Addr line_addr)
+{
+    auto it = std::find_if(
+        lines_.begin(), lines_.end(),
+        [&](const CacheLine& l) { return l.lineAddr() == line_addr; });
+    if (it != lines_.end()) {
+        lines_.splice(lines_.end(), lines_, it);
+    }
+}
+

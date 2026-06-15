@@ -8,10 +8,10 @@ EXECUTABLE = "./asymm"
 TEMP_CONFIG = "size_sweep_temp.conf"
 
 # Matrix sizes and tile sizes to sweep
-matrix_sizes = [100, 200, 300]
-tile_sizes = [4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64]
+matrix_sizes = [64, 128, 256]
+tile_sizes = [4, 8, 16, 32, 64]
 
-def write_temporary_config(mat_dim, l1_size=512, l1_line=16, l2_size=2048, l2_line=16):
+def write_temporary_config(mat_dim, l1_size=512, l1_line=8, l2_size=2048, l2_line=8):
     """Generates a transient configuration file for the current matrix dimensions."""
     with open(TEMP_CONFIG, "w") as f:
         f.write(f"A_HEIGHT_DIM={mat_dim}\n")
@@ -32,7 +32,14 @@ def write_temporary_config(mat_dim, l1_size=512, l1_line=16, l2_size=2048, l2_li
         f.write("L2_ASSOC=8\n")
         f.write("L2_ACCESS_CYCLES=15\n")
         
+        f.write("L1_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L2_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L1_WRITE_POLICY=WRITE_THROUGH\n")
+        f.write("L2_WRITE_POLICY=WRITE_THROUGH\n")
+        
         f.write("MEM_ACCESS_CYCLES=180\n")
+        f.write("PRNG_ACCESS_CYCLES=2\n")
+        f.write("PRNG_GEN_COST_PER_LINE=64\n")
 
 def run_simulation(tile):
     """Runs a single simulation and parses L1 hit rate and CPU cycles."""
@@ -102,9 +109,10 @@ for idx, size in enumerate(matrix_sizes):
     ax2.plot(tile_sizes, cycles_m, marker=markers[idx], linestyle='-', 
              color=colors[idx], linewidth=2.5, label=f'{size}x{size} Matrix')
 
-ax2.set_title("Simulated Clock Cycles (Millions)", fontsize=12, fontweight='bold', pad=10)
+ax2.set_title("Simulated Clock Cycles", fontsize=12, fontweight='bold', pad=10)
 ax2.set_xlabel("Tile Block Size Parameters (M = N = K)", fontsize=11)
-ax2.set_ylabel("Execution Cycles (Millions)", fontsize=11)
+ax2.set_ylabel("Execution Cycles (Log Scale)", fontsize=11)
+ax2.set_yscale('log')
 ax2.grid(True, linestyle='--', alpha=0.5)
 ax2.legend(fontsize=10, loc="best")
 

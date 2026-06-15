@@ -7,12 +7,12 @@ EXECUTABLE = "./asymm"
 TEMP_CONFIG = "shape_sweep.conf"
 
 # Matrix definition constraints (500x500 layout)
-MATRIX_DIM = 100
+MATRIX_DIM = 128
 PRECISION_A = 8  
 PRECISION_B = 1  
 
 # Valid matrix divisors to iterate over
-sweep_steps = [5, 10, 20, 25, 50, 100]
+sweep_steps = [8, 16, 32, 64, 128]
 
 def write_config():
     with open(TEMP_CONFIG, "w") as f:
@@ -24,17 +24,24 @@ def write_config():
         
         # L1 Setup (4 KB Layout)
         f.write("L1_SIZE_BYTES=4096\n")
-        f.write("L1_LINE_SIZE_BYTES=64\n")
+        f.write("L1_LINE_SIZE_BYTES=8\n")
         f.write("L1_ASSOC=4\n")
         f.write("L1_ACCESS_CYCLES=4\n")
         
         # New L2 Setup (16 KB Layout)
         f.write("L2_SIZE_BYTES=16384\n")
-        f.write("L2_LINE_SIZE_BYTES=64\n")
+        f.write("L2_LINE_SIZE_BYTES=8\n")
         f.write("L2_ASSOC=8\n")
         f.write("L2_ACCESS_CYCLES=15\n")
         
+        f.write("L1_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L2_REPLACEMENT_POLICY=FIFO\n")
+        f.write("L1_WRITE_POLICY=WRITE_THROUGH\n")
+        f.write("L2_WRITE_POLICY=WRITE_THROUGH\n")
+        
         f.write("MEM_ACCESS_CYCLES=180\n")
+        f.write("PRNG_ACCESS_CYCLES=2\n")
+        f.write("PRNG_GEN_COST_PER_LINE=64\n")
 
 def run_sim(m, n, k):
     cmd = [EXECUTABLE, "--config", TEMP_CONFIG, "--Bgenerated", str(m), str(n), str(k)]
@@ -108,6 +115,7 @@ ax2.set_ylim(-0.05, 1.05)
 ax2.legend(fontsize=9, loc="lower left")
 
 plt.suptitle("Asymmetric Tiling Structural Shape Analysis Across the Memory Hierarchy\n(Matrix A: 8-Byte Precision | Matrix B: 1-Byte Precision)", fontsize=13, fontweight='bold')
+os.makedirs("plots", exist_ok=True)
 output_img = "plots/asymmetric_hierarchy_shape_comparison.png"
 plt.savefig(output_img, dpi=300, bbox_inches='tight')
 print(f"\nSuccess! Subplot chart generated and saved to: {output_img}")
