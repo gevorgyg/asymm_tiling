@@ -18,12 +18,56 @@ constexpr char instruction_path[] = "./matmul.matv";
 std::map<std::string, uint> g_config;
 std::map<std::string, std::string> g_config_str;
 
+void createDefaultConfigFile(const std::string& path)
+{
+    std::ofstream outfile(path);
+    if (!outfile.is_open()) {
+        std::cerr << "error: could not create default config file at: " << path << std::endl;
+        exit(1);
+    }
+    outfile << "# Matrix dimensions (elements)\n"
+            << "A_HEIGHT_DIM=12\n"
+            << "A_WIDTH_DIM=12\n"
+            << "B_WIDTH_DIM=24\n\n"
+            << "# Element widths (bytes)\n"
+            << "A_PRECISION_BYTES=8\n"
+            << "B_PRECISION_BYTES=2\n\n"
+            << "# L1 cache\n"
+            << "L1_SIZE_BYTES=256\n"
+            << "L1_LINE_SIZE_BYTES=8\n"
+            << "L1_ASSOC=4\n"
+            << "L1_ACCESS_CYCLES=4\n"
+            << "L1_REPLACEMENT_POLICY=LRU\n"
+            << "L1_WRITE_POLICY=WRITE_BACK\n\n"
+            << "# L2 cache\n"
+            << "L2_SIZE_BYTES=1024\n"
+            << "L2_LINE_SIZE_BYTES=8\n"
+            << "L2_ASSOC=8\n"
+            << "L2_ACCESS_CYCLES=15\n"
+            << "L2_REPLACEMENT_POLICY=LRU\n"
+            << "L2_WRITE_POLICY=WRITE_BACK\n\n"
+            << "# Main memory\n"
+            << "MEM_ACCESS_CYCLES=180\n\n"
+            << "# PRNG device (generates B's cache lines on demand)\n"
+            << "PRNG_ACCESS_CYCLES=2\n"
+            << "PRNG_GEN_COST_PER_LINE=64\n\n"
+            << "# PRNG FIFO device\n"
+            << "PRNG_FIFO_CAPACITY=64\n"
+            << "PRNG_FIFO_GEN_COST=10\n";
+    outfile.close();
+    std::cout << "Config file not found. Created a default configuration at: " << path << std::endl;
+}
+
 void loadConfigFile(const std::string& path)
 {
     std::ifstream infile(path);
     if (!infile.is_open()) {
-        std::cerr << "error: could not open config file: " << path << std::endl;
-        exit(1);
+        createDefaultConfigFile(path);
+        infile.open(path);
+        if (!infile.is_open()) {
+            std::cerr << "error: could not open config file after creation: " << path << std::endl;
+            exit(1);
+        }
     }
     std::string line;
     while (std::getline(infile, line)) {
@@ -190,10 +234,11 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    // Load config variables if file parameter is given
-    if (!config_file_path.empty()) {
-        loadConfigFile(config_file_path);
+    // Load config variables (default to default.config if not given)
+    if (config_file_path.empty()) {
+        config_file_path = "default.config";
     }
+    loadConfigFile(config_file_path);
 
     // B lives right after A; with --Bgenerated those addresses are served by
     // the PRNG device instead of L2/memory. A zero-byte window disables it.
