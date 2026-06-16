@@ -112,6 +112,17 @@ test_cases = [
             "fifo_generates": 3,
             "cycles": 36
         }
+    },
+    {
+        "name": "Multi-Level Tiling Prefetch & Reg Constraints (multitile_test.trace)",
+        "config": "tests/configs/multitile_test.conf",
+        "trace": "tests/traces/multitile_test.trace",
+        "expected": {
+            "l1_hit_rate": 0.948,
+            "l1_tag_lookup": 96,
+            "l2_tag_lookup": 5,
+            "l2_hit_rate": 0.000
+        }
     }
 ]
 
@@ -157,6 +168,18 @@ try:
             failed = True
     if not mismatch:
         print("  PASSED! Address stream access metrics are identical between PRNG and memory-mapped B.")
+except Exception as e:
+    print(f"  FAILED with exception: {e}")
+    failed = True
+
+print("\nRunning test: Register Size Constraints validation...")
+try:
+    res = subprocess.run([EXECUTABLE, "--config", "tests/configs/multitile_test.conf", "--trace_input", "tests/traces/multitile_invalid.trace", "16", "16", "16"], capture_output=True)
+    if res.returncode != 0 and b"Error: register %ra load dimensions" in res.stderr:
+        print("  PASSED! Invalid register dimension detected and rejected successfully.")
+    else:
+        print(f"  FAILED: Expected non-zero exit code and error message. Got code {res.returncode}, stderr: {res.stderr}")
+        failed = True
 except Exception as e:
     print(f"  FAILED with exception: {e}")
     failed = True

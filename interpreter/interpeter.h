@@ -49,12 +49,14 @@ class Interpeter
         load_tile,
         move_tile,
         mul_acc,
+        prefetch_tile,
         eof,
     };
 
     void handleTload();
     void handleTmove();
     void handleMulAcc();
+    void handlePrefetch();
 
     void handleCmd();
     cmd readCmd();

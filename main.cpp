@@ -53,7 +53,13 @@ void createDefaultConfigFile(const std::string& path)
             << "PRNG_GEN_COST_PER_LINE=64\n\n"
             << "# PRNG FIFO device\n"
             << "PRNG_FIFO_CAPACITY=64\n"
-            << "PRNG_FIFO_GEN_COST=10\n";
+            << "PRNG_FIFO_GEN_COST=10\n\n"
+            << "# Hardware register tile dimensions (for multi-level tiling)\n"
+            << "REG_M=4\n"
+            << "REG_N=4\n"
+            << "REG_K=4\n\n"
+            << "# tmulac computation cycles per register tile multiply-accumulate\n"
+            << "MULAC_CYCLES=8\n";
     outfile.close();
     std::cout << "Config file not found. Created a default configuration at: " << path << std::endl;
 }
@@ -119,6 +125,11 @@ uint getConfig(const std::string& key)
     return it->second;
 }
 
+bool hasConfig(const std::string& key)
+{
+    return g_config.find(key) != g_config.end();
+}
+
 std::string getConfigStr(const std::string& key)
 {
     auto it = g_config_str.find(key);
@@ -150,6 +161,9 @@ static InstGenerator makeGen()
         .b_width     = getConfig("B_WIDTH_DIM"),
         .a_precision = getConfig("A_PRECISION_BYTES"),
         .b_precision = getConfig("B_PRECISION_BYTES"),
+        .reg_m       = hasConfig("REG_M") ? getConfig("REG_M") : 0,
+        .reg_n       = hasConfig("REG_N") ? getConfig("REG_N") : 0,
+        .reg_k       = hasConfig("REG_K") ? getConfig("REG_K") : 0,
     }};
 }
 

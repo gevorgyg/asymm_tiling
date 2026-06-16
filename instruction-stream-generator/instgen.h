@@ -47,6 +47,9 @@ public:
     uint b_width;
     uint a_precision;
     uint b_precision;
+    uint reg_m = 0;
+    uint reg_n = 0;
+    uint reg_k = 0;
   };
 
   explicit InstGenerator(Params p);
@@ -70,10 +73,17 @@ private:
 
   // tmov convenience: store tile from <reg> into M at (row, col).
   void store(std::ostream &os, const GhostMat &M, uint row, uint col,
-                    uint w, uint h, const char *reg) const;
+                     uint w, uint h, const char *reg) const;
+
+  // prefetch convenience: prefetch cache tile from M at (row, col).
+  void emitPrefetch(std::ostream &os, const GhostMat &M, uint row, uint col,
+                    uint w, uint h) const;
 
   const GhostMat A_;
   const GhostMat B_;
+  uint reg_m_;
+  uint reg_n_;
+  uint reg_k_;
 };
 
 #endif

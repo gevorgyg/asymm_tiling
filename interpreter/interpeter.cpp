@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string>
 
+extern uint getConfig(const std::string& key);
+extern bool hasConfig(const std::string& key);
+
 using std::filesystem::path;
 
 #define INTERPRETER_SYNTEX_CHECK(ch, missing, error_msg)                       \
@@ -118,6 +121,34 @@ void Interpeter::handleTload() {
 
   uint dst_reg = parseReg();
 
+  // Enforce hardware register size constraints if configured
+  if (hasConfig("REG_M")) {
+      uint reg_m = getConfig("REG_M");
+      uint reg_n = getConfig("REG_N");
+      uint reg_k = getConfig("REG_K");
+      if (tile_width != 1 || tile_height != 1) {
+          if (dst_reg == 0) { // %ra
+              if (tile_width != reg_k || tile_height != reg_m) {
+                  std::cerr << "Error: register %ra load dimensions (" << tile_width << "x" << tile_height 
+                            << ") do not match hardware config REG_K x REG_M (" << reg_k << "x" << reg_m << ")\n";
+                  exit(1);
+              }
+          } else if (dst_reg == 1) { // %rb
+              if (tile_width != reg_n || tile_height != reg_k) {
+                  std::cerr << "Error: register %rb load dimensions (" << tile_width << "x" << tile_height 
+                            << ") do not match hardware config REG_N x REG_K (" << reg_n << "x" << reg_k << ")\n";
+                  exit(1);
+              }
+          } else if (dst_reg == 2) { // %rc
+              if (tile_width != reg_n || tile_height != reg_m) {
+                  std::cerr << "Error: register %rc load dimensions (" << tile_width << "x" << tile_height 
+                            << ") do not match hardware config REG_N x REG_M (" << reg_n << "x" << reg_m << ")\n";
+                  exit(1);
+              }
+          }
+      }
+  }
+
   vec_regs_[dst_reg] = {base_addr, tile_width, tile_height, stride, elem_width};
 
   INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
@@ -177,6 +208,34 @@ void Interpeter::handleTmove() {
 
   uint src_reg = parseReg();
 
+  // Enforce hardware register size constraints if configured
+  if (hasConfig("REG_M")) {
+      uint reg_m = getConfig("REG_M");
+      uint reg_n = getConfig("REG_N");
+      uint reg_k = getConfig("REG_K");
+      if (tile_width != 1 || tile_height != 1) {
+          if (src_reg == 0) { // %ra
+              if (tile_width != reg_k || tile_height != reg_m) {
+                  std::cerr << "Error: register %ra store dimensions (" << tile_width << "x" << tile_height 
+                            << ") do not match hardware config REG_K x REG_M (" << reg_k << "x" << reg_m << ")\n";
+                  exit(1);
+              }
+          } else if (src_reg == 1) { // %rb
+              if (tile_width != reg_n || tile_height != reg_k) {
+                  std::cerr << "Error: register %rb store dimensions (" << tile_width << "x" << tile_height 
+                            << ") do not match hardware config REG_N x REG_K (" << reg_n << "x" << reg_k << ")\n";
+                  exit(1);
+              }
+          } else if (src_reg == 2) { // %rc
+              if (tile_width != reg_n || tile_height != reg_m) {
+                  std::cerr << "Error: register %rc store dimensions (" << tile_width << "x" << tile_height 
+                            << ") do not match hardware config REG_N x REG_M (" << reg_n << "x" << reg_m << ")\n";
+                  exit(1);
+              }
+          }
+      }
+  }
+
   INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
 
   std::ostringstream h;
@@ -190,6 +249,46 @@ void Interpeter::handleTmove() {
       Addr target = base_addr + (row * stride + col) * elem_width;
 
       doWrite(target, elem_width);
+    }
+  }
+}
+
+void Interpeter::handlePrefetch() {
+  Addr base_addr;
+  uint tile_width;
+  uint tile_height;
+  uint stride;
+  uint elem_width;
+
+  INTERPRETER_SYNTEX_CHECK('(', "opening parenthesis", "command name");
+
+  in_stream_ >> std::hex >> base_addr;
+  INTERPRETER_SYNTEX_CHECK(',', "comma", "base address");
+
+  in_stream_ >> std::dec >> tile_width;
+  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile width");
+
+  in_stream_ >> tile_height;
+  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile height");
+
+  in_stream_ >> stride;
+  INTERPRETER_SYNTEX_CHECK(',', "comma", "stride");
+
+  in_stream_ >> elem_width;
+
+  INTERPRETER_SYNTEX_CHECK(')', "closing parenthesis", "source parameters");
+
+  INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+
+  std::ostringstream h;
+  h << "prefetch (0x" << std::hex << base_addr << std::dec << ", " << tile_width
+    << ", " << tile_height << ", " << stride << ", " << elem_width << ")";
+  inst_header_ = h.str();
+
+  for (uint row = 0; row < tile_height; ++row) {
+    for (uint col = 0; col < tile_width; ++col) {
+      Addr target = base_addr + (row * stride + col) * elem_width;
+      doRead(target, elem_width);
     }
   }
 }
@@ -220,6 +319,10 @@ void Interpeter::handleMulAcc() {
   std::ostringstream h;
   h << "tmulac %r" << "abc"[a] << ", %r" << "abc"[b] << ", %r" << "abc"[c];
   inst_header_ = h.str();
+
+  if (hasConfig("MULAC_CYCLES")) {
+      cpu_cycles_ += getConfig("MULAC_CYCLES");
+  }
 }
 
 void Interpeter::handleCmd() {
@@ -241,6 +344,9 @@ void Interpeter::handleCmd() {
     break;
   case mul_acc:
     handleMulAcc();
+    break;
+  case prefetch_tile:
+    handlePrefetch();
     break;
   case eof:
     return;
@@ -267,6 +373,8 @@ Interpeter::cmd Interpeter::readCmd() {
     return mul_acc;
   } else if (cmd == "tmov") {
     return move_tile;
+  } else if (cmd == "prefetch") {
+    return prefetch_tile;
   } else if (in_stream_.eof()) {
     return eof;
   } else {
