@@ -27,26 +27,28 @@ void checkTileDivides(const InstGenerator::GhostMat &A,
   }
 }
 
-void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary) const {
+void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, bool b_fifo) const {
   checkTileDivides(A_, B_, ts);
 
-  // TODO such packing is not the only choice: what we are interested is how
-  // a simulation behaves when different matrix elements are at different
-  // addresses modulo cache set size
   const uint c_ew = std::max(A_.elem_width, B_.elem_width);
   const Addr c_addr = A_.addr + A_.total_byte_size + B_.total_byte_size;
 
   const GhostMat C{B_.width, A_.height, c_ew, c_addr};
 
-  emitTrace(A_, B_, C, ts, os, b_stationary);
+  emitTrace(A_, B_, C, ts, os, b_stationary, b_fifo);
 }
 
 void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
                               const GhostMat &C, TileShape tile,
-                              std::ostream &os, bool b_stationary) const {
+                              std::ostream &os, bool b_stationary, bool b_fifo) const {
   constexpr char a_id[] = "%ra";
   constexpr char b_id[] = "%rb";
   constexpr char c_id[] = "%rc";
+
+  constexpr Addr START_REG = 0xFF000000;
+  constexpr Addr SEED_REG  = 0xFF000004;
+  constexpr Addr DATA_REG  = 0xFF000008;
+  constexpr Addr STOP_REG  = 0xFF00000C;
 
   // Tile counts (ceil division so edge tiles aren't dropped).
   const uint M_tiles = A.height / tile.m;
@@ -60,7 +62,19 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
       for (uint tj = 0; tj < N_tiles; ++tj) {
         const uint ctw = std::min(tile.n, B.width - tj * tile.n);
 
-        load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
+        if (b_fifo) {
+          // Load seed for tile (tk, tj) from Matrix B space
+          Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
+          emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
+          // Write seed to seed register
+          emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
+          // Write start command to control register
+          emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+          // Load B elements from the FIFO streaming register
+          emit(os, "ltea", DATA_REG, ctw, atw, ctw, B.elem_width, b_id);
+        } else {
+          load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
+        }
 
         for (uint ti = 0; ti < M_tiles; ++ti) {
           const uint cth = std::min(tile.m, A.height - ti * tile.m);
@@ -72,6 +86,11 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
           os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
 
           store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+        }
+
+        if (b_fifo) {
+          // Write stop command to control register
+          emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
         }
       }
     }
@@ -89,9 +108,26 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
 
           load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
 
-          load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
+          if (b_fifo) {
+            // Load seed for tile (tk, tj) from Matrix B space
+            Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
+            emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
+            // Write seed to seed register
+            emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
+            // Write start command to control register
+            emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+            // Load B elements from the FIFO streaming register
+            emit(os, "ltea", DATA_REG, ctw, atw, ctw, B.elem_width, b_id);
+          } else {
+            load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
+          }
 
           os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+
+          if (b_fifo) {
+            // Write stop command to control register
+            emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
+          }
         }
 
         store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);

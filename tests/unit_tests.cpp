@@ -203,6 +203,81 @@ void testWriteBack() {
     std::cout << "Cache Write-Back unit tests PASSED!" << std::endl;
 }
 
+#include "memory-system/prng_fifo.h"
+
+void testPrngFifo() {
+    std::cout << "Running PRNG FIFO unit tests..." << std::endl;
+
+    PrngFifoDev::InitParameters params;
+    params.ctrl_start_addr = 0xFF000000;
+    params.ctrl_stop_addr  = 0xFF00000C;
+    params.seed_addr       = 0xFF000004;
+    params.data_start_addr = 0xFF000008;
+    params.data_end_addr   = 0xFF100008;
+    params.access_cycles   = 2;
+    params.fifo_capacity   = 4; 
+    params.gen_cost        = 10;
+
+    size_t cpu_cycles = 0;
+    PrngFifoDev dev(params, cpu_cycles);
+
+    assert(dev.contains(0xFF000000));
+    assert(dev.contains(0xFF000004));
+    assert(dev.contains(0xFF000008));
+    assert(dev.contains(0xFF00000C));
+    assert(!dev.contains(0x0));
+
+    // 1. Initial State
+    assert(dev.stats().starts == 0);
+    assert(dev.stats().generates == 0);
+
+    // 2. Write seed
+    Trace t1;
+    dev.write(0xFF000004, 8, t1); 
+    assert(hasAction(t1, "PrngFifoDev::SeedWrite"));
+
+    // 3. Write start
+    Trace t2;
+    dev.write(0xFF000000, 8, t2); 
+    assert(hasAction(t2, "PrngFifoDev::ControlWrite"));
+    assert(dev.stats().starts == 1);
+
+    // 4. Advance CPU clock and check generation catch-up
+    cpu_cycles = 25; 
+    dev.catchUp(cpu_cycles);
+    assert(dev.stats().generates == 2);
+
+    // 5. Read elements from the data register
+    Trace t3;
+    dev.read(0xFF000008, 2, t3);
+    assert(hasAction(t3, "PrngFifoDev::ReadFifo"));
+    assert(totalCycles(t3) == 2); 
+    assert(dev.stats().reads == 1);
+
+    Trace t4;
+    dev.read(0xFF000008, 2, t4);
+    assert(totalCycles(t4) == 2); 
+    assert(dev.stats().reads == 2);
+
+    // 6. Read empty FIFO (triggers stall)
+    Trace t5;
+    dev.read(0xFF000008, 2, t5);
+    assert(totalCycles(t5) == 7);
+    assert(dev.stats().reads == 3);
+    assert(dev.stats().stalls == 1);
+    assert(dev.stats().stall_cycles == 5);
+
+    cpu_cycles += totalCycles(t5); 
+
+    // 7. Write stop
+    Trace t6;
+    dev.write(0xFF00000C, 8, t6); 
+    assert(hasAction(t6, "PrngFifoDev::ControlWrite"));
+    assert(dev.stats().stops == 1);
+
+    std::cout << "PRNG FIFO unit tests PASSED!" << std::endl;
+}
+
 int main() {
     std::cout << "========================================" << std::endl;
     std::cout << "Running Cache Simulator C++ Unit Tests..." << std::endl;
@@ -211,6 +286,7 @@ int main() {
     testEvictionPolicies();
     testWriteThrough();
     testWriteBack();
+    testPrngFifo();
 
     std::cout << "========================================" << std::endl;
     std::cout << "All C++ Unit Tests PASSED Successfully!" << std::endl;

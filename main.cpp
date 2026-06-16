@@ -109,7 +109,7 @@ static InstGenerator makeGen()
     }};
 }
 
-void generateInstructions(uint m, uint n, uint k, bool b_stationary)
+void generateInstructions(uint m, uint n, uint k, bool b_stationary, bool b_fifo)
 {
     InstGenerator gen = makeGen();
 
@@ -119,12 +119,13 @@ void generateInstructions(uint m, uint n, uint k, bool b_stationary)
     }
 
     InstGenerator::TileShape tile{m, n, k};
-    gen.generate(tile, ofs, b_stationary);
+    gen.generate(tile, ofs, b_stationary, b_fifo);
 }
 
 int main(int argc, char* argv[])
 {
     bool b_generated = false;
+    bool b_fifo = false;
     bool b_stationary = false;
     uint dims[3];
     int positional = 0;
@@ -137,6 +138,8 @@ int main(int argc, char* argv[])
         std::string arg = argv[i];
         if (arg == "--Bgenerated") {
             b_generated = true;
+        } else if (arg == "--Bfifo") {
+            b_fifo = true;
         } else if (arg == "--Bstationary") {
             b_stationary = true;
         } else if (arg == "--trace_file") {
@@ -181,7 +184,7 @@ int main(int argc, char* argv[])
 
     if (positional != 3) {
         std::cerr << "usage: " << argv[0]
-                  << " [--Bgenerated] [--Bstationary] [--trace_file <file>] "
+                  << " [--Bgenerated] [--Bfifo] [--Bstationary] [--trace_file <file>] "
                      "[--trace_level <0|1|2>] [--config <file>] [--trace_input <file>] <m> <n> <k>"
                   << std::endl;
         exit(1);
@@ -225,16 +228,25 @@ int main(int argc, char* argv[])
                  .access_cycles     = getConfig("PRNG_ACCESS_CYCLES"),
                  .gen_cost_per_line = getConfig("PRNG_GEN_COST_PER_LINE")},
 
+        .prng_fifo = {.ctrl_start_addr = 0xFF000000,
+                      .ctrl_stop_addr  = 0xFF00000C,
+                      .seed_addr       = 0xFF000004,
+                      .data_start_addr = 0xFF000008,
+                      .data_end_addr   = 0xFF100008,
+                      .access_cycles   = getConfig("PRNG_ACCESS_CYCLES"),
+                      .fifo_capacity   = b_fifo ? getConfig("PRNG_FIFO_CAPACITY") : 0,
+                      .gen_cost        = b_fifo ? getConfig("PRNG_FIFO_GEN_COST") : 0},
+
     };
 
     size_t cpu_cycles = 0;
-    MemoryHierarchy mem(mp);
+    MemoryHierarchy mem(mp, cpu_cycles);
 
     std::string run_path = instruction_path;
     if (!trace_input_path.empty()) {
         run_path = trace_input_path;
     } else {
-        generateInstructions(dims[0], dims[1], dims[2], b_stationary);
+        generateInstructions(dims[0], dims[1], dims[2], b_stationary, b_fifo);
     }
 
     Interpeter::Options opts{
@@ -273,6 +285,17 @@ int main(int argc, char* argv[])
         printf("--- PRNG ---\n");
         printf("Generate:   %llu\n", (unsigned long long)ps.generates);
         printf("Regenerate: %llu\n", (unsigned long long)ps.regenerates);
+    }
+
+    if (b_fifo) {
+        const PrngFifoDev::Stats& pfs = mem.prng_fifo().stats();
+        printf("--- PRNG FIFO ---\n");
+        printf("Starts:      %llu\n", (unsigned long long)pfs.starts);
+        printf("Stops:       %llu\n", (unsigned long long)pfs.stops);
+        printf("Reads:       %llu\n", (unsigned long long)pfs.reads);
+        printf("Stalls:      %llu\n", (unsigned long long)pfs.stalls);
+        printf("StallCycles: %llu\n", (unsigned long long)pfs.stall_cycles);
+        printf("Generates:   %llu\n", (unsigned long long)pfs.generates);
     }
 
     printf("--- System ---\n");

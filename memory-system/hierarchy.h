@@ -4,17 +4,18 @@
 #include "mainmem.h"
 #include "memory_object.h"
 #include "prng.h"
+#include "prng_fifo.h"
 
 #include <string>
 
 
-// Sits between L1 and L2: addresses inside the PRNG window are served by the
-// generator, everything else falls through to L2. Pure wiring, zero cost.
+// Sits between L1 and L2: addresses inside the PRNG/PRNG_FIFO windows are served
+// by their respective generator devices, everything else falls through to L2.
 class AddrRouter : public MemoryObject
 {
   public:
-    AddrRouter(PrngDev& prng, MemoryObject& fallthrough)
-        : MemoryObject(0), prng_(prng), fallthrough_(fallthrough)
+    AddrRouter(PrngDev& prng, PrngFifoDev& prng_fifo, MemoryObject& fallthrough)
+        : MemoryObject(0), prng_(prng), prng_fifo_(prng_fifo), fallthrough_(fallthrough)
     {
     }
 
@@ -23,12 +24,12 @@ class AddrRouter : public MemoryObject
 
   private:
     PrngDev&      prng_;
+    PrngFifoDev&  prng_fifo_;
     MemoryObject& fallthrough_;
 };
 
 
-// L1 -> AddrRouter -> { PrngDev | L2 -> MainMemory }. PRNG data never reaches
-// L2; an evicted PRNG line is clean and simply regenerated on the next miss.
+// L1 -> AddrRouter -> { PrngDev | PrngFifoDev | L2 -> MainMemory }.
 class MemoryHierarchy : public MemoryObject
 {
   public:
@@ -41,10 +42,11 @@ class MemoryHierarchy : public MemoryObject
         std::string l2_policy;
         uint mem_access_cycles;
         PrngDev::InitParameters prng;
+        PrngFifoDev::InitParameters prng_fifo;
     };
 
 
-    explicit MemoryHierarchy(Parameters p);
+    explicit MemoryHierarchy(Parameters p, const size_t& cpu_cycles);
 
     void read(Addr addr, size_t size, Trace& trace) override;
     void write(Addr addr, size_t size, Trace& trace) override;
@@ -64,10 +66,21 @@ class MemoryHierarchy : public MemoryObject
         return prng_;
     }
 
+    const PrngFifoDev& prng_fifo() const
+    {
+        return prng_fifo_;
+    }
+
+    PrngFifoDev& prng_fifo()
+    {
+        return prng_fifo_;
+    }
+
   private:
     MainMemory mem_;
     Cache l2_;
     PrngDev prng_;
+    PrngFifoDev prng_fifo_;
     AddrRouter router_;
     Cache l1_;
 };

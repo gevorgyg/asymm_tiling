@@ -4,10 +4,12 @@ import sys
 
 EXECUTABLE = "./asymm"
 
-def run_test_trace(config_file, trace_file, prng=False):
+def run_test_trace(config_file, trace_file, prng=False, fifo=False):
     cmd = [EXECUTABLE, "--config", config_file, "--trace_input", trace_file]
     if prng:
         cmd.append("--Bgenerated")
+    if fifo:
+        cmd.append("--Bfifo")
     # Add dummy dimensions (required by argv positional parsing)
     cmd.extend(["16", "16", "16"])
     
@@ -32,6 +34,20 @@ def run_test_trace(config_file, trace_file, prng=False):
         stats["l2_tag_lookup"] = int(l2_section.group(2))
         stats["l2_line_fill"] = int(l2_section.group(3))
         stats["l2_evict"] = int(l2_section.group(4))
+
+    # PRNG FIFO Stats
+    fifo_section = re.search(r"--- PRNG FIFO ---\nStarts:\s+(\d+)\nStops:\s+(\d+)\nReads:\s+(\d+)\nStalls:\s+(\d+)\nStallCycles:\s+(\d+)\nGenerates:\s+(\d+)", stdout)
+    if fifo_section:
+        stats["fifo_starts"] = int(fifo_section.group(1))
+        stats["fifo_stops"] = int(fifo_section.group(2))
+        stats["fifo_reads"] = int(fifo_section.group(3))
+        stats["fifo_stalls"] = int(fifo_section.group(4))
+        stats["fifo_stall_cycles"] = int(fifo_section.group(5))
+        stats["fifo_generates"] = int(fifo_section.group(6))
+
+    cycles_match = re.search(r"\nCycles:\s+(\d+)", stdout)
+    if cycles_match:
+        stats["cycles"] = int(cycles_match.group(1))
         
     return stats
 
@@ -81,6 +97,21 @@ test_cases = [
             "l1_evict": 1,
             "l2_tag_lookup": 4
         }
+    },
+    {
+        "name": "MMIO PRNG FIFO Device & Stall Latency (prng_fifo_stall.trace)",
+        "config": "tests/configs/test_base.conf",
+        "trace": "tests/traces/prng_fifo_stall.trace",
+        "fifo": True,
+        "expected": {
+            "fifo_starts": 1,
+            "fifo_stops": 1,
+            "fifo_reads": 3,
+            "fifo_stalls": 3,
+            "fifo_stall_cycles": 24,
+            "fifo_generates": 3,
+            "cycles": 36
+        }
     }
 ]
 
@@ -93,7 +124,7 @@ print("==================================================")
 for tc in test_cases:
     print(f"Running test: {tc['name']}...")
     try:
-        stats = run_test_trace(tc["config"], tc["trace"])
+        stats = run_test_trace(tc["config"], tc["trace"], fifo=tc.get("fifo", False))
         
         # Verify stats
         mismatch = False
@@ -110,6 +141,9 @@ for tc in test_cases:
 
 print("\nRunning test: PRNG Equivalence Self-Consistency check...")
 try:
+    # Generate matmul.matv first using default.config
+    subprocess.run([EXECUTABLE, "--config", "default.config", "4", "4", "4"], capture_output=True, check=True)
+
     # Run matmul 16x16x16 with PRNG enabled vs. disabled using default config
     stats_prng = run_test_trace("default.config", "matmul.matv", prng=True)
     stats_mem = run_test_trace("default.config", "matmul.matv", prng=False)

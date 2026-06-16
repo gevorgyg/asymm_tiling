@@ -51,11 +51,11 @@ public:
 
   explicit InstGenerator(Params p);
 
-  void generate(TileShape tile, std::ostream &os, bool b_stationary = false) const;
+  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false) const;
 
 private:
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                 TileShape tile, std::ostream &os, bool b_stationary) const;
+                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo) const;
 
   // Byte address of element (row, col) inside matrix M.
   Addr tileAddr(const GhostMat &M, uint row, uint col) const;
