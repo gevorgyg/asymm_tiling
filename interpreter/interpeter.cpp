@@ -122,7 +122,7 @@ void Interpeter::handleTload() {
   uint dst_reg = parseReg();
 
   // Enforce hardware register size constraints if configured
-  if (hasConfig("REG_M")) {
+  if (hasConfig("REG_M") && getConfig("REG_M") > 0) {
       uint reg_m = getConfig("REG_M");
       uint reg_n = getConfig("REG_N");
       uint reg_k = getConfig("REG_K");
@@ -209,7 +209,7 @@ void Interpeter::handleTmove() {
   uint src_reg = parseReg();
 
   // Enforce hardware register size constraints if configured
-  if (hasConfig("REG_M")) {
+  if (hasConfig("REG_M") && getConfig("REG_M") > 0) {
       uint reg_m = getConfig("REG_M");
       uint reg_n = getConfig("REG_N");
       uint reg_k = getConfig("REG_K");
@@ -319,6 +319,26 @@ void Interpeter::handleMulAcc() {
   std::ostringstream h;
   h << "tmulac %r" << "abc"[a] << ", %r" << "abc"[b] << ", %r" << "abc"[c];
   inst_header_ = h.str();
+
+  // If register tiling is not enabled, simulate scalar element-by-element loads
+  if (!hasConfig("REG_M") || getConfig("REG_M") == 0) {
+      for (uint i = 0; i < rc.t_height; ++i) {
+          for (uint j = 0; j < rc.t_width; ++j) {
+              Addr c_addr = rc.base_addr + (i * rc.stride + j) * rc.elem_width;
+              doRead(c_addr, rc.elem_width);
+
+              for (uint k = 0; k < ra.t_width; ++k) {
+                  Addr a_addr = ra.base_addr + (i * ra.stride + k) * ra.elem_width;
+                  doRead(a_addr, ra.elem_width);
+
+                  Addr b_addr = rb.base_addr + (k * rb.stride + j) * rb.elem_width;
+                  doRead(b_addr, rb.elem_width);
+              }
+
+              doWrite(c_addr, rc.elem_width);
+          }
+      }
+  }
 
   if (hasConfig("MULAC_CYCLES")) {
       cpu_cycles_ += getConfig("MULAC_CYCLES");
