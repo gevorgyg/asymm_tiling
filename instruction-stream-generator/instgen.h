@@ -60,6 +60,15 @@ private:
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                  TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo) const;
 
+  void emitTraceMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                      TileShape tile, std::ostream &os, bool b_fifo) const;
+  void emitTraceMultiLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                      TileShape tile, std::ostream &os, bool b_fifo) const;
+  void emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                       TileShape tile, std::ostream &os, bool b_fifo) const;
+  void emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                       TileShape tile, std::ostream &os, bool b_fifo) const;
+
   // Byte address of element (row, col) inside matrix M.
   Addr tileAddr(const GhostMat &M, uint row, uint col) const;
 

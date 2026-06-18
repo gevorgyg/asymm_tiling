@@ -50,6 +50,23 @@ void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, 
 void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
                               const GhostMat &C, TileShape tile,
                               std::ostream &os, bool b_stationary, bool b_fifo) const {
+  if (reg_m_ > 0) {
+    if (b_stationary) {
+      emitTraceMultiLevelBStationary(A, B, C, tile, os, b_fifo);
+    } else {
+      emitTraceMultiLevelCStationary(A, B, C, tile, os, b_fifo);
+    }
+  } else {
+    if (b_stationary) {
+      emitTraceSingleLevelBStationary(A, B, C, tile, os, b_fifo);
+    } else {
+      emitTraceSingleLevelCStationary(A, B, C, tile, os, b_fifo);
+    }
+  }
+}
+
+void InstGenerator::emitTraceMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                                  TileShape tile, std::ostream &os, bool b_fifo) const {
   constexpr char a_id[] = "%ra";
   constexpr char b_id[] = "%rb";
   constexpr char c_id[] = "%rc";
@@ -59,186 +76,204 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
   constexpr Addr DATA_REG  = 0xFF000008;
   constexpr Addr STOP_REG  = 0xFF00000C;
 
-  // Tile counts (ceil division so edge tiles aren't dropped).
   const uint M_tiles = A.height / tile.m;
   const uint N_tiles = B.width / tile.n;
   const uint K_tiles = A.width / tile.k;
 
-  if (reg_m_ > 0) {
-    // --- MULTI-LEVEL TILING (Cache + Register Tiling) ---
-    if (b_stationary) {
-      for (uint tk = 0; tk < K_tiles; ++tk) {
-        for (uint tj = 0; tj < N_tiles; ++tj) {
+  for (uint tk = 0; tk < K_tiles; ++tk) {
+    for (uint tj = 0; tj < N_tiles; ++tj) {
+      if (!b_fifo) {
+        emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n, tile.k);
+      } else {
+        Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
+        emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
+        emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
+        emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+      }
+
+      for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
+        for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
           if (!b_fifo) {
-            emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n, tile.k);
+            load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
           } else {
-            // FIFO Mode: Load seed and start generator for B cache tile
-            Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
-            emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
-            emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
-            emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+            emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
           }
 
-          // Register loops for stationary B tile
-          for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
-            for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
-              // Load B register tile
+          for (uint ti = 0; ti < M_tiles; ++ti) {
+            emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k, tile.m);
+            emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
+
+            for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+              load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
+              load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+
+              os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+
+              store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+            }
+          }
+        }
+      }
+
+      if (b_fifo) {
+        emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
+      }
+    }
+  }
+}
+
+void InstGenerator::emitTraceMultiLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                                  TileShape tile, std::ostream &os, bool b_fifo) const {
+  constexpr char a_id[] = "%ra";
+  constexpr char b_id[] = "%rb";
+  constexpr char c_id[] = "%rc";
+
+  constexpr Addr START_REG = 0xFF000000;
+  constexpr Addr SEED_REG  = 0xFF000004;
+  constexpr Addr DATA_REG  = 0xFF000008;
+  constexpr Addr STOP_REG  = 0xFF00000C;
+
+  const uint M_tiles = A.height / tile.m;
+  const uint N_tiles = B.width / tile.n;
+  const uint K_tiles = A.width / tile.k;
+
+  for (uint ti = 0; ti < M_tiles; ++ti) {
+    for (uint tj = 0; tj < N_tiles; ++tj) {
+      emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
+
+      for (uint tk = 0; tk < K_tiles; ++tk) {
+        emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k, tile.m);
+        if (!b_fifo) {
+          emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n, tile.k);
+        } else {
+          Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
+          emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
+          emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
+          emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+        }
+
+        for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+          for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
+            load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+
+            for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
+              load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
               if (!b_fifo) {
                 load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
               } else {
                 emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
               }
 
-              // Loop over A/C cache and register tiles
-              for (uint ti = 0; ti < M_tiles; ++ti) {
-                emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k, tile.m);
-                emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
-
-                for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
-                  load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
-                  load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
-
-                  os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
-
-                  store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
-                }
-              }
+              os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
             }
-          }
 
-          if (b_fifo) {
-            emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
+            store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
           }
         }
-      }
-    } else {
-      // C-Stationary
-      for (uint ti = 0; ti < M_tiles; ++ti) {
-        for (uint tj = 0; tj < N_tiles; ++tj) {
-          // Prefetch C cache tile
-          emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
 
-          for (uint tk = 0; tk < K_tiles; ++tk) {
-            emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k, tile.m);
-            if (!b_fifo) {
-              emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n, tile.k);
-            } else {
-              // FIFO Mode: Load seed and start generator for B cache tile
-              Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
-              emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
-              emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
-              emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
-            }
-
-            // Register loops
-            for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
-              for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
-                // Load C register tile from cache
-                load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
-
-                for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
-                  load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
-                  if (!b_fifo) {
-                    load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
-                  } else {
-                    emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
-                  }
-
-                  os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
-                }
-
-                // Store C register tile back to cache
-                store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
-              }
-            }
-
-            if (b_fifo) {
-              emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
-            }
-          }
+        if (b_fifo) {
+          emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
         }
       }
     }
-  } else {
-    // --- SINGLE-LEVEL TILING (Original Behavior) ---
-    if (b_stationary) {
-      for (uint tk = 0; tk < K_tiles; ++tk) {
-        const uint atw = std::min(tile.k, A.width - tk * tile.k);
+  }
+}
 
-        for (uint tj = 0; tj < N_tiles; ++tj) {
-          const uint ctw = std::min(tile.n, B.width - tj * tile.n);
+void InstGenerator::emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                                   TileShape tile, std::ostream &os, bool b_fifo) const {
+  constexpr char a_id[] = "%ra";
+  constexpr char b_id[] = "%rb";
+  constexpr char c_id[] = "%rc";
 
-          if (b_fifo) {
-            // Load seed for tile (tk, tj) from Matrix B space
-            Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
-            emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
-            // Write seed to seed register
-            emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
-            // Write start command to control register
-            emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
-            // Load B elements from the FIFO streaming register
-            emit(os, "ltea", DATA_REG, ctw, atw, ctw, B.elem_width, b_id);
-          } else {
-            load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
-          }
+  constexpr Addr START_REG = 0xFF000000;
+  constexpr Addr SEED_REG  = 0xFF000004;
+  constexpr Addr DATA_REG  = 0xFF000008;
+  constexpr Addr STOP_REG  = 0xFF00000C;
 
-          for (uint ti = 0; ti < M_tiles; ++ti) {
-            const uint cth = std::min(tile.m, A.height - ti * tile.m);
+  const uint M_tiles = A.height / tile.m;
+  const uint N_tiles = B.width / tile.n;
+  const uint K_tiles = A.width / tile.k;
 
-            load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
+  for (uint tk = 0; tk < K_tiles; ++tk) {
+    const uint atw = std::min(tile.k, A.width - tk * tile.k);
 
-            load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+    for (uint tj = 0; tj < N_tiles; ++tj) {
+      const uint ctw = std::min(tile.n, B.width - tj * tile.n);
 
-            os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
-
-            store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
-          }
-
-          if (b_fifo) {
-            // Write stop command to control register
-            emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
-          }
-        }
+      if (b_fifo) {
+        Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
+        emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
+        emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
+        emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+        emit(os, "ltea", DATA_REG, ctw, atw, ctw, B.elem_width, b_id);
+      } else {
+        load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
       }
-    } else {
+
       for (uint ti = 0; ti < M_tiles; ++ti) {
         const uint cth = std::min(tile.m, A.height - ti * tile.m);
 
-        for (uint tj = 0; tj < N_tiles; ++tj) {
-          const uint ctw = std::min(tile.n, B.width - tj * tile.n);
+        load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
+        load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
 
-          load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+        os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
 
-          for (uint tk = 0; tk < K_tiles; ++tk) {
-            const uint atw = std::min(tile.k, A.width - tk * tile.k);
+        store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+      }
 
-            load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
+      if (b_fifo) {
+        emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
+      }
+    }
+  }
+}
 
-            if (b_fifo) {
-              // Load seed for tile (tk, tj) from Matrix B space
-              Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
-              emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
-              // Write seed to seed register
-              emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
-              // Write start command to control register
-              emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
-              // Load B elements from the FIFO streaming register
-              emit(os, "ltea", DATA_REG, ctw, atw, ctw, B.elem_width, b_id);
-            } else {
-              load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
-            }
+void InstGenerator::emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                                   TileShape tile, std::ostream &os, bool b_fifo) const {
+  constexpr char a_id[] = "%ra";
+  constexpr char b_id[] = "%rb";
+  constexpr char c_id[] = "%rc";
 
-            os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+  constexpr Addr START_REG = 0xFF000000;
+  constexpr Addr SEED_REG  = 0xFF000004;
+  constexpr Addr DATA_REG  = 0xFF000008;
+  constexpr Addr STOP_REG  = 0xFF00000C;
 
-            if (b_fifo) {
-              // Write stop command to control register
-              emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
-            }
-          }
+  const uint M_tiles = A.height / tile.m;
+  const uint N_tiles = B.width / tile.n;
+  const uint K_tiles = A.width / tile.k;
 
-          store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+  for (uint ti = 0; ti < M_tiles; ++ti) {
+    const uint cth = std::min(tile.m, A.height - ti * tile.m);
+
+    for (uint tj = 0; tj < N_tiles; ++tj) {
+      const uint ctw = std::min(tile.n, B.width - tj * tile.n);
+
+      load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
+
+      for (uint tk = 0; tk < K_tiles; ++tk) {
+        const uint atw = std::min(tile.k, A.width - tk * tile.k);
+
+        load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
+
+        if (b_fifo) {
+          Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
+          emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
+          emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
+          emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+          emit(os, "ltea", DATA_REG, ctw, atw, ctw, B.elem_width, b_id);
+        } else {
+          load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
+        }
+
+        os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+
+        if (b_fifo) {
+          emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
         }
       }
+
+      store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
     }
   }
 }
