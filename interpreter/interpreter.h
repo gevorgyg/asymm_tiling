@@ -104,6 +104,7 @@ class Interpreter
     // buffered access/action details.
     std::string        inst_header_;
     std::ostringstream inst_detail_;
+    Trace              inst_trace_;
 
     std::array<vec_reg, 3> vec_regs_;
     MemoryHierarchy& mem_;

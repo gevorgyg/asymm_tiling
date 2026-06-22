@@ -175,7 +175,7 @@ except Exception as e:
 print("\nRunning test: Register Size Constraints validation...")
 try:
     res = subprocess.run([EXECUTABLE, "--config", "tests/configs/multitile_test.conf", "--trace_input", "tests/traces/multitile_invalid.trace", "16", "16", "16"], capture_output=True)
-    if res.returncode != 0 and b"Error: register %ra load dimensions" in res.stderr:
+    if res.returncode != 0 and b"do not match hardware config" in res.stderr:
         print("  PASSED! Invalid register dimension detected and rejected successfully.")
     else:
         print(f"  FAILED: Expected non-zero exit code and error message. Got code {res.returncode}, stderr: {res.stderr}")

@@ -170,8 +170,8 @@ Config loadConfig(const std::string& path)
         .prng_access_cycles     = requireUint(raw, "PRNG_ACCESS_CYCLES"),
         .prng_gen_cost_per_line = requireUint(raw, "PRNG_GEN_COST_PER_LINE"),
 
-        .prng_fifo_capacity = requireUint(raw, "PRNG_FIFO_CAPACITY"),
-        .prng_fifo_gen_cost = requireUint(raw, "PRNG_FIFO_GEN_COST"),
+        .prng_fifo_capacity = optionalUint(raw, "PRNG_FIFO_CAPACITY") == 0 ? 64 : optionalUint(raw, "PRNG_FIFO_CAPACITY"),
+        .prng_fifo_gen_cost = optionalUint(raw, "PRNG_FIFO_GEN_COST") == 0 ? 10 : optionalUint(raw, "PRNG_FIFO_GEN_COST"),
 
         .reg_m = optionalUint(raw, "REG_M"),
         .reg_n = optionalUint(raw, "REG_N"),
