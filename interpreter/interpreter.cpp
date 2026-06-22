@@ -1,4 +1,5 @@
 #include "interpreter.h"
+#include "matmul/matmul_actions.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -341,7 +342,19 @@ void Interpreter::handleMulAcc() {
   }
 
   if (hasConfig("MULAC_CYCLES")) {
-      cpu_cycles_ += getConfig("MULAC_CYCLES");
+      Trace t;
+      t.push_back(std::make_unique<MulAcc>(getConfig("MULAC_CYCLES")));
+      cpu_cycles_ += totalCycles(t);
+
+      // Action-level trace: surface the compute event the same way memory
+      // events appear under doRead/doWrite.
+      if (trace_out_.is_open() && trace_level_ >= trace_actions) {
+          for (const auto& a : t) {
+              inst_detail_ << "    ";
+              a->print(inst_detail_);
+              inst_detail_ << '\n';
+          }
+      }
   }
 }
 
