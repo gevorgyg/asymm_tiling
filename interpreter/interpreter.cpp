@@ -62,9 +62,21 @@ bool Interpreter::handleCmd()
         if (op == entry.name) {
             inst_header_.clear();
             inst_detail_.str("");
+            inst_trace_.clear();
             const size_t cycles_before = cpu_cycles_;
 
             (this->*entry.handler)();
+
+            // Drain any non-access Actions the handler parked in inst_trace_
+            // (only handleMulAcc uses this today). doRead/doWrite have
+            // already emitted their per-access detail into inst_detail_.
+            if (trace_out_.is_open() && trace_level_ >= trace_actions) {
+                for (const auto& a : inst_trace_) {
+                    inst_detail_ << "    ";
+                    a->print(inst_detail_);
+                    inst_detail_ << '\n';
+                }
+            }
 
             if (trace_out_.is_open()) {
                 trace_out_ << inst_header_ << "    # "
@@ -177,17 +189,8 @@ void Interpreter::handleMulAcc()
     }
 
     if (mulac_cycles_ > 0) {
-        Trace t;
-        t.push_back(std::make_unique<MulAcc>(mulac_cycles_));
-        cpu_cycles_ += totalCycles(t);
-
-        if (trace_out_.is_open() && trace_level_ >= trace_actions) {
-            for (const auto& a : t) {
-                inst_detail_ << "    ";
-                a->print(inst_detail_);
-                inst_detail_ << '\n';
-            }
-        }
+        inst_trace_.push_back(std::make_unique<MulAcc>(mulac_cycles_));
+        cpu_cycles_ += mulac_cycles_;
     }
 }
 
