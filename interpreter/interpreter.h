@@ -25,6 +25,15 @@ class Interpreter
     struct Options {
         std::string trace_file_path;
         TraceLevel  trace_level;
+
+        // Hardware register tile dims. Zero in any dimension disables
+        // register-tile checks and switches handleMulAcc to scalar mode.
+        uint reg_m = 0;
+        uint reg_n = 0;
+        uint reg_k = 0;
+
+        // Per-tmulac compute cost. Zero means "don't charge anything".
+        uint mulac_cycles = 0;
     };
 
     Interpreter(std::filesystem::path input_file, MemoryHierarchy& mem,
@@ -98,6 +107,13 @@ class Interpreter
 
     std::array<vec_reg, 3> vec_regs_;
     MemoryHierarchy& mem_;
+
+    // Hardware register tile + compute cost copied from Options. Used by
+    // validateRegShape() and handleMulAcc().
+    uint reg_m_;
+    uint reg_n_;
+    uint reg_k_;
+    uint mulac_cycles_;
 };
 
 template <typename F>

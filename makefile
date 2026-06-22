@@ -16,9 +16,10 @@ MEM_SRCS := $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp \
 
 INT_SRCS := $(INT_DIR)/interpreter.cpp $(MATMUL_DIR)/matmul_actions.cpp
 
-SRCS := main.cpp $(GEN_DIR)/instgen.cpp $(INT_SRCS) $(MEM_SRCS)
+SRCS := main.cpp config.cpp $(GEN_DIR)/instgen.cpp $(INT_SRCS) $(MEM_SRCS)
 
-DEPS := $(GEN_DIR)/instgen.h \
+DEPS := config.h \
+        $(GEN_DIR)/instgen.h \
         $(INT_DIR)/interpreter.h $(MATMUL_DIR)/matmul_actions.h \
         $(MEM_DIR)/action.h $(MEM_DIR)/memory_object.h $(MEM_DIR)/hierarchy.h \
         $(CACHE_DIR)/set.h $(CACHE_DIR)/eviction_policy.h \

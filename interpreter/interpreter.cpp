@@ -5,16 +5,15 @@
 #include <iostream>
 #include <string>
 
-extern uint getConfig(const std::string& key);
-extern bool hasConfig(const std::string& key);
-
 using std::filesystem::path;
 
 
 Interpreter::Interpreter(path input_file, MemoryHierarchy& mem, Options opts,
                          size_t& cpu_cycles)
     : in_stream_(input_file), line_(0), cpu_cycles_(cpu_cycles),
-      trace_level_(opts.trace_level), vec_regs_{}, mem_(mem)
+      trace_level_(opts.trace_level), vec_regs_{}, mem_(mem),
+      reg_m_(opts.reg_m), reg_n_(opts.reg_n), reg_k_(opts.reg_k),
+      mulac_cycles_(opts.mulac_cycles)
 {
     if (!in_stream_.is_open()) {
         std::cerr << "error opening trace file" << std::endl;
@@ -161,7 +160,7 @@ void Interpreter::handleMulAcc()
 
     // Scalar fallback when no register tiling: every multiply-accumulate
     // reads operands and writes back the accumulator through the cache.
-    if (!hasConfig("REG_M") || getConfig("REG_M") == 0) {
+    if (reg_m_ == 0) {
         for (uint i = 0; i < rc.t_height; ++i) {
             for (uint j = 0; j < rc.t_width; ++j) {
                 const Addr c_addr = rc.base_addr + (i * rc.stride + j) * rc.elem_width;
@@ -177,9 +176,9 @@ void Interpreter::handleMulAcc()
         }
     }
 
-    if (hasConfig("MULAC_CYCLES")) {
+    if (mulac_cycles_ > 0) {
         Trace t;
-        t.push_back(std::make_unique<MulAcc>(getConfig("MULAC_CYCLES")));
+        t.push_back(std::make_unique<MulAcc>(mulac_cycles_));
         cpu_cycles_ += totalCycles(t);
 
         if (trace_out_.is_open() && trace_level_ >= trace_actions) {
@@ -256,19 +255,15 @@ void Interpreter::skipSpaces()
 // register (%ra/%rb/%rc) is targeted.
 void Interpreter::validateRegShape(uint reg, uint t_width, uint t_height) const
 {
-    if (!hasConfig("REG_M") || getConfig("REG_M") == 0) return;
+    if (reg_m_ == 0) return;
     if (t_width == 1 && t_height == 1) return;
-
-    const uint reg_m = getConfig("REG_M");
-    const uint reg_n = getConfig("REG_N");
-    const uint reg_k = getConfig("REG_K");
 
     uint exp_w = 0, exp_h = 0;
     const char* reg_name = "?";
     switch (reg) {
-        case 0: exp_w = reg_k; exp_h = reg_m; reg_name = "%ra"; break;
-        case 1: exp_w = reg_n; exp_h = reg_k; reg_name = "%rb"; break;
-        case 2: exp_w = reg_n; exp_h = reg_m; reg_name = "%rc"; break;
+        case 0: exp_w = reg_k_; exp_h = reg_m_; reg_name = "%ra"; break;
+        case 1: exp_w = reg_n_; exp_h = reg_k_; reg_name = "%rb"; break;
+        case 2: exp_w = reg_n_; exp_h = reg_m_; reg_name = "%rc"; break;
     }
     if (t_width != exp_w || t_height != exp_h) {
         std::cerr << "Error: register " << reg_name << " tile dimensions ("
