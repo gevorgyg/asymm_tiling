@@ -32,13 +32,13 @@
                                                              v
   ┌──────────────────────────────────────────────────── main.cpp ────────────────────────────────────────────────────┐
   │                                                                                                                  │
-  │   default.config ──> loadConfigFile() ──> g_config map ──> getConfig(key)                                        │
+  │   default.config ──> loadConfig(path) ──> Config (typed struct, see config.h)                                    │
   │        │                                                                                                         │
   │        ├────────────> matrix dims/precisions ──────────────┐                                                     │
   │        └────────────> cache + mem + prng + fifo parameters ┼──────────────┐                                      │
   │                                                            │              │                                      │
   │   --Bgenerated ──> prng.window_bytes = B bytes (else 0) ───┘              │                                      │
-  │   --Bfifo      ──> prng_fifo.window_bytes = B bytes (else 0) ──────────────┤                                      │
+  │   --Bfifo      ──> prng_fifo.fifo_capacity = cfg val (else 0) ─────────────┤                                      │
   └───────────────────────────────────────────────────────────┼──────────────┼──────────────────────────────────────┘
                                                                │              │
                                ┌────────────────────────────────┘              │
@@ -56,29 +56,29 @@
                                  │
                                  v
   ┌─────────────────────────── Interpreter::run() ───────────────────────────────────────────────────────────────────┐
-  │  readCmd() ── ltea ───> handleTload():  check PRNG tile-row % line_size == 0;                                     │
-  │            │            set vec_reg; doRead() per element of tile                                                 │
-  │            ├─ tmov ───> handleTmove():  set vec_reg; doWrite() per element                                        │
-  │            ├─ tmulac ─> handleMulAcc(): register-only (or scalar element cache reads if REG_M == 0)                │
-  │            └─ prefetch > handlePrefetch(): issues prefetch reads to pull cache-tiled ranges into L1/L2            │
-  │                                                                                                                   │
-  │  doRead/doWrite: Trace t; mem_.read/write(addr, elem_width, t);                                                   │
-  │                  cpu_cycles_ += totalCycles(t);  buffered per instruction ──> --trace_file (per --trace_level)    │
+  │  handleCmd() dispatches via op-table { "ltea", "tmov", "prefetch", "tmulac" } -> member function:                 │
+  │     ltea     -> handleTload():    parseTileParams + validateRegShape; set vec_reg; doRead per element            │
+  │     tmov     -> handleTmove():    parseTileParams + validateRegShape; doWrite per element                        │
+  │     prefetch -> handlePrefetch(): parseTileParams; doRead per element                                            │
+  │     tmulac   -> handleMulAcc():   reg-only path; scalar element loads if reg_m_ == 0; pushes MulAcc Action       │
+  │                                                                                                                  │
+  │  doRead/doWrite: Trace t; mem_.access(addr, sz, is_write, t);                                                    │
+  │                  cpu_cycles_ += totalCycles(t);  buffered per instruction ──> --trace_file (per --trace_level)   │
   └───────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┘
                                       v
-  ┌────────────────────────── MemoryHierarchy ───────────────────────────────────┐
+  ┌────────────────────────── MemoryHierarchy::access ────────────────────────────┐
   │                                                                              │
-  │      read/write(addr)                                                        │
+  │   access(addr, sz, is_write, trace)                                          │
   │            │                                                                 │
   │            v                                                                 │
   │      ┌────────────┐                                                          │
-  │      │ MMIO check │  is addr in [0xFF000000, 0xFF10000C)?                     │
+  │      │ MMIO check │  is addr in PrngFifoDev range? (the only L1 bypass)      │
   │      └─────┬──────┘                                                          │
-  │            ├───────────────────────────> yes: bypass L1/L2, access PrngFifoDev│
+  │            ├───────────────────────────> yes: PrngFifoDev::read/write        │
   │            │ no                                                              │
   │            v                                                                 │
-  │        ┌────────┐  hit: TagLookup, done                                      │
-  │        │   L1   │ ───────────────────────────> Trace: [TagLookup]            │
+  │        ┌────────┐  hit: probe() -> TagLookup, done                           │
+  │        │   L1   │ ───────────────────────────> Trace: [TagLookup HIT]        │
   │        └───┬────┘                                                            │
   │            │ miss                                                            │
   │            v                                                                 │
@@ -94,14 +94,35 @@
   │                                   │                   │                      │
   │            ┌──────────────────────┴───────────────────┘                      │
   │            v                                                                 │
-  │   back in L1: LineFill (+ Evict if set full)                                 │
-  │   Trace: [TagLookup, IsGenerated, Generate, LineFill, Evict?]   (PRNG path)  │
-  │   Trace: [TagLookup, TagLookup, MemoryAccess?, LineFill(s), …]  (mem path)   │
+  │   back in L1: fillLine() -> Evict (if set full, writeback if dirty) + LineFill │
+  │   Trace: [TagLookup, IsGenerated, Generate, LineFill]            (PRNG path) │
+  │   Trace: [TagLookup, TagLookup, MemoryAccess?, LineFill(s), …]   (mem path)  │
   └───────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       v
                     main: print L1/L2 stats, PRNG/PRNG FIFO stats, total cycles
 ```
+
+### Action model
+
+Every cycle-costing event in the simulator is a subclass of `Action`
+(`memory-system/action.h`). Each device's `read`/`write` (or, for compute,
+the interpreter's `handleMulAcc`) does all the state mutation and then
+appends a pure-data witness:
+
+| Action          | Where it lives                                  |
+| --------------- | ----------------------------------------------- |
+| `TagLookup`     | `memory-system/cache/cache_actions.h`           |
+| `LineFill`      | same                                            |
+| `Evict`         | same                                            |
+| `MemoryAccess`  | `memory-system/mainmem/mainmem_actions.h`       |
+| `IsGenerated`   | `memory-system/prng/prng_actions.h`             |
+| `Generate`      | same                                            |
+| `Fifo*` (5x)    | `memory-system/prng_fifo/prng_fifo_actions.h`   |
+| `MulAcc`        | `interpreter/matmul/matmul_actions.h`           |
+
+A `Trace = std::vector<std::unique_ptr<Action>>` carries one request's
+witnesses; `totalCycles(trace)` sums their `cyclesToPerform()`.
 
 ---
 
