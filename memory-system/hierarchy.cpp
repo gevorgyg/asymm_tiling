@@ -1,5 +1,4 @@
 #include "hierarchy.h"
-#include "cache/eviction_policy.h"
 
 
 void AddrRouter::read(Addr addr, size_t size, Trace& trace)
@@ -27,11 +26,11 @@ void AddrRouter::write(Addr addr, size_t size, Trace& trace)
 MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
     : MemoryObject(0),
       mem_(p.mem_access_cycles),
-      l2_(p.l2_access_cycles, p.l2, createEvictionPolicy(p.l2_policy), &mem_),
+      l2_(p.l2_access_cycles, p.l2, parsePolicy(p.l2_policy), &mem_),
       prng_(p.prng),
       prng_fifo_(p.prng_fifo, cpu_cycles),
       router_(prng_, prng_fifo_, l2_),
-      l1_(p.l1_access_cycles, p.l1, createEvictionPolicy(p.l1_policy), &router_)
+      l1_(p.l1_access_cycles, p.l1, parsePolicy(p.l1_policy), &router_)
 {
 }
 

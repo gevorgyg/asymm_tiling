@@ -7,7 +7,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <vector>
 
 
@@ -40,8 +39,8 @@ class Cache : public MemoryObject
         size_t   misses      = 0;
     };
 
-    Cache(uint access_cycles, InitParameters p,
-          std::unique_ptr<EvictionPolicy> policy, MemoryObject* next_level);
+    Cache(uint access_cycles, InitParameters p, Policy policy,
+          MemoryObject* next_level);
 
     void read(Addr addr, size_t size, Trace& trace)  override;
     void write(Addr addr, size_t size, Trace& trace) override;
@@ -69,10 +68,10 @@ class Cache : public MemoryObject
     size_t                          size_;
     size_t                          line_size_;
     size_t                          assoc_;
-    WritePolicy                     write_policy_;
-    std::unique_ptr<EvictionPolicy> policy_;
-    MemoryObject*                   next_level_;
-    std::vector<Set>                sets_;
+    WritePolicy        write_policy_;
+    Policy             policy_;
+    MemoryObject*      next_level_;
+    std::vector<Set>   sets_;
 
     Stats stats_;
 };

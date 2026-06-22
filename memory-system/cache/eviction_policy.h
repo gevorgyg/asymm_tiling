@@ -2,41 +2,15 @@
 
 #include "set.h"
 
-#include <memory>
 #include <string>
 
 
-// A policy looks at the lines in a (full) set and returns the one to evict.
-// It never mutates the set itself -- the caller (LineFill::perform) does the
-// removal via the cache's API.
+// Two-policy enum is enough today; a strategy hierarchy would dwarf the
+// actual logic (both policies evict the front; only recordAccess differs).
+enum class Policy { LRU, FIFO };
 
-class EvictionPolicy
-{
-  public:
-    virtual ~EvictionPolicy() = default;
+const char* policyName(Policy p);
+Policy      parsePolicy(const std::string& name);
 
-    virtual CacheLine*  pickVictim(Set& set) const = 0;
-    virtual const char* name() const               = 0;
-    virtual void        recordAccess(Set& set, Addr line_addr) const {}
-};
-
-
-class FifoPolicy : public EvictionPolicy
-{
-  public:
-    CacheLine*  pickVictim(Set& set) const override;
-    const char* name() const override { return "FIFO"; }
-};
-
-
-class LruPolicy : public EvictionPolicy
-{
-  public:
-    CacheLine*  pickVictim(Set& set) const override;
-    const char* name() const override { return "LRU"; }
-    void        recordAccess(Set& set, Addr line_addr) const override;
-};
-
-
-std::unique_ptr<EvictionPolicy> createEvictionPolicy(const std::string& name);
-
+CacheLine* pickVictim(Policy p, Set& set);
+void       recordAccess(Policy p, Set& set, Addr line_addr);

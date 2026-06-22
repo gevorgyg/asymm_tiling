@@ -1,38 +1,39 @@
 #include "eviction_policy.h"
 
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 
 
-CacheLine* FifoPolicy::pickVictim(Set& set) const
+const char* policyName(Policy p)
 {
-    // Insertion-order list: front was inserted first, so it's the FIFO victim.
+    switch (p) {
+        case Policy::LRU:  return "LRU";
+        case Policy::FIFO: return "FIFO";
+    }
+    return "?";
+}
+
+Policy parsePolicy(const std::string& name)
+{
+    if (name == "LRU")  return Policy::LRU;
+    if (name == "FIFO") return Policy::FIFO;
+    std::cerr << "error: unknown eviction policy: " << name << std::endl;
+    exit(1);
+}
+
+// Both policies evict the front of the per-set insertion-ordered list:
+// FIFO obviously, LRU because hits are spliced to the back.
+CacheLine* pickVictim(Policy /*p*/, Set& set)
+{
     assert(!set.lines().empty());
     return &set.lines().front();
 }
 
-CacheLine* LruPolicy::pickVictim(Set& set) const
+// LRU promotes the touched line to MRU; FIFO ignores access order.
+void recordAccess(Policy p, Set& set, Addr line_addr)
 {
-    // Front is the Least Recently Used element because hits are spliced to the back
-    // and new lines are inserted at the back.
-    assert(!set.lines().empty());
-    return &set.lines().front();
-}
-
-void LruPolicy::recordAccess(Set& set, Addr line_addr) const
-{
-    set.touch(line_addr);
-}
-
-std::unique_ptr<EvictionPolicy> createEvictionPolicy(const std::string& name)
-{
-    if (name == "FIFO") {
-        return std::make_unique<FifoPolicy>();
-    } else if (name == "LRU") {
-        return std::make_unique<LruPolicy>();
-    } else {
-        std::cerr << "error: unknown eviction policy: " << name << std::endl;
-        exit(1);
+    if (p == Policy::LRU) {
+        set.touch(line_addr);
     }
 }
-

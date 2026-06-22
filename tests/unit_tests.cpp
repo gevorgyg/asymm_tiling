@@ -10,7 +10,6 @@
 void testEvictionPolicies() {
     std::cout << "Running unit test for LRU Set..." << std::endl;
     Set set_lru(2); // Assoc = 2
-    auto lru = std::make_unique<LruPolicy>();
 
     set_lru.insert(10);
     set_lru.insert(20);
@@ -19,11 +18,11 @@ void testEvictionPolicies() {
     assert(set_lru.lines().back().lineAddr() == 20);
 
     // Touch 10 (promoting it to MRU)
-    lru->recordAccess(set_lru, 10);
+    recordAccess(Policy::LRU, set_lru, 10);
     assert(set_lru.lines().front().lineAddr() == 20); // LRU
     assert(set_lru.lines().back().lineAddr() == 10);  // MRU
 
-    CacheLine* victim = lru->pickVictim(set_lru);
+    CacheLine* victim = pickVictim(Policy::LRU, set_lru);
     assert(victim->lineAddr() == 20);
 
     set_lru.remove(20);
@@ -35,16 +34,15 @@ void testEvictionPolicies() {
 
     std::cout << "Running unit test for FIFO Set..." << std::endl;
     Set set_fifo(2);
-    auto fifo = std::make_unique<FifoPolicy>();
 
     set_fifo.insert(10);
     set_fifo.insert(20);
 
     // Touch 10 (FIFO should ignore this)
-    fifo->recordAccess(set_fifo, 10);
+    recordAccess(Policy::FIFO, set_fifo, 10);
     assert(set_fifo.lines().front().lineAddr() == 10);
 
-    CacheLine* victim_fifo = fifo->pickVictim(set_fifo);
+    CacheLine* victim_fifo = pickVictim(Policy::FIFO, set_fifo);
     assert(victim_fifo->lineAddr() == 10);
 
     std::cout << "FIFO unit test PASSED!" << std::endl;
@@ -71,8 +69,7 @@ void testWriteThrough() {
     params.assoc = 2;
     params.write_policy = WritePolicy::WRITE_THROUGH;
 
-    auto policy = std::make_unique<LruPolicy>();
-    Cache cache(4, params, std::move(policy), &memory);
+    Cache cache(4, params, Policy::LRU, &memory);
 
     // 1. Read Miss (should fetch from memory and fill)
     Trace trace1;
@@ -121,8 +118,7 @@ void testWriteBack() {
     params.assoc = 2;
     params.write_policy = WritePolicy::WRITE_BACK;
 
-    auto policy = std::make_unique<LruPolicy>();
-    Cache cache(4, params, std::move(policy), &memory);
+    Cache cache(4, params, Policy::LRU, &memory);
 
     // 1. Write Miss (Write-Back + Write-Allocate)
     // Should read line from memory (write-allocate), perform line fill, and mark dirty locally.

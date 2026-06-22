@@ -4,21 +4,20 @@
 #include <cassert>
 
 
-Cache::Cache(uint access_cycles, InitParameters p,
-             std::unique_ptr<EvictionPolicy> policy, MemoryObject* next_level)
+Cache::Cache(uint access_cycles, InitParameters p, Policy policy,
+             MemoryObject* next_level)
     : MemoryObject(access_cycles),
       name_(p.name),
       size_(p.size),
       line_size_(p.line_size),
       assoc_(p.assoc),
       write_policy_(p.write_policy),
-      policy_(std::move(policy)),
+      policy_(policy),
       next_level_(next_level)
 {
     assert(line_size_ > 0);
     assert(assoc_ > 0);
     assert(size_ % (line_size_ * assoc_) == 0);
-    assert(policy_ != nullptr);
     assert(next_level_ != nullptr);
 
     const size_t num_sets = size_ / (line_size_ * assoc_);
@@ -45,7 +44,7 @@ bool Cache::probe(Addr addr)
     Set& set = setFor(addr);
     if (set.lookup(line)) {
         ++stats_.hits;
-        policy_->recordAccess(set, line);
+        recordAccess(policy_, set, line);
         return true;
     }
     ++stats_.misses;
@@ -56,7 +55,7 @@ void Cache::fillLine(Addr addr, Trace& trace)
 {
     Set& set = setFor(addr);
     if (set.isFull()) {
-        CacheLine* victim    = policy_->pickVictim(set);
+        CacheLine* victim    = pickVictim(policy_, set);
         const Addr victim_la = victim->lineAddr();
         const bool dirty     = victim->dirty();
         if (dirty) {
