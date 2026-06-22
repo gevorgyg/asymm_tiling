@@ -9,28 +9,29 @@
 #include <string>
 
 
-// Sits between L1 and L2: addresses inside the PRNG/PRNG_FIFO windows are served
-// by their respective generator devices, everything else falls through to L2.
+// Sits between L1 and L2: L1 misses that land inside the on-demand PRNG
+// window are served by the PrngDev; everything else falls through to L2.
+// (FIFO MMIO traffic is short-circuited at MemoryHierarchy::access and
+// never reaches L1 -- so this router never sees it.)
 class AddrRouter : public MemoryObject
 {
   public:
-    AddrRouter(PrngDev& prng, PrngFifoDev& prng_fifo, MemoryObject& fallthrough)
-        : MemoryObject(0), prng_(prng), prng_fifo_(prng_fifo), fallthrough_(fallthrough)
-    {
-    }
+    AddrRouter(PrngDev& prng, MemoryObject& fallthrough)
+        : MemoryObject(0), prng_(prng), fallthrough_(fallthrough) {}
 
     void read(Addr addr, size_t size, Trace& trace) override;
     void write(Addr addr, size_t size, Trace& trace) override;
 
   private:
     PrngDev&      prng_;
-    PrngFifoDev&  prng_fifo_;
     MemoryObject& fallthrough_;
 };
 
 
-// L1 -> AddrRouter -> { PrngDev | PrngFifoDev | L2 -> MainMemory }.
-class MemoryHierarchy : public MemoryObject
+// Hub for the memory subsystem. Not a MemoryObject itself -- there is only
+// one, and the polymorphism would buy nothing. Callers route every memory
+// request through access(), which decides MMIO vs L1-path at the top.
+class MemoryHierarchy
 {
   public:
     struct Parameters {
@@ -45,42 +46,24 @@ class MemoryHierarchy : public MemoryObject
         PrngFifoDev::InitParameters prng_fifo;
     };
 
-
     explicit MemoryHierarchy(Parameters p, const size_t& cpu_cycles);
 
-    void read(Addr addr, size_t size, Trace& trace) override;
-    void write(Addr addr, size_t size, Trace& trace) override;
+    // Single entry point for every CPU memory operation. FIFO MMIO addresses
+    // bypass L1 entirely; all other traffic goes through L1 -> Router ->
+    // {PrngDev | L2 -> MainMemory}.
+    void access(Addr addr, size_t size, bool is_write, Trace& trace);
 
-    const Cache& l1() const
-    {
-        return l1_;
-    }
-
-    const Cache& l2() const
-    {
-        return l2_;
-    }
-
-    const PrngDev& prng() const
-    {
-        return prng_;
-    }
-
-    const PrngFifoDev& prng_fifo() const
-    {
-        return prng_fifo_;
-    }
-
-    PrngFifoDev& prng_fifo()
-    {
-        return prng_fifo_;
-    }
+    const Cache&       l1()        const { return l1_; }
+    const Cache&       l2()        const { return l2_; }
+    const PrngDev&     prng()      const { return prng_; }
+    const PrngFifoDev& prng_fifo() const { return prng_fifo_; }
+    PrngFifoDev&       prng_fifo()       { return prng_fifo_; }
 
   private:
-    MainMemory mem_;
-    Cache l2_;
-    PrngDev prng_;
+    MainMemory  mem_;
+    Cache       l2_;
+    PrngDev     prng_;
     PrngFifoDev prng_fifo_;
-    AddrRouter router_;
-    Cache l1_;
+    AddrRouter  router_;
+    Cache       l1_;
 };

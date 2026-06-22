@@ -297,7 +297,7 @@ void Interpreter::setInstHeader(const char* op, const TileParams& p, int reg)
 void Interpreter::doRead(Addr addr, size_t size)
 {
     Trace t;
-    mem_.read(addr, size, t);
+    mem_.access(addr, size, /*is_write=*/false, t);
     const uint cycles = totalCycles(t);
     cpu_cycles_ += cycles;
     logAccess("read ", addr, cycles, t);
@@ -306,7 +306,7 @@ void Interpreter::doRead(Addr addr, size_t size)
 void Interpreter::doWrite(Addr addr, size_t size)
 {
     Trace t;
-    mem_.write(addr, size, t);
+    mem_.access(addr, size, /*is_write=*/true, t);
     const uint cycles = totalCycles(t);
     cpu_cycles_ += cycles;
     logAccess("write", addr, cycles, t);
