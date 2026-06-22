@@ -34,7 +34,7 @@ void MemoryHierarchy::access(Addr addr, size_t size, bool is_write, Trace& trace
 {
     if (addr >= 0x20000000 && addr < 0x50000000) {
         trace.push_back(std::make_unique<ScratchpadAction>(
-            is_write ? "write" : "read", addr, 1, 1, 1));
+            is_write ? ScratchpadOp::WRITE : ScratchpadOp::READ, addr, 1, 1, 1));
         return;
     }
 
