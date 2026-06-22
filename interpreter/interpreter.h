@@ -98,6 +98,8 @@ class Interpreter
 
     // Cross-cutting helpers.
     void validateRegShape(uint reg, uint t_width, uint t_height) const;
+    void validateMulAccShapes(const vec_reg& ra, const vec_reg& rb, const vec_reg& rc) const;
+    char getRegChar(uint reg) const;
     void setInstHeader(const char* op, const TileParams& p, int reg);
     void setDmaHeader(const char* op, const DmaParams& p);
     template <typename F>
@@ -106,6 +108,8 @@ class Interpreter
     // Trace I/O.
     void doRead(Addr addr, size_t size);
     void doWrite(Addr addr, size_t size);
+    void doRead(const TileParams& p);
+    void doWrite(const TileParams& p);
     void logAccess(const char* op, Addr addr, uint cycles, const Trace& t);
 
     std::ifstream in_stream_;
@@ -134,10 +138,6 @@ class Interpreter
     uint reg_n_;
     uint reg_k_;
     uint mulac_cycles_;
-
-    // Scratchpad config
-    uint sp_banks_;
-    uint sp_word_size_bytes_;
 };
 
 template <typename F>

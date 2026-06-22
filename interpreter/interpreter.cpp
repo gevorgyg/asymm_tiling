@@ -1,6 +1,6 @@
 #include "interpreter.h"
+#include "../memory-system/scratchpad/scratchpad_action.h"
 #include "matmul/matmul_actions.h"
-#include "../memory-system/scratchpad_action.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -8,14 +8,12 @@
 
 using std::filesystem::path;
 
-
 Interpreter::Interpreter(path input_file, MemoryHierarchy& mem, Options opts,
                          size_t& cpu_cycles)
     : in_stream_(input_file), line_(0), cpu_cycles_(cpu_cycles),
       trace_level_(opts.trace_level), vec_regs_{}, mem_(mem),
       reg_m_(opts.reg_m), reg_n_(opts.reg_n), reg_k_(opts.reg_k),
-      mulac_cycles_(opts.mulac_cycles), sp_banks_(opts.sp_banks),
-      sp_word_size_bytes_(opts.sp_word_size_bytes)
+      mulac_cycles_(opts.mulac_cycles)
 {
     if (!in_stream_.is_open()) {
         std::cerr << "error opening trace file" << std::endl;
@@ -33,9 +31,9 @@ Interpreter::Interpreter(path input_file, MemoryHierarchy& mem, Options opts,
 
 void Interpreter::run()
 {
-    while (handleCmd()) { }
+    while (handleCmd()) {
+    }
 }
-
 
 // --- Dispatch ---------------------------------------------------------------
 
@@ -48,19 +46,20 @@ bool Interpreter::handleCmd()
         void (Interpreter::*handler)();
     };
     static constexpr OpEntry kOps[] = {
-        {"ltea",     &Interpreter::handleTload},
-        {"tmov",     &Interpreter::handleTmove},
+        {"ltea", &Interpreter::handleTload},
+        {"tmov", &Interpreter::handleTmove},
         {"prefetch", &Interpreter::handlePrefetch},
-        {"tmulac",   &Interpreter::handleMulAcc},
-        {"dma_in",   &Interpreter::handleDmaIn},
-        {"dma_out",  &Interpreter::handleDmaOut},
+        {"tmulac", &Interpreter::handleMulAcc},
+        {"dma_in", &Interpreter::handleDmaIn},
+        {"dma_out", &Interpreter::handleDmaOut},
     };
 
     skipSpaces();
 
     std::string op;
     std::getline(in_stream_, op, ' ');
-    if (in_stream_.eof()) return false;
+    if (in_stream_.eof())
+        return false;
 
     for (const auto& entry : kOps) {
         if (op == entry.name) {
@@ -92,10 +91,10 @@ bool Interpreter::handleCmd()
         }
     }
 
-    std::cerr << "invalid command '" << op << "' on line " << line_ << std::endl;
+    std::cerr << "invalid command '" << op << "' on line " << line_
+              << std::endl;
     exit(1);
 }
-
 
 // --- Per-op handlers --------------------------------------------------------
 
@@ -107,32 +106,12 @@ void Interpreter::handleTload()
     expect('\n', "new line", "line");
 
     validateRegShape(dst_reg, p.t_width, p.t_height);
-    vec_regs_[dst_reg] = {p.base_addr, p.t_width, p.t_height, p.stride, p.elem_width};
+    vec_regs_[dst_reg] = {p.base_addr, p.t_width, p.t_height, p.stride,
+                          p.elem_width};
     setInstHeader("ltea", p, static_cast<int>(dst_reg));
 
     if (p.base_addr >= 0x20000000 && p.base_addr < 0x50000000) {
-        // Scratchpad banking conflict simulation
-        std::vector<uint> bank_counts(sp_banks_, 0);
-        forEachElement(p, [&](Addr addr) {
-            uint bank = (addr / sp_word_size_bytes_) % sp_banks_;
-            bank_counts[bank]++;
-        });
-        uint max_conflicts = 0;
-        for (uint count : bank_counts) {
-            if (count > max_conflicts) max_conflicts = count;
-        }
-        cpu_cycles_ += max_conflicts;
-
-        if (trace_out_.is_open()) {
-            if (trace_level_ >= trace_accesses) {
-                inst_detail_ << "  read  @0x" << std::hex << p.base_addr << std::dec
-                             << " (" << max_conflicts << " cy)\n";
-            }
-            if (trace_level_ >= trace_actions) {
-                inst_detail_ << "    Scratchpad read @0x" << std::hex << p.base_addr << std::dec
-                             << " (" << p.t_width << "x" << p.t_height << ") (" << max_conflicts << " cy)\n";
-            }
-        }
+        doRead(p);
         return;
     }
 
@@ -161,28 +140,7 @@ void Interpreter::handleTmove()
     setInstHeader("tmov", p, static_cast<int>(src_reg));
 
     if (p.base_addr >= 0x20000000 && p.base_addr < 0x50000000) {
-        // Scratchpad banking conflict simulation
-        std::vector<uint> bank_counts(sp_banks_, 0);
-        forEachElement(p, [&](Addr addr) {
-            uint bank = (addr / sp_word_size_bytes_) % sp_banks_;
-            bank_counts[bank]++;
-        });
-        uint max_conflicts = 0;
-        for (uint count : bank_counts) {
-            if (count > max_conflicts) max_conflicts = count;
-        }
-        cpu_cycles_ += max_conflicts;
-
-        if (trace_out_.is_open()) {
-            if (trace_level_ >= trace_accesses) {
-                inst_detail_ << "  write @0x" << std::hex << p.base_addr << std::dec
-                             << " (" << max_conflicts << " cy)\n";
-            }
-            if (trace_level_ >= trace_actions) {
-                inst_detail_ << "    Scratchpad write @0x" << std::hex << p.base_addr << std::dec
-                             << " (" << p.t_width << "x" << p.t_height << ") (" << max_conflicts << " cy)\n";
-            }
-        }
+        doWrite(p);
         return;
     }
 
@@ -213,17 +171,11 @@ void Interpreter::handleMulAcc()
     const vec_reg& rb = vec_regs_[b];
     const vec_reg& rc = vec_regs_[c];
 
-    if (ra.t_width != rb.t_height || rc.t_height != ra.t_height ||
-        rc.t_width != rb.t_width) {
-        std::cerr << "tmulac tile shape mismatch (" << ra.t_height << "x"
-                  << ra.t_width << ") * (" << rb.t_height << "x" << rb.t_width
-                  << ") -> (" << rc.t_height << "x" << rc.t_width
-                  << ") in line: " << line_ << std::endl;
-        exit(1);
-    }
+    validateMulAccShapes(ra, rb, rc);
 
     std::ostringstream h;
-    h << "tmulac %r" << "abc"[a] << ", %r" << "abc"[b] << ", %r" << "abc"[c];
+    h << "tmulac %r" << getRegChar(a) << ", %r" << getRegChar(b) << ", %r"
+      << getRegChar(c);
     inst_header_ = h.str();
 
     // Scalar fallback when no register tiling: every multiply-accumulate
@@ -231,12 +183,15 @@ void Interpreter::handleMulAcc()
     if (reg_m_ == 0) {
         for (uint i = 0; i < rc.t_height; ++i) {
             for (uint j = 0; j < rc.t_width; ++j) {
-                const Addr c_addr = rc.base_addr + (i * rc.stride + j) * rc.elem_width;
+                const Addr c_addr =
+                    rc.base_addr + (i * rc.stride + j) * rc.elem_width;
                 doRead(c_addr, rc.elem_width);
                 for (uint k = 0; k < ra.t_width; ++k) {
-                    const Addr a_addr = ra.base_addr + (i * ra.stride + k) * ra.elem_width;
+                    const Addr a_addr =
+                        ra.base_addr + (i * ra.stride + k) * ra.elem_width;
                     doRead(a_addr, ra.elem_width);
-                    const Addr b_addr = rb.base_addr + (k * rb.stride + j) * rb.elem_width;
+                    const Addr b_addr =
+                        rb.base_addr + (k * rb.stride + j) * rb.elem_width;
                     doRead(b_addr, rb.elem_width);
                 }
                 doWrite(c_addr, rc.elem_width);
@@ -258,8 +213,10 @@ void Interpreter::handleDmaIn()
 
     for (uint row = 0; row < p.t_height; ++row) {
         for (uint col = 0; col < p.t_width; ++col) {
-            const Addr src_el = p.src_addr + (row * p.stride + col) * p.elem_width;
-            const Addr dst_el = p.dst_addr + (row * p.t_width + col) * p.elem_width;
+            const Addr src_el =
+                p.src_addr + (row * p.stride + col) * p.elem_width;
+            const Addr dst_el =
+                p.dst_addr + (row * p.t_width + col) * p.elem_width;
             doRead(src_el, p.elem_width);
             doWrite(dst_el, p.elem_width);
         }
@@ -274,14 +231,15 @@ void Interpreter::handleDmaOut()
 
     for (uint row = 0; row < p.t_height; ++row) {
         for (uint col = 0; col < p.t_width; ++col) {
-            const Addr src_el = p.src_addr + (row * p.t_width + col) * p.elem_width;
-            const Addr dst_el = p.dst_addr + (row * p.stride + col) * p.elem_width;
+            const Addr src_el =
+                p.src_addr + (row * p.t_width + col) * p.elem_width;
+            const Addr dst_el =
+                p.dst_addr + (row * p.stride + col) * p.elem_width;
             doRead(src_el, p.elem_width);
             doWrite(dst_el, p.elem_width);
         }
     }
 }
-
 
 // --- Parsing helpers --------------------------------------------------------
 
@@ -328,9 +286,12 @@ uint Interpreter::parseReg()
     if (!reg_name.empty() && reg_name.back() == ',') {
         reg_name.pop_back();
     }
-    if (reg_name == "%ra") return 0;
-    if (reg_name == "%rb") return 1;
-    if (reg_name == "%rc") return 2;
+    if (reg_name == "%ra")
+        return 0;
+    if (reg_name == "%rb")
+        return 1;
+    if (reg_name == "%rc")
+        return 2;
 
     std::cerr << "invalid register in line: " << line_ << std::endl;
     exit(1);
@@ -356,7 +317,6 @@ void Interpreter::skipSpaces()
     }
 }
 
-
 // --- Cross-cutting helpers --------------------------------------------------
 
 // Reject loads/stores whose tile shape doesn't match the configured hardware
@@ -365,21 +325,35 @@ void Interpreter::skipSpaces()
 // register (%ra/%rb/%rc) is targeted.
 void Interpreter::validateRegShape(uint reg, uint t_width, uint t_height) const
 {
-    if (reg_m_ == 0) return;
-    if (t_width == 1 && t_height == 1) return;
+    if (reg_m_ == 0)
+        return;
+    if (t_width == 1 && t_height == 1)
+        return;
 
     uint exp_w = 0, exp_h = 0;
     const char* reg_name = "?";
     switch (reg) {
-        case 0: exp_w = reg_k_; exp_h = reg_m_; reg_name = "%ra"; break;
-        case 1: exp_w = reg_n_; exp_h = reg_k_; reg_name = "%rb"; break;
-        case 2: exp_w = reg_n_; exp_h = reg_m_; reg_name = "%rc"; break;
+    case 0:
+        exp_w    = reg_k_;
+        exp_h    = reg_m_;
+        reg_name = "%ra";
+        break;
+    case 1:
+        exp_w    = reg_n_;
+        exp_h    = reg_k_;
+        reg_name = "%rb";
+        break;
+    case 2:
+        exp_w    = reg_n_;
+        exp_h    = reg_m_;
+        reg_name = "%rc";
+        break;
     }
     if (t_width != exp_w || t_height != exp_h) {
         std::cerr << "Error: register " << reg_name << " tile dimensions ("
                   << t_width << "x" << t_height
-                  << ") do not match hardware config (" << exp_w << "x"
-                  << exp_h << ")\n";
+                  << ") do not match hardware config (" << exp_w << "x" << exp_h
+                  << ")\n";
         exit(1);
     }
 }
@@ -391,7 +365,7 @@ void Interpreter::setInstHeader(const char* op, const TileParams& p, int reg)
       << p.t_width << ", " << p.t_height << ", " << p.stride << ", "
       << p.elem_width << ")";
     if (reg >= 0) {
-        h << ", %r" << "abc"[reg];
+        h << ", %r" << getRegChar(reg);
     }
     inst_header_ = h.str();
 }
@@ -399,12 +373,11 @@ void Interpreter::setInstHeader(const char* op, const TileParams& p, int reg)
 void Interpreter::setDmaHeader(const char* op, const DmaParams& p)
 {
     std::ostringstream h;
-    h << op << " (0x" << std::hex << p.src_addr << ", 0x" << p.dst_addr << std::dec << ", "
-      << p.t_width << ", " << p.t_height << ", " << p.stride << ", "
-      << p.elem_width << ")";
+    h << op << " (0x" << std::hex << p.src_addr << ", 0x" << p.dst_addr
+      << std::dec << ", " << p.t_width << ", " << p.t_height << ", " << p.stride
+      << ", " << p.elem_width << ")";
     inst_header_ = h.str();
 }
-
 
 // --- Trace I/O --------------------------------------------------------------
 
@@ -429,15 +402,64 @@ void Interpreter::doWrite(Addr addr, size_t size)
 void Interpreter::logAccess(const char* op, Addr addr, uint cycles,
                             const Trace& t)
 {
-    if (!trace_out_.is_open() || trace_level_ < trace_accesses) return;
+    if (!trace_out_.is_open() || trace_level_ < trace_accesses)
+        return;
 
-    inst_detail_ << "  " << op << " @0x" << std::hex << addr << std::dec
-                 << " (" << cycles << " cy)\n";
+    inst_detail_ << "  " << op << " @0x" << std::hex << addr << std::dec << " ("
+                 << cycles << " cy)\n";
 
-    if (trace_level_ < trace_actions) return;
+    if (trace_level_ < trace_actions)
+        return;
     for (const auto& a : t) {
         inst_detail_ << "    ";
         a->print(inst_detail_);
         inst_detail_ << '\n';
     }
+}
+
+void Interpreter::validateMulAccShapes(const vec_reg& ra, const vec_reg& rb,
+                                       const vec_reg& rc) const
+{
+    if (ra.t_width != rb.t_height || rc.t_height != ra.t_height ||
+        rc.t_width != rb.t_width) {
+        std::cerr << "tmulac tile shape mismatch (" << ra.t_height << "x"
+                  << ra.t_width << ") * (" << rb.t_height << "x" << rb.t_width
+                  << ") -> (" << rc.t_height << "x" << rc.t_width
+                  << ") in line: " << line_ << std::endl;
+        exit(1);
+    }
+}
+
+char Interpreter::getRegChar(uint reg) const
+{
+    switch (reg) {
+    case 0:
+        return 'a';
+    case 1:
+        return 'b';
+    case 2:
+        return 'c';
+    default:
+        return '?';
+    }
+}
+
+void Interpreter::doRead(const TileParams& p)
+{
+    Trace t;
+    const uint cycles =
+        mem_.access(p.base_addr, p.t_width, p.t_height, p.stride, p.elem_width,
+                    /*is_write=*/false, t);
+    cpu_cycles_ += cycles;
+    logAccess("read ", p.base_addr, cycles, t);
+}
+
+void Interpreter::doWrite(const TileParams& p)
+{
+    Trace t;
+    const uint cycles =
+        mem_.access(p.base_addr, p.t_width, p.t_height, p.stride, p.elem_width,
+                    /*is_write=*/true, t);
+    cpu_cycles_ += cycles;
+    logAccess("write", p.base_addr, cycles, t);
 }

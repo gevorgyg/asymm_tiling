@@ -1,5 +1,5 @@
 #include "hierarchy.h"
-#include "scratchpad_action.h"
+#include "scratchpad/scratchpad_action.h"
 
 
 void AddrRouter::read(Addr addr, size_t size, Trace& trace)
@@ -25,6 +25,7 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
       l2_(p.l2_access_cycles, p.l2, parsePolicy(p.l2_policy), &mem_),
       prng_(p.prng),
       prng_fifo_(p.prng_fifo, cpu_cycles),
+      scratchpad_(p.sp_access_cycles, p.sp_banks, p.sp_word_size_bytes),
       router_(prng_, l2_),
       l1_(p.l1_access_cycles, p.l1, parsePolicy(p.l1_policy), &router_)
 {
@@ -33,8 +34,11 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
 void MemoryHierarchy::access(Addr addr, size_t size, bool is_write, Trace& trace)
 {
     if (addr >= 0x20000000 && addr < 0x50000000) {
-        trace.push_back(std::make_unique<ScratchpadAction>(
-            is_write ? ScratchpadOp::WRITE : ScratchpadOp::READ, addr, 1, 1, 1));
+        if (is_write) {
+            scratchpad_.write(addr, size, trace);
+        } else {
+            scratchpad_.read(addr, size, trace);
+        }
         return;
     }
 
@@ -48,4 +52,10 @@ void MemoryHierarchy::access(Addr addr, size_t size, bool is_write, Trace& trace
 
     if (is_write) l1_.write(addr, size, trace);
     else          l1_.read(addr, size, trace);
+}
+
+uint MemoryHierarchy::access(Addr base_addr, uint t_width, uint t_height, uint stride,
+                             uint elem_width, bool is_write, Trace& trace)
+{
+    return scratchpad_.accessTile(base_addr, t_width, t_height, stride, elem_width, is_write, trace);
 }

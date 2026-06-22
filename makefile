@@ -12,6 +12,7 @@ MEM_SRCS := $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp \
             $(MAIN_DIR)/mainmem.cpp $(MAIN_DIR)/mainmem_actions.cpp \
             $(PRNG_DIR)/prng.cpp $(PRNG_DIR)/prng_actions.cpp \
             $(FIFO_DIR)/prng_fifo.cpp $(FIFO_DIR)/prng_fifo_actions.cpp \
+            $(MEM_DIR)/scratchpad/scratchpad.cpp \
             $(MEM_DIR)/hierarchy.cpp
 
 INT_SRCS := $(INT_DIR)/interpreter.cpp $(MATMUL_DIR)/matmul_actions.cpp
@@ -21,7 +22,8 @@ SRCS := main.cpp config.cpp $(GEN_DIR)/instgen.cpp $(INT_SRCS) $(MEM_SRCS)
 DEPS := config.h \
         $(GEN_DIR)/instgen.h \
         $(INT_DIR)/interpreter.h $(MATMUL_DIR)/matmul_actions.h \
-        $(MEM_DIR)/action.h $(MEM_DIR)/memory_object.h $(MEM_DIR)/hierarchy.h $(MEM_DIR)/scratchpad_action.h \
+        $(MEM_DIR)/action.h $(MEM_DIR)/memory_object.h $(MEM_DIR)/hierarchy.h $(MEM_DIR)/scratchpad/scratchpad_action.h \
+        $(MEM_DIR)/scratchpad/scratchpad.h \
         $(CACHE_DIR)/set.h $(CACHE_DIR)/eviction_policy.h \
         $(CACHE_DIR)/cache.h $(CACHE_DIR)/cache_actions.h \
         $(MAIN_DIR)/mainmem.h $(MAIN_DIR)/mainmem_actions.h \

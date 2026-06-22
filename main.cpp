@@ -150,6 +150,9 @@ int main(int argc, char* argv[])
                       .access_cycles   = cfg.prng_access_cycles,
                       .fifo_capacity   = b_fifo ? cfg.prng_fifo_capacity : 0,
                       .gen_cost        = b_fifo ? cfg.prng_fifo_gen_cost : 0},
+        .sp_access_cycles   = 1,
+        .sp_banks           = cfg.sp_banks,
+        .sp_word_size_bytes = cfg.sp_word_size_bytes,
     };
 
     size_t cpu_cycles = 0;

@@ -2,6 +2,7 @@
 #include "memory-system/cache/eviction_policy.h"
 #include "memory-system/cache/cache.h"
 #include "memory-system/mainmem/mainmem.h"
+#include "memory-system/scratchpad/scratchpad.h"
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -274,6 +275,34 @@ void testPrngFifo() {
     std::cout << "PRNG FIFO unit tests PASSED!" << std::endl;
 }
 
+void testScratchpad() {
+    std::cout << "Running Scratchpad unit tests..." << std::endl;
+
+    ScratchpadDev dev(1, 8, 8); // access_cycles=1, banks=8, word_size_bytes=8
+
+    // Test single element read
+    Trace t1;
+    dev.read(0x20000000, 8, t1);
+    assert(hasAction(t1, "Scratchpad"));
+    assert(totalCycles(t1) == 1);
+
+    // Test single element write
+    Trace t2;
+    dev.write(0x20000000, 8, t2);
+    assert(hasAction(t2, "Scratchpad"));
+    assert(totalCycles(t2) == 1);
+
+    // Test tile access with conflict checks
+    // Tile size: 4x4, stride: 4, elem_width: 8
+    Trace t3;
+    uint conflicts = dev.accessTile(0x20000000, 4, 4, 4, 8, false, t3);
+    assert(conflicts == 2);
+    assert(hasAction(t3, "Scratchpad"));
+    assert(totalCycles(t3) == 2);
+
+    std::cout << "Scratchpad unit tests PASSED!" << std::endl;
+}
+
 int main() {
     std::cout << "========================================" << std::endl;
     std::cout << "Running Cache Simulator C++ Unit Tests..." << std::endl;
@@ -283,6 +312,7 @@ int main() {
     testWriteThrough();
     testWriteBack();
     testPrngFifo();
+    testScratchpad();
 
     std::cout << "========================================" << std::endl;
     std::cout << "All C++ Unit Tests PASSED Successfully!" << std::endl;

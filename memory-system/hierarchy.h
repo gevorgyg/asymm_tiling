@@ -5,6 +5,7 @@
 #include "memory_object.h"
 #include "prng/prng.h"
 #include "prng_fifo/prng_fifo.h"
+#include "scratchpad/scratchpad.h"
 
 #include <string>
 
@@ -44,6 +45,9 @@ class MemoryHierarchy
         uint mem_access_cycles;
         PrngDev::InitParameters prng;
         PrngFifoDev::InitParameters prng_fifo;
+        uint sp_access_cycles;
+        uint sp_banks;
+        uint sp_word_size_bytes;
     };
 
     explicit MemoryHierarchy(Parameters p, const size_t& cpu_cycles);
@@ -53,17 +57,22 @@ class MemoryHierarchy
     // {PrngDev | L2 -> MainMemory}.
     void access(Addr addr, size_t size, bool is_write, Trace& trace);
 
-    const Cache&       l1()        const { return l1_; }
-    const Cache&       l2()        const { return l2_; }
-    const PrngDev&     prng()      const { return prng_; }
-    const PrngFifoDev& prng_fifo() const { return prng_fifo_; }
-    PrngFifoDev&       prng_fifo()       { return prng_fifo_; }
+    // Overload for parallel tile accesses (specifically scratchpad banking conflict simulation)
+    uint access(Addr base_addr, uint t_width, uint t_height, uint stride,
+                uint elem_width, bool is_write, Trace& trace);
+
+    const Cache&       l1()         const { return l1_; }
+    const Cache&       l2()         const { return l2_; }
+    const PrngDev&     prng()       const { return prng_; }
+    const PrngFifoDev& prng_fifo()  const { return prng_fifo_; }
+    PrngFifoDev&       prng_fifo()        { return prng_fifo_; }
 
   private:
-    MainMemory  mem_;
-    Cache       l2_;
-    PrngDev     prng_;
-    PrngFifoDev prng_fifo_;
-    AddrRouter  router_;
-    Cache       l1_;
+    MainMemory    mem_;
+    Cache         l2_;
+    PrngDev       prng_;
+    PrngFifoDev   prng_fifo_;
+    ScratchpadDev scratchpad_;
+    AddrRouter    router_;
+    Cache         l1_;
 };
