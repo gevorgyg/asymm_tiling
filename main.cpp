@@ -46,6 +46,75 @@ void generateInstructions(const Config& c, uint m, uint n, uint k,
     gen.generate(tile, ofs, b_stationary, b_fifo, b_scratchpad);
 }
 
+void writeStatsFile(const std::string& path, const MemoryHierarchy& mem, size_t cpu_cycles, bool b_generated, bool b_fifo)
+{
+    std::ofstream out(path);
+    if (!out.is_open()) {
+        std::cerr << "error opening stat file: " << path << std::endl;
+        return;
+    }
+
+    out << "| Component | Metric | Value |\n";
+    out << "| :--- | :--- | :--- |\n";
+
+    // L1 Stats
+    {
+        const Cache::Stats& s = mem.l1().stats();
+        const size_t total = s.hits + s.misses;
+        const double hit_rate = total ? (double)s.hits / (double)total : 0.0;
+        char buffer[128];
+        snprintf(buffer, sizeof(buffer), "| L1 Cache | Hit Rate | %.03f |\n", hit_rate);
+        out << buffer;
+        out << "| L1 Cache | TagLookup | " << s.tag_lookups << " |\n";
+        out << "| L1 Cache | LineFill | " << s.line_fills << " |\n";
+        out << "| L1 Cache | Evict | " << s.evicts << " |\n";
+    }
+
+    // L2 Stats
+    {
+        const Cache::Stats& s = mem.l2().stats();
+        const size_t total = s.hits + s.misses;
+        const double hit_rate = total ? (double)s.hits / (double)total : 0.0;
+        char buffer[128];
+        snprintf(buffer, sizeof(buffer), "| L2 Cache | Hit Rate | %.03f |\n", hit_rate);
+        out << buffer;
+        out << "| L2 Cache | TagLookup | " << s.tag_lookups << " |\n";
+        out << "| L2 Cache | LineFill | " << s.line_fills << " |\n";
+        out << "| L2 Cache | Evict | " << s.evicts << " |\n";
+    }
+
+    // PRNG Stats
+    if (b_generated) {
+        const PrngDev::Stats& ps = mem.prng().stats();
+        out << "| PRNG | Generate | " << ps.generates << " |\n";
+        out << "| PRNG | Regenerate | " << ps.regenerates << " |\n";
+    } else {
+        out << "| PRNG | Generate | - |\n";
+        out << "| PRNG | Regenerate | - |\n";
+    }
+
+    // PRNG FIFO Stats
+    if (b_fifo) {
+        const PrngFifoDev::Stats& pfs = mem.prng_fifo().stats();
+        out << "| PRNG FIFO | Starts | " << pfs.starts << " |\n";
+        out << "| PRNG FIFO | Stops | " << pfs.stops << " |\n";
+        out << "| PRNG FIFO | Reads | " << pfs.reads << " |\n";
+        out << "| PRNG FIFO | Stalls | " << pfs.stalls << " |\n";
+        out << "| PRNG FIFO | Stall Cycles | " << pfs.stall_cycles << " |\n";
+        out << "| PRNG FIFO | Generates | " << pfs.generates << " |\n";
+    } else {
+        out << "| PRNG FIFO | Starts | - |\n";
+        out << "| PRNG FIFO | Stops | - |\n";
+        out << "| PRNG FIFO | Reads | - |\n";
+        out << "| PRNG FIFO | Stalls | - |\n";
+        out << "| PRNG FIFO | Stall Cycles | - |\n";
+        out << "| PRNG FIFO | Generates | - |\n";
+    }
+
+    // System Stats
+    out << "| System | Total Cycles | " << cpu_cycles << " |\n";
+}
+
 int main(int argc, char* argv[])
 {
     bool b_generated  = false;
@@ -57,6 +126,7 @@ int main(int argc, char* argv[])
     std::string trace_file_path;
     std::string trace_input_path = "";
     std::string config_file_path = "";
+    std::string stat_file_path   = "";
     int trace_level              = Interpreter::trace_actions;
 
     for (int i = 1; i < argc; ++i) {
@@ -72,6 +142,9 @@ int main(int argc, char* argv[])
         } else if (arg == "--trace_file") {
             if (i + 1 >= argc) { std::cerr << "--trace_file requires a filename\n"; exit(1); }
             trace_file_path = argv[++i];
+        } else if (arg == "--stat_file" || arg == "--stat-file") {
+            if (i + 1 >= argc) { std::cerr << "--stat_file requires a filename\n"; exit(1); }
+            stat_file_path = argv[++i];
         } else if (arg == "--trace_input") {
             if (i + 1 >= argc) { std::cerr << "--trace_input requires a filename\n"; exit(1); }
             trace_input_path = argv[++i];
@@ -104,8 +177,8 @@ int main(int argc, char* argv[])
     if (positional != 3) {
         std::cerr << "usage: " << argv[0]
                   << " [--Bgenerated] [--Bfifo] [--Bstationary] [--scratchpad] "
-                      "[--trace_file <file>] [--trace_level <0|1|2>] "
-                      "[--config <file>] [--trace_input <file>] <m> <n> <k>\n";
+                       "[--trace_file <file>] [--trace_level <0|1|2>] [--stat_file <file>] "
+                       "[--config <file>] [--trace_input <file>] <m> <n> <k>\n";
         exit(1);
     }
 
@@ -222,6 +295,10 @@ int main(int argc, char* argv[])
 
     printf("--- System ---\n");
     printf("Cycles:    %llu\n", (unsigned long long)cpu_cycles);
+
+    if (!stat_file_path.empty()) {
+        writeStatsFile(stat_file_path, mem, cpu_cycles, b_generated, b_fifo);
+    }
 
     return 0;
 }
