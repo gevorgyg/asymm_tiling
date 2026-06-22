@@ -1,7 +1,7 @@
 #include "memory-system/cache/set.h"
 #include "memory-system/cache/eviction_policy.h"
 #include "memory-system/cache/cache.h"
-#include "memory-system/mainmem.h"
+#include "memory-system/mainmem/mainmem.h"
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -203,7 +203,7 @@ void testWriteBack() {
     std::cout << "Cache Write-Back unit tests PASSED!" << std::endl;
 }
 
-#include "memory-system/prng_fifo.h"
+#include "memory-system/prng_fifo/prng_fifo.h"
 
 void testPrngFifo() {
     std::cout << "Running PRNG FIFO unit tests..." << std::endl;

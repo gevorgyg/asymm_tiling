@@ -11,10 +11,9 @@
 #include <vector>
 
 
-// Cache-emitted actions are nested as Cache::TagLookup, Cache::LineFill,
-// Cache::Evict -- they describe what the cache *did* on each access, and are
-// produced (with all relevant data already filled in) by Cache::read/write.
-// The Action classes themselves carry no logic.
+// Cache-emitted events live in cache_actions.h (TagLookup, LineFill, Evict).
+// They are pure-data records: Cache::read/write does all the state mutation
+// and then appends a witness.
 
 enum class WritePolicy {
     WRITE_THROUGH,
@@ -50,10 +49,6 @@ class Cache : public MemoryObject
     const char*  name()  const { return name_; }
     const Stats& stats() const { return stats_; }
 
-    class TagLookup;
-    class LineFill;
-    class Evict;
-
   private:
     // Tag-check the line containing `addr`. Updates stats and (on hit) LRU
     // order. Returns true iff the line is present.
@@ -80,61 +75,4 @@ class Cache : public MemoryObject
     std::vector<Set>                sets_;
 
     Stats stats_;
-};
-
-
-// --- Cache::TagLookup ---------------------------------------------------
-
-class Cache::TagLookup : public Action
-{
-  public:
-    TagLookup(const char* cache, Addr byte_addr, uint cost, bool hit)
-        : cache_(cache), byte_addr_(byte_addr), cost_(cost), hit_(hit) {}
-
-    uint        cyclesToPerform() const override { return cost_; }
-    const char* name() const override            { return "TagLookup"; }
-    void        print(std::ostream& os) const override;
-
-  private:
-    const char* cache_;
-    Addr        byte_addr_;
-    uint        cost_;
-    bool        hit_;
-};
-
-
-// --- Cache::LineFill ----------------------------------------------------
-
-class Cache::LineFill : public Action
-{
-  public:
-    LineFill(const char* cache, Addr byte_addr)
-        : cache_(cache), byte_addr_(byte_addr) {}
-
-    uint        cyclesToPerform() const override { return 0; }
-    const char* name() const override            { return "LineFill"; }
-    void        print(std::ostream& os) const override;
-
-  private:
-    const char* cache_;
-    Addr        byte_addr_;
-};
-
-
-// --- Cache::Evict -------------------------------------------------------
-
-class Cache::Evict : public Action
-{
-  public:
-    Evict(const char* cache, Addr victim_line_addr, bool dirty)
-        : cache_(cache), victim_line_addr_(victim_line_addr), dirty_(dirty) {}
-
-    uint        cyclesToPerform() const override { return 0; }
-    const char* name() const override            { return "Evict"; }
-    void        print(std::ostream& os) const override;
-
-  private:
-    const char* cache_;
-    Addr        victim_line_addr_;
-    bool        dirty_;
 };

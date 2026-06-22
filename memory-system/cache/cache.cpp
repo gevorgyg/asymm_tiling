@@ -1,10 +1,8 @@
 #include "cache.h"
+#include "cache_actions.h"
 
 #include <cassert>
-#include <ostream>
 
-
-// --- Cache --------------------------------------------------------------
 
 Cache::Cache(uint access_cycles, InitParameters p,
              std::unique_ptr<EvictionPolicy> policy, MemoryObject* next_level)
@@ -17,16 +15,16 @@ Cache::Cache(uint access_cycles, InitParameters p,
       policy_(std::move(policy)),
       next_level_(next_level)
 {
-    assert(this->line_size_ > 0);
-    assert(this->assoc_ > 0);
-    assert(this->size_ % (this->line_size_ * this->assoc_) == 0);
+    assert(line_size_ > 0);
+    assert(assoc_ > 0);
+    assert(size_ % (line_size_ * assoc_) == 0);
     assert(policy_ != nullptr);
     assert(next_level_ != nullptr);
 
-    const size_t num_sets = this->size_ / (this->line_size_ * this->assoc_);
+    const size_t num_sets = size_ / (line_size_ * assoc_);
     sets_.reserve(num_sets);
     for (size_t i = 0; i < num_sets; ++i) {
-        sets_.emplace_back(this->assoc_);
+        sets_.emplace_back(assoc_);
     }
 }
 
@@ -58,7 +56,7 @@ void Cache::fillLine(Addr addr, Trace& trace)
 {
     Set& set = setFor(addr);
     if (set.isFull()) {
-        CacheLine* victim = policy_->pickVictim(set);
+        CacheLine* victim    = policy_->pickVictim(set);
         const Addr victim_la = victim->lineAddr();
         const bool dirty     = victim->dirty();
         if (dirty) {
@@ -112,30 +110,4 @@ void Cache::write(Addr addr, size_t size, Trace& trace)
     next_level_->read(addr, size, trace);
     fillLine(addr, trace);
     markDirty(addr);
-}
-
-
-// --- Cache::TagLookup ---------------------------------------------------
-
-void Cache::TagLookup::print(std::ostream& os) const
-{
-    os << cache_ << " TagLookup @0x" << std::hex << byte_addr_ << std::dec
-       << ' ' << (hit_ ? "HIT" : "MISS") << " (" << cost_ << " cy)";
-}
-
-
-// --- Cache::LineFill ----------------------------------------------------
-
-void Cache::LineFill::print(std::ostream& os) const
-{
-    os << cache_ << " LineFill @0x" << std::hex << byte_addr_ << std::dec;
-}
-
-
-// --- Cache::Evict -------------------------------------------------------
-
-void Cache::Evict::print(std::ostream& os) const
-{
-    os << cache_ << " Evict line=0x" << std::hex << victim_line_addr_
-       << std::dec << (dirty_ ? " (dirty)" : " (clean)");
 }

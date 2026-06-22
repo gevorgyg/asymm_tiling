@@ -1,13 +1,11 @@
 #include "prng.h"
+#include "prng_actions.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
-#include <ostream>
 
-
-// --- PrngDev ----------------------------------------------------------------
 
 PrngDev::PrngDev(InitParameters p)
     : MemoryObject(p.access_cycles),
@@ -47,22 +45,4 @@ void PrngDev::write(Addr addr, size_t /*size*/, Trace& /*trace*/)
     std::cerr << "PRNG window is read-only: write @0x" << std::hex << addr
               << std::dec << std::endl;
     exit(1);
-}
-
-
-// --- PrngDev::IsGenerated ----------------------------------------------------
-
-void PrngDev::IsGenerated::print(std::ostream& os) const
-{
-    os << "PRNG IsGenerated @0x" << std::hex << byte_addr_ << std::dec << " "
-       << (generated_ ? "YES" : "NO") << " (" << cost_ << " cy)";
-}
-
-
-// --- PrngDev::Generate -------------------------------------------------------
-
-void PrngDev::Generate::print(std::ostream& os) const
-{
-    os << "PRNG Generate line @0x" << std::hex << line_base_ << std::dec
-       << " (" << cost_ << " cy)" << (regen_ ? " REGEN" : "");
 }

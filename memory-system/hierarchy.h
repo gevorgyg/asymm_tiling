@@ -1,10 +1,10 @@
 #pragma once
 
 #include "cache/cache.h"
-#include "mainmem.h"
+#include "mainmem/mainmem.h"
 #include "memory_object.h"
-#include "prng.h"
-#include "prng_fifo.h"
+#include "prng/prng.h"
+#include "prng_fifo/prng_fifo.h"
 
 #include <string>
 

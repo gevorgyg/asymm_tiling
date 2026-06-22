@@ -1,7 +1,7 @@
 #pragma once
 
-#include "action.h"
-#include "memory_object.h"
+#include "../action.h"
+#include "../memory_object.h"
 
 #include <cstdint>
 
@@ -41,9 +41,6 @@ class PrngDev : public MemoryObject
     size_t       lineSize() const { return line_size_; }
     const Stats& stats() const    { return stats_; }
 
-    class IsGenerated;
-    class Generate;
-
   private:
     Addr lineBase(Addr addr) const { return addr - addr % line_size_; }
 
@@ -53,42 +50,4 @@ class PrngDev : public MemoryObject
     uint   gen_cost_per_line_;
     Addr   head_; // one past the highest byte ever generated
     Stats  stats_;
-};
-
-
-// --- PrngDev::IsGenerated -------------------------------------------------
-
-class PrngDev::IsGenerated : public Action
-{
-  public:
-    IsGenerated(Addr byte_addr, uint cost, bool generated)
-        : byte_addr_(byte_addr), cost_(cost), generated_(generated) {}
-
-    uint        cyclesToPerform() const override { return cost_; }
-    const char* name() const override            { return "IsGenerated"; }
-    void        print(std::ostream& os) const override;
-
-  private:
-    Addr byte_addr_;
-    uint cost_;
-    bool generated_;
-};
-
-
-// --- PrngDev::Generate ------------------------------------------------------
-
-class PrngDev::Generate : public Action
-{
-  public:
-    Generate(Addr line_base, uint cost, bool regen)
-        : line_base_(line_base), cost_(cost), regen_(regen) {}
-
-    uint        cyclesToPerform() const override { return cost_; }
-    const char* name() const override            { return "Generate"; }
-    void        print(std::ostream& os) const override;
-
-  private:
-    Addr line_base_;
-    uint cost_;
-    bool regen_;
 };
