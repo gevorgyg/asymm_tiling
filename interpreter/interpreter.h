@@ -28,7 +28,7 @@ class Interpreter
     };
 
     Interpreter(std::filesystem::path input_file, MemoryHierarchy& mem,
-               Options opts, size_t& cpu_cycles);
+                Options opts, size_t& cpu_cycles);
 
     Interpreter(const Interpreter&)            = delete;
     Interpreter& operator=(const Interpreter&) = delete;
@@ -38,32 +38,44 @@ class Interpreter
   private:
     struct vec_reg {
         Addr base_addr;
-
         uint t_width;
         uint t_height;
         uint stride;
         uint elem_width;
     };
 
-    enum cmd {
-        load_tile,
-        move_tile,
-        mul_acc,
-        prefetch_tile,
-        eof,
+    // Operand pack shared by ltea / tmov / prefetch:
+    //     (addr, tile_width, tile_height, stride, elem_width)
+    struct TileParams {
+        Addr base_addr;
+        uint t_width;
+        uint t_height;
+        uint stride;
+        uint elem_width;
     };
 
+    // Dispatch one instruction; returns false at EOF.
+    bool handleCmd();
+
+    // Per-op handlers.
     void handleTload();
     void handleTmove();
-    void handleMulAcc();
     void handlePrefetch();
+    void handleMulAcc();
 
-    void handleCmd();
-    cmd readCmd();
+    // Parsing helpers.
+    TileParams parseTileParams();
+    uint       parseReg();
+    void       expect(char c, const char* missing, const char* context);
+    void       skipSpaces();
 
-    uint parseReg();
-    void trim_prefix_spaces();
+    // Cross-cutting helpers.
+    void validateRegShape(uint reg, uint t_width, uint t_height) const;
+    void setInstHeader(const char* op, const TileParams& p, int reg);
+    template <typename F>
+    void forEachElement(const TileParams& p, F&& fn) const;
 
+    // Trace I/O.
     void doRead(Addr addr, size_t size);
     void doWrite(Addr addr, size_t size);
     void logAccess(const char* op, Addr addr, uint cycles, const Trace& t);
@@ -87,5 +99,16 @@ class Interpreter
     std::array<vec_reg, 3> vec_regs_;
     MemoryHierarchy& mem_;
 };
+
+template <typename F>
+void Interpreter::forEachElement(const TileParams& p, F&& fn) const
+{
+    for (uint row = 0; row < p.t_height; ++row) {
+        for (uint col = 0; col < p.t_width; ++col) {
+            const Addr target = p.base_addr + (row * p.stride + col) * p.elem_width;
+            fn(target);
+        }
+    }
+}
 
 #endif

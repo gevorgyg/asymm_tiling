@@ -10,414 +10,320 @@ extern bool hasConfig(const std::string& key);
 
 using std::filesystem::path;
 
-#define INTERPRETER_SYNTAX_CHECK(ch, missing, error_msg)                       \
-  do {                                                                         \
-    int cur = in_stream_.get();                                                \
-    while (cur != ch) {                                                        \
-      if (cur != ' ') {                                                        \
-        std::cerr << "missing " missing " after " error_msg " in line: "       \
-                  << line_ << std::endl;                                       \
-        exit(1);                                                               \
-      }                                                                        \
-      cur = in_stream_.get();                                                  \
-    }                                                                          \
-  } while (0)
 
-Interpreter::Interpreter(path input_file, MemoryHierarchy &mem, Options opts,
-                       size_t &cpu_cycles)
+Interpreter::Interpreter(path input_file, MemoryHierarchy& mem, Options opts,
+                         size_t& cpu_cycles)
     : in_stream_(input_file), line_(0), cpu_cycles_(cpu_cycles),
-      trace_level_(opts.trace_level), vec_regs_{}, mem_(mem) {
-  if (!in_stream_.is_open()) {
-    std::cerr << "error opening trace file" << std::endl;
-    exit(1);
-  }
-  if (!opts.trace_file_path.empty()) {
-    trace_out_.open(opts.trace_file_path, std::ios::trunc);
-    if (!trace_out_.is_open()) {
-      std::cerr << "error opening --trace_file: " << opts.trace_file_path
-                << std::endl;
-      exit(1);
+      trace_level_(opts.trace_level), vec_regs_{}, mem_(mem)
+{
+    if (!in_stream_.is_open()) {
+        std::cerr << "error opening trace file" << std::endl;
+        exit(1);
     }
-  }
-}
-
-void Interpreter::doRead(Addr addr, size_t size) {
-  Trace t;
-  mem_.read(addr, size, t);
-  uint cycles = totalCycles(t);
-  cpu_cycles_ += cycles;
-  logAccess("read ", addr, cycles, t);
-}
-
-void Interpreter::doWrite(Addr addr, size_t size) {
-  Trace t;
-  mem_.write(addr, size, t);
-  uint cycles = totalCycles(t);
-  cpu_cycles_ += cycles;
-  logAccess("write", addr, cycles, t);
-}
-
-void Interpreter::logAccess(const char *op, Addr addr, uint cycles,
-                           const Trace &t) {
-  if (!trace_out_.is_open() || trace_level_ < trace_accesses) return;
-
-  inst_detail_ << "  " << op << " @0x" << std::hex << addr << std::dec << " ("
-               << cycles << " cy)\n";
-
-  if (trace_level_ < trace_actions) return;
-  for (const auto &a : t) {
-    inst_detail_ << "    ";
-    a->print(inst_detail_);
-    inst_detail_ << '\n';
-  }
-}
-
-void Interpreter::run() {
-  while (!in_stream_.eof()) {
-    handleCmd();
-  }
-}
-
-uint Interpreter::parseReg() {
-  std::string reg_name;
-  in_stream_ >> reg_name;
-  if (!reg_name.empty() && reg_name.back() == ',') {
-    reg_name.pop_back();
-  }
-
-  if (reg_name == "%ra") return 0;
-  if (reg_name == "%rb") return 1;
-  if (reg_name == "%rc") return 2;
-
-  std::cerr << "invalid register in line: " << line_ << std::endl;
-  exit(1);
-}
-
-void Interpreter::handleTload() {
-  Addr base_addr;
-  uint tile_width;
-  uint tile_height;
-  uint stride;
-  uint elem_width;
-
-  INTERPRETER_SYNTAX_CHECK('(', "opening parenthesis", "command name");
-
-  in_stream_ >> std::hex >> base_addr;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "base address");
-
-  in_stream_ >> std::dec >> tile_width;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile width");
-
-  in_stream_ >> tile_height;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile height");
-
-  in_stream_ >> stride;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "stride");
-
-  in_stream_ >> elem_width;
-
-  INTERPRETER_SYNTAX_CHECK(')', "closing parenthesis", "source parameters");
-
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "source parameters pack");
-
-  uint dst_reg = parseReg();
-
-  // Enforce hardware register size constraints if configured
-  if (hasConfig("REG_M") && getConfig("REG_M") > 0) {
-      uint reg_m = getConfig("REG_M");
-      uint reg_n = getConfig("REG_N");
-      uint reg_k = getConfig("REG_K");
-      if (tile_width != 1 || tile_height != 1) {
-          if (dst_reg == 0) { // %ra
-              if (tile_width != reg_k || tile_height != reg_m) {
-                  std::cerr << "Error: register %ra load dimensions (" << tile_width << "x" << tile_height 
-                            << ") do not match hardware config REG_K x REG_M (" << reg_k << "x" << reg_m << ")\n";
-                  exit(1);
-              }
-          } else if (dst_reg == 1) { // %rb
-              if (tile_width != reg_n || tile_height != reg_k) {
-                  std::cerr << "Error: register %rb load dimensions (" << tile_width << "x" << tile_height 
-                            << ") do not match hardware config REG_N x REG_K (" << reg_n << "x" << reg_k << ")\n";
-                  exit(1);
-              }
-          } else if (dst_reg == 2) { // %rc
-              if (tile_width != reg_n || tile_height != reg_m) {
-                  std::cerr << "Error: register %rc load dimensions (" << tile_width << "x" << tile_height 
-                            << ") do not match hardware config REG_N x REG_M (" << reg_n << "x" << reg_m << ")\n";
-                  exit(1);
-              }
-          }
-      }
-  }
-
-  vec_regs_[dst_reg] = {base_addr, tile_width, tile_height, stride, elem_width};
-
-  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
-
-  std::ostringstream h;
-  h << "ltea (0x" << std::hex << base_addr << std::dec << ", " << tile_width
-    << ", " << tile_height << ", " << stride << ", " << elem_width << "), %r"
-    << "abc"[dst_reg];
-  inst_header_ = h.str();
-
-  // Generated tiles must consist of whole cache lines; partial-line rows are
-  // deliberately unsupported for now.
-  const PrngDev &prng = mem_.prng();
-  if (prng.contains(base_addr) &&
-      (tile_width * elem_width) % prng.lineSize() != 0) {
-    std::cerr << "PRNG tile row of " << tile_width * elem_width
-              << " bytes is not a multiple of the cache line size ("
-              << prng.lineSize() << ") in line: " << line_ << std::endl;
-    exit(1);
-  }
-
-  for (uint row = 0; row < tile_height; ++row) {
-    for (uint col = 0; col < tile_width; ++col) {
-      Addr target = base_addr + (row * stride + col) * elem_width;
-
-      doRead(target, elem_width);
+    if (!opts.trace_file_path.empty()) {
+        trace_out_.open(opts.trace_file_path, std::ios::trunc);
+        if (!trace_out_.is_open()) {
+            std::cerr << "error opening --trace_file: " << opts.trace_file_path
+                      << std::endl;
+            exit(1);
+        }
     }
-  }
 }
 
-void Interpreter::handleTmove() {
-  Addr base_addr;
-  uint tile_width;
-  uint tile_height;
-  uint stride;
-  uint elem_width;
+void Interpreter::run()
+{
+    while (handleCmd()) { }
+}
 
-  INTERPRETER_SYNTAX_CHECK('(', "opening parenthesis", "command name");
 
-  in_stream_ >> std::hex >> base_addr;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "base address");
+// --- Dispatch ---------------------------------------------------------------
 
-  in_stream_ >> std::dec >> tile_width;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile width");
+bool Interpreter::handleCmd()
+{
+    // Op-table dispatch: textual op name -> handler. Order is unimportant
+    // (linear scan); the table is the one place a new op registers itself.
+    struct OpEntry {
+        const char* name;
+        void (Interpreter::*handler)();
+    };
+    static constexpr OpEntry kOps[] = {
+        {"ltea",     &Interpreter::handleTload},
+        {"tmov",     &Interpreter::handleTmove},
+        {"prefetch", &Interpreter::handlePrefetch},
+        {"tmulac",   &Interpreter::handleMulAcc},
+    };
 
-  in_stream_ >> tile_height;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile height");
+    skipSpaces();
 
-  in_stream_ >> stride;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "stride");
+    std::string op;
+    std::getline(in_stream_, op, ' ');
+    if (in_stream_.eof()) return false;
 
-  in_stream_ >> elem_width;
+    for (const auto& entry : kOps) {
+        if (op == entry.name) {
+            inst_header_.clear();
+            inst_detail_.str("");
+            const size_t cycles_before = cpu_cycles_;
 
-  INTERPRETER_SYNTAX_CHECK(')', "closing parenthesis", "source parameters");
+            (this->*entry.handler)();
 
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "source parameters pack");
-
-  uint src_reg = parseReg();
-
-  // Enforce hardware register size constraints if configured
-  if (hasConfig("REG_M") && getConfig("REG_M") > 0) {
-      uint reg_m = getConfig("REG_M");
-      uint reg_n = getConfig("REG_N");
-      uint reg_k = getConfig("REG_K");
-      if (tile_width != 1 || tile_height != 1) {
-          if (src_reg == 0) { // %ra
-              if (tile_width != reg_k || tile_height != reg_m) {
-                  std::cerr << "Error: register %ra store dimensions (" << tile_width << "x" << tile_height 
-                            << ") do not match hardware config REG_K x REG_M (" << reg_k << "x" << reg_m << ")\n";
-                  exit(1);
-              }
-          } else if (src_reg == 1) { // %rb
-              if (tile_width != reg_n || tile_height != reg_k) {
-                  std::cerr << "Error: register %rb store dimensions (" << tile_width << "x" << tile_height 
-                            << ") do not match hardware config REG_N x REG_K (" << reg_n << "x" << reg_k << ")\n";
-                  exit(1);
-              }
-          } else if (src_reg == 2) { // %rc
-              if (tile_width != reg_n || tile_height != reg_m) {
-                  std::cerr << "Error: register %rc store dimensions (" << tile_width << "x" << tile_height 
-                            << ") do not match hardware config REG_N x REG_M (" << reg_n << "x" << reg_m << ")\n";
-                  exit(1);
-              }
-          }
-      }
-  }
-
-  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
-
-  std::ostringstream h;
-  h << "tmov (0x" << std::hex << base_addr << std::dec << ", " << tile_width
-    << ", " << tile_height << ", " << stride << ", " << elem_width << "), %r"
-    << "abc"[src_reg];
-  inst_header_ = h.str();
-
-  for (uint row = 0; row < tile_height; ++row) {
-    for (uint col = 0; col < tile_width; ++col) {
-      Addr target = base_addr + (row * stride + col) * elem_width;
-
-      doWrite(target, elem_width);
+            if (trace_out_.is_open()) {
+                trace_out_ << inst_header_ << "    # "
+                           << (cpu_cycles_ - cycles_before) << " cy\n"
+                           << inst_detail_.str();
+            }
+            ++line_;
+            return true;
+        }
     }
-  }
+
+    std::cerr << "invalid command '" << op << "' on line " << line_ << std::endl;
+    exit(1);
 }
 
-void Interpreter::handlePrefetch() {
-  Addr base_addr;
-  uint tile_width;
-  uint tile_height;
-  uint stride;
-  uint elem_width;
 
-  INTERPRETER_SYNTAX_CHECK('(', "opening parenthesis", "command name");
+// --- Per-op handlers --------------------------------------------------------
 
-  in_stream_ >> std::hex >> base_addr;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "base address");
+void Interpreter::handleTload()
+{
+    const TileParams p = parseTileParams();
+    expect(',', "comma", "source parameters pack");
+    const uint dst_reg = parseReg();
+    expect('\n', "new line", "line");
 
-  in_stream_ >> std::dec >> tile_width;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile width");
+    validateRegShape(dst_reg, p.t_width, p.t_height);
+    vec_regs_[dst_reg] = {p.base_addr, p.t_width, p.t_height, p.stride, p.elem_width};
+    setInstHeader("ltea", p, static_cast<int>(dst_reg));
 
-  in_stream_ >> tile_height;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile height");
-
-  in_stream_ >> stride;
-  INTERPRETER_SYNTAX_CHECK(',', "comma", "stride");
-
-  in_stream_ >> elem_width;
-
-  INTERPRETER_SYNTAX_CHECK(')', "closing parenthesis", "source parameters");
-
-  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
-
-  std::ostringstream h;
-  h << "prefetch (0x" << std::hex << base_addr << std::dec << ", " << tile_width
-    << ", " << tile_height << ", " << stride << ", " << elem_width << ")";
-  inst_header_ = h.str();
-
-  for (uint row = 0; row < tile_height; ++row) {
-    for (uint col = 0; col < tile_width; ++col) {
-      Addr target = base_addr + (row * stride + col) * elem_width;
-      doRead(target, elem_width);
+    // Generated tiles must consist of whole cache lines; partial-line rows
+    // are deliberately unsupported for now.
+    const PrngDev& prng = mem_.prng();
+    if (prng.contains(p.base_addr) &&
+        (p.t_width * p.elem_width) % prng.lineSize() != 0) {
+        std::cerr << "PRNG tile row of " << p.t_width * p.elem_width
+                  << " bytes is not a multiple of the cache line size ("
+                  << prng.lineSize() << ") in line: " << line_ << std::endl;
+        exit(1);
     }
-  }
+
+    forEachElement(p, [&](Addr a) { doRead(a, p.elem_width); });
 }
 
-// tmulac %ra, %rb, %rc -- pure register-file compute: the tiles were brought
-// into the vector registers by ltea, so no memory traffic (and no cycle cost)
-// happens here.
-void Interpreter::handleMulAcc() {
-  uint a = parseReg();
-  uint b = parseReg();
-  uint c = parseReg();
+void Interpreter::handleTmove()
+{
+    const TileParams p = parseTileParams();
+    expect(',', "comma", "source parameters pack");
+    const uint src_reg = parseReg();
+    expect('\n', "new line", "line");
 
-  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
+    validateRegShape(src_reg, p.t_width, p.t_height);
+    setInstHeader("tmov", p, static_cast<int>(src_reg));
 
-  const vec_reg &ra = vec_regs_[a];
-  const vec_reg &rb = vec_regs_[b];
-  const vec_reg &rc = vec_regs_[c];
+    forEachElement(p, [&](Addr a) { doWrite(a, p.elem_width); });
+}
 
-  if (ra.t_width != rb.t_height || rc.t_height != ra.t_height ||
-      rc.t_width != rb.t_width) {
-    std::cerr << "tmulac tile shape mismatch (" << ra.t_height << "x"
-              << ra.t_width << ") * (" << rb.t_height << "x" << rb.t_width
-              << ") -> (" << rc.t_height << "x" << rc.t_width
-              << ") in line: " << line_ << std::endl;
+void Interpreter::handlePrefetch()
+{
+    const TileParams p = parseTileParams();
+    expect('\n', "new line", "line");
+    setInstHeader("prefetch", p, -1);
+
+    forEachElement(p, [&](Addr a) { doRead(a, p.elem_width); });
+}
+
+// tmulac %ra, %rb, %rc -- pure register-file compute. Tiles were brought
+// into the vector registers by ltea, so there is no memory traffic unless
+// register tiling is disabled (REG_M == 0), in which case the interpreter
+// emulates the scalar element loads/stores explicitly.
+void Interpreter::handleMulAcc()
+{
+    const uint a = parseReg();
+    const uint b = parseReg();
+    const uint c = parseReg();
+    expect('\n', "new line", "line");
+
+    const vec_reg& ra = vec_regs_[a];
+    const vec_reg& rb = vec_regs_[b];
+    const vec_reg& rc = vec_regs_[c];
+
+    if (ra.t_width != rb.t_height || rc.t_height != ra.t_height ||
+        rc.t_width != rb.t_width) {
+        std::cerr << "tmulac tile shape mismatch (" << ra.t_height << "x"
+                  << ra.t_width << ") * (" << rb.t_height << "x" << rb.t_width
+                  << ") -> (" << rc.t_height << "x" << rc.t_width
+                  << ") in line: " << line_ << std::endl;
+        exit(1);
+    }
+
+    std::ostringstream h;
+    h << "tmulac %r" << "abc"[a] << ", %r" << "abc"[b] << ", %r" << "abc"[c];
+    inst_header_ = h.str();
+
+    // Scalar fallback when no register tiling: every multiply-accumulate
+    // reads operands and writes back the accumulator through the cache.
+    if (!hasConfig("REG_M") || getConfig("REG_M") == 0) {
+        for (uint i = 0; i < rc.t_height; ++i) {
+            for (uint j = 0; j < rc.t_width; ++j) {
+                const Addr c_addr = rc.base_addr + (i * rc.stride + j) * rc.elem_width;
+                doRead(c_addr, rc.elem_width);
+                for (uint k = 0; k < ra.t_width; ++k) {
+                    const Addr a_addr = ra.base_addr + (i * ra.stride + k) * ra.elem_width;
+                    doRead(a_addr, ra.elem_width);
+                    const Addr b_addr = rb.base_addr + (k * rb.stride + j) * rb.elem_width;
+                    doRead(b_addr, rb.elem_width);
+                }
+                doWrite(c_addr, rc.elem_width);
+            }
+        }
+    }
+
+    if (hasConfig("MULAC_CYCLES")) {
+        Trace t;
+        t.push_back(std::make_unique<MulAcc>(getConfig("MULAC_CYCLES")));
+        cpu_cycles_ += totalCycles(t);
+
+        if (trace_out_.is_open() && trace_level_ >= trace_actions) {
+            for (const auto& a : t) {
+                inst_detail_ << "    ";
+                a->print(inst_detail_);
+                inst_detail_ << '\n';
+            }
+        }
+    }
+}
+
+
+// --- Parsing helpers --------------------------------------------------------
+
+Interpreter::TileParams Interpreter::parseTileParams()
+{
+    expect('(', "opening parenthesis", "command name");
+    TileParams p;
+    in_stream_ >> std::hex >> p.base_addr;
+    expect(',', "comma", "base address");
+    in_stream_ >> std::dec >> p.t_width;
+    expect(',', "comma", "tile width");
+    in_stream_ >> p.t_height;
+    expect(',', "comma", "tile height");
+    in_stream_ >> p.stride;
+    expect(',', "comma", "stride");
+    in_stream_ >> p.elem_width;
+    expect(')', "closing parenthesis", "source parameters");
+    return p;
+}
+
+uint Interpreter::parseReg()
+{
+    std::string reg_name;
+    in_stream_ >> reg_name;
+    if (!reg_name.empty() && reg_name.back() == ',') {
+        reg_name.pop_back();
+    }
+    if (reg_name == "%ra") return 0;
+    if (reg_name == "%rb") return 1;
+    if (reg_name == "%rc") return 2;
+
+    std::cerr << "invalid register in line: " << line_ << std::endl;
     exit(1);
-  }
-
-  std::ostringstream h;
-  h << "tmulac %r" << "abc"[a] << ", %r" << "abc"[b] << ", %r" << "abc"[c];
-  inst_header_ = h.str();
-
-  // If register tiling is not enabled, simulate scalar element-by-element loads
-  if (!hasConfig("REG_M") || getConfig("REG_M") == 0) {
-      for (uint i = 0; i < rc.t_height; ++i) {
-          for (uint j = 0; j < rc.t_width; ++j) {
-              Addr c_addr = rc.base_addr + (i * rc.stride + j) * rc.elem_width;
-              doRead(c_addr, rc.elem_width);
-
-              for (uint k = 0; k < ra.t_width; ++k) {
-                  Addr a_addr = ra.base_addr + (i * ra.stride + k) * ra.elem_width;
-                  doRead(a_addr, ra.elem_width);
-
-                  Addr b_addr = rb.base_addr + (k * rb.stride + j) * rb.elem_width;
-                  doRead(b_addr, rb.elem_width);
-              }
-
-              doWrite(c_addr, rc.elem_width);
-          }
-      }
-  }
-
-  if (hasConfig("MULAC_CYCLES")) {
-      Trace t;
-      t.push_back(std::make_unique<MulAcc>(getConfig("MULAC_CYCLES")));
-      cpu_cycles_ += totalCycles(t);
-
-      // Action-level trace: surface the compute event the same way memory
-      // events appear under doRead/doWrite.
-      if (trace_out_.is_open() && trace_level_ >= trace_actions) {
-          for (const auto& a : t) {
-              inst_detail_ << "    ";
-              a->print(inst_detail_);
-              inst_detail_ << '\n';
-          }
-      }
-  }
 }
 
-void Interpreter::handleCmd() {
-  cmd cur_cmd = readCmd();
-  if (cur_cmd == eof) {
-    return;
-  }
-
-  inst_header_.clear();
-  inst_detail_.str("");
-  const size_t cycles_before = cpu_cycles_;
-
-  switch (cur_cmd) {
-  case load_tile:
-    handleTload();
-    break;
-  case move_tile:
-    handleTmove();
-    break;
-  case mul_acc:
-    handleMulAcc();
-    break;
-  case prefetch_tile:
-    handlePrefetch();
-    break;
-  case eof:
-    return;
-  }
-
-  if (trace_out_.is_open()) {
-    trace_out_ << inst_header_ << "    # " << (cpu_cycles_ - cycles_before)
-               << " cy\n"
-               << inst_detail_.str();
-  }
-
-  ++line_;
+void Interpreter::expect(char c, const char* missing, const char* context)
+{
+    int cur = in_stream_.get();
+    while (cur != c) {
+        if (cur != ' ') {
+            std::cerr << "missing " << missing << " after " << context
+                      << " in line: " << line_ << std::endl;
+            exit(1);
+        }
+        cur = in_stream_.get();
+    }
 }
 
-Interpreter::cmd Interpreter::readCmd() {
-  trim_prefix_spaces();
-
-  std::string cmd;
-  std::getline(in_stream_, cmd, ' ');
-
-  if (cmd == "ltea") {
-    return load_tile;
-  } else if (cmd == "tmulac") {
-    return mul_acc;
-  } else if (cmd == "tmov") {
-    return move_tile;
-  } else if (cmd == "prefetch") {
-    return prefetch_tile;
-  } else if (in_stream_.eof()) {
-    return eof;
-  } else {
-    std::cerr << "invalid command" << std::endl;
-    exit(1);
-  }
+void Interpreter::skipSpaces()
+{
+    while (in_stream_.peek() == ' ') {
+        in_stream_.ignore();
+    }
 }
 
-void Interpreter::trim_prefix_spaces() {
-  while (in_stream_.peek() == ' ') {
-    in_stream_.ignore();
-  }
+
+// --- Cross-cutting helpers --------------------------------------------------
+
+// Reject loads/stores whose tile shape doesn't match the configured hardware
+// register tile (REG_M/REG_N/REG_K). 1x1 accesses bypass the check so scalar
+// fallback paths still work. The expected (width, height) depends on which
+// register (%ra/%rb/%rc) is targeted.
+void Interpreter::validateRegShape(uint reg, uint t_width, uint t_height) const
+{
+    if (!hasConfig("REG_M") || getConfig("REG_M") == 0) return;
+    if (t_width == 1 && t_height == 1) return;
+
+    const uint reg_m = getConfig("REG_M");
+    const uint reg_n = getConfig("REG_N");
+    const uint reg_k = getConfig("REG_K");
+
+    uint exp_w = 0, exp_h = 0;
+    const char* reg_name = "?";
+    switch (reg) {
+        case 0: exp_w = reg_k; exp_h = reg_m; reg_name = "%ra"; break;
+        case 1: exp_w = reg_n; exp_h = reg_k; reg_name = "%rb"; break;
+        case 2: exp_w = reg_n; exp_h = reg_m; reg_name = "%rc"; break;
+    }
+    if (t_width != exp_w || t_height != exp_h) {
+        std::cerr << "Error: register " << reg_name << " tile dimensions ("
+                  << t_width << "x" << t_height
+                  << ") do not match hardware config (" << exp_w << "x"
+                  << exp_h << ")\n";
+        exit(1);
+    }
+}
+
+void Interpreter::setInstHeader(const char* op, const TileParams& p, int reg)
+{
+    std::ostringstream h;
+    h << op << " (0x" << std::hex << p.base_addr << std::dec << ", "
+      << p.t_width << ", " << p.t_height << ", " << p.stride << ", "
+      << p.elem_width << ")";
+    if (reg >= 0) {
+        h << ", %r" << "abc"[reg];
+    }
+    inst_header_ = h.str();
+}
+
+
+// --- Trace I/O --------------------------------------------------------------
+
+void Interpreter::doRead(Addr addr, size_t size)
+{
+    Trace t;
+    mem_.read(addr, size, t);
+    const uint cycles = totalCycles(t);
+    cpu_cycles_ += cycles;
+    logAccess("read ", addr, cycles, t);
+}
+
+void Interpreter::doWrite(Addr addr, size_t size)
+{
+    Trace t;
+    mem_.write(addr, size, t);
+    const uint cycles = totalCycles(t);
+    cpu_cycles_ += cycles;
+    logAccess("write", addr, cycles, t);
+}
+
+void Interpreter::logAccess(const char* op, Addr addr, uint cycles,
+                            const Trace& t)
+{
+    if (!trace_out_.is_open() || trace_level_ < trace_accesses) return;
+
+    inst_detail_ << "  " << op << " @0x" << std::hex << addr << std::dec
+                 << " (" << cycles << " cy)\n";
+
+    if (trace_level_ < trace_actions) return;
+    for (const auto& a : t) {
+        inst_detail_ << "    ";
+        a->print(inst_detail_);
+        inst_detail_ << '\n';
+    }
 }
