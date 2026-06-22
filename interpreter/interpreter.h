@@ -1,5 +1,5 @@
-#ifndef INTERPETER_H_
-#define INTERPETER_H_
+#ifndef INTERPRETER_H_
+#define INTERPRETER_H_
 
 #include "../memory-system/hierarchy.h"
 
@@ -9,7 +9,7 @@
 #include <sstream>
 #include <string>
 
-class Interpeter
+class Interpreter
 {
   public:
     // Trace verbosity: each level includes everything above it.
@@ -27,11 +27,11 @@ class Interpeter
         TraceLevel  trace_level;
     };
 
-    Interpeter(std::filesystem::path input_file, MemoryHierarchy& mem,
+    Interpreter(std::filesystem::path input_file, MemoryHierarchy& mem,
                Options opts, size_t& cpu_cycles);
 
-    Interpeter(const Interpeter&)            = delete;
-    Interpeter& operator=(const Interpeter&) = delete;
+    Interpreter(const Interpreter&)            = delete;
+    Interpreter& operator=(const Interpreter&) = delete;
 
     void run();
 

@@ -1,4 +1,4 @@
-#include "interpeter.h"
+#include "interpreter.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -9,7 +9,7 @@ extern bool hasConfig(const std::string& key);
 
 using std::filesystem::path;
 
-#define INTERPRETER_SYNTEX_CHECK(ch, missing, error_msg)                       \
+#define INTERPRETER_SYNTAX_CHECK(ch, missing, error_msg)                       \
   do {                                                                         \
     int cur = in_stream_.get();                                                \
     while (cur != ch) {                                                        \
@@ -22,7 +22,7 @@ using std::filesystem::path;
     }                                                                          \
   } while (0)
 
-Interpeter::Interpeter(path input_file, MemoryHierarchy &mem, Options opts,
+Interpreter::Interpreter(path input_file, MemoryHierarchy &mem, Options opts,
                        size_t &cpu_cycles)
     : in_stream_(input_file), line_(0), cpu_cycles_(cpu_cycles),
       trace_level_(opts.trace_level), vec_regs_{}, mem_(mem) {
@@ -40,7 +40,7 @@ Interpeter::Interpeter(path input_file, MemoryHierarchy &mem, Options opts,
   }
 }
 
-void Interpeter::doRead(Addr addr, size_t size) {
+void Interpreter::doRead(Addr addr, size_t size) {
   Trace t;
   mem_.read(addr, size, t);
   uint cycles = totalCycles(t);
@@ -48,7 +48,7 @@ void Interpeter::doRead(Addr addr, size_t size) {
   logAccess("read ", addr, cycles, t);
 }
 
-void Interpeter::doWrite(Addr addr, size_t size) {
+void Interpreter::doWrite(Addr addr, size_t size) {
   Trace t;
   mem_.write(addr, size, t);
   uint cycles = totalCycles(t);
@@ -56,7 +56,7 @@ void Interpeter::doWrite(Addr addr, size_t size) {
   logAccess("write", addr, cycles, t);
 }
 
-void Interpeter::logAccess(const char *op, Addr addr, uint cycles,
+void Interpreter::logAccess(const char *op, Addr addr, uint cycles,
                            const Trace &t) {
   if (!trace_out_.is_open() || trace_level_ < trace_accesses) return;
 
@@ -71,13 +71,13 @@ void Interpeter::logAccess(const char *op, Addr addr, uint cycles,
   }
 }
 
-void Interpeter::run() {
+void Interpreter::run() {
   while (!in_stream_.eof()) {
     handleCmd();
   }
 }
 
-uint Interpeter::parseReg() {
+uint Interpreter::parseReg() {
   std::string reg_name;
   in_stream_ >> reg_name;
   if (!reg_name.empty() && reg_name.back() == ',') {
@@ -92,32 +92,32 @@ uint Interpeter::parseReg() {
   exit(1);
 }
 
-void Interpeter::handleTload() {
+void Interpreter::handleTload() {
   Addr base_addr;
   uint tile_width;
   uint tile_height;
   uint stride;
   uint elem_width;
 
-  INTERPRETER_SYNTEX_CHECK('(', "opening parenthesis", "command name");
+  INTERPRETER_SYNTAX_CHECK('(', "opening parenthesis", "command name");
 
   in_stream_ >> std::hex >> base_addr;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "base address");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "base address");
 
   in_stream_ >> std::dec >> tile_width;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile width");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile width");
 
   in_stream_ >> tile_height;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile height");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile height");
 
   in_stream_ >> stride;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "stride");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "stride");
 
   in_stream_ >> elem_width;
 
-  INTERPRETER_SYNTEX_CHECK(')', "closing parenthesis", "source parameters");
+  INTERPRETER_SYNTAX_CHECK(')', "closing parenthesis", "source parameters");
 
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "source parameters pack");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "source parameters pack");
 
   uint dst_reg = parseReg();
 
@@ -151,7 +151,7 @@ void Interpeter::handleTload() {
 
   vec_regs_[dst_reg] = {base_addr, tile_width, tile_height, stride, elem_width};
 
-  INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
 
   std::ostringstream h;
   h << "ltea (0x" << std::hex << base_addr << std::dec << ", " << tile_width
@@ -179,32 +179,32 @@ void Interpeter::handleTload() {
   }
 }
 
-void Interpeter::handleTmove() {
+void Interpreter::handleTmove() {
   Addr base_addr;
   uint tile_width;
   uint tile_height;
   uint stride;
   uint elem_width;
 
-  INTERPRETER_SYNTEX_CHECK('(', "opening parenthesis", "command name");
+  INTERPRETER_SYNTAX_CHECK('(', "opening parenthesis", "command name");
 
   in_stream_ >> std::hex >> base_addr;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "base address");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "base address");
 
   in_stream_ >> std::dec >> tile_width;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile width");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile width");
 
   in_stream_ >> tile_height;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile height");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile height");
 
   in_stream_ >> stride;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "stride");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "stride");
 
   in_stream_ >> elem_width;
 
-  INTERPRETER_SYNTEX_CHECK(')', "closing parenthesis", "source parameters");
+  INTERPRETER_SYNTAX_CHECK(')', "closing parenthesis", "source parameters");
 
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "source parameters pack");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "source parameters pack");
 
   uint src_reg = parseReg();
 
@@ -236,7 +236,7 @@ void Interpeter::handleTmove() {
       }
   }
 
-  INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
 
   std::ostringstream h;
   h << "tmov (0x" << std::hex << base_addr << std::dec << ", " << tile_width
@@ -253,32 +253,32 @@ void Interpeter::handleTmove() {
   }
 }
 
-void Interpeter::handlePrefetch() {
+void Interpreter::handlePrefetch() {
   Addr base_addr;
   uint tile_width;
   uint tile_height;
   uint stride;
   uint elem_width;
 
-  INTERPRETER_SYNTEX_CHECK('(', "opening parenthesis", "command name");
+  INTERPRETER_SYNTAX_CHECK('(', "opening parenthesis", "command name");
 
   in_stream_ >> std::hex >> base_addr;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "base address");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "base address");
 
   in_stream_ >> std::dec >> tile_width;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile width");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile width");
 
   in_stream_ >> tile_height;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "tile height");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "tile height");
 
   in_stream_ >> stride;
-  INTERPRETER_SYNTEX_CHECK(',', "comma", "stride");
+  INTERPRETER_SYNTAX_CHECK(',', "comma", "stride");
 
   in_stream_ >> elem_width;
 
-  INTERPRETER_SYNTEX_CHECK(')', "closing parenthesis", "source parameters");
+  INTERPRETER_SYNTAX_CHECK(')', "closing parenthesis", "source parameters");
 
-  INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
 
   std::ostringstream h;
   h << "prefetch (0x" << std::hex << base_addr << std::dec << ", " << tile_width
@@ -296,12 +296,12 @@ void Interpeter::handlePrefetch() {
 // tmulac %ra, %rb, %rc -- pure register-file compute: the tiles were brought
 // into the vector registers by ltea, so no memory traffic (and no cycle cost)
 // happens here.
-void Interpeter::handleMulAcc() {
+void Interpreter::handleMulAcc() {
   uint a = parseReg();
   uint b = parseReg();
   uint c = parseReg();
 
-  INTERPRETER_SYNTEX_CHECK('\n', "new line", "line");
+  INTERPRETER_SYNTAX_CHECK('\n', "new line", "line");
 
   const vec_reg &ra = vec_regs_[a];
   const vec_reg &rb = vec_regs_[b];
@@ -345,7 +345,7 @@ void Interpeter::handleMulAcc() {
   }
 }
 
-void Interpeter::handleCmd() {
+void Interpreter::handleCmd() {
   cmd cur_cmd = readCmd();
   if (cur_cmd == eof) {
     return;
@@ -381,7 +381,7 @@ void Interpeter::handleCmd() {
   ++line_;
 }
 
-Interpeter::cmd Interpeter::readCmd() {
+Interpreter::cmd Interpreter::readCmd() {
   trim_prefix_spaces();
 
   std::string cmd;
@@ -403,7 +403,7 @@ Interpeter::cmd Interpeter::readCmd() {
   }
 }
 
-void Interpeter::trim_prefix_spaces() {
+void Interpreter::trim_prefix_spaces() {
   while (in_stream_.peek() == ' ') {
     in_stream_.ignore();
   }

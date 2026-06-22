@@ -55,7 +55,7 @@
                            matmul.matv  (text ISA)
                                  │
                                  v
-  ┌─────────────────────────── Interpeter::run() ────────────────────────────────────────────────────────────────────┐
+  ┌─────────────────────────── Interpreter::run() ───────────────────────────────────────────────────────────────────┐
   │  readCmd() ── ltea ───> handleTload():  check PRNG tile-row % line_size == 0;                                     │
   │            │            set vec_reg; doRead() per element of tile                                                 │
   │            ├─ tmov ───> handleTmove():  set vec_reg; doWrite() per element                                        │

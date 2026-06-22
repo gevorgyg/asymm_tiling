@@ -1,5 +1,5 @@
 #include "instruction-stream-generator/instgen.h"
-#include "interpreter/interpeter.h"
+#include "interpreter/interpreter.h"
 #include "memory-system/cache/cache.h"
 #include "memory-system/hierarchy.h"
 #include "utils.h"
@@ -194,7 +194,7 @@ int main(int argc, char* argv[])
     std::string trace_file_path;
     std::string trace_input_path = "";
     std::string config_file_path = "";
-    int trace_level              = Interpeter::trace_actions;
+    int trace_level              = Interpreter::trace_actions;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -224,8 +224,8 @@ int main(int argc, char* argv[])
                 exit(1);
             }
             trace_level = std::atoi(argv[++i]);
-            if (trace_level < Interpeter::trace_instructions ||
-                trace_level > Interpeter::trace_actions) {
+            if (trace_level < Interpreter::trace_instructions ||
+                trace_level > Interpreter::trace_actions) {
                 std::cerr << "--trace_level must be 0, 1 or 2" << std::endl;
                 exit(1);
             }
@@ -330,11 +330,11 @@ int main(int argc, char* argv[])
         generateInstructions(dims[0], dims[1], dims[2], b_stationary, b_fifo);
     }
 
-    Interpeter::Options opts{
+    Interpreter::Options opts{
         .trace_file_path = trace_file_path,
-        .trace_level     = static_cast<Interpeter::TraceLevel>(trace_level),
+        .trace_level     = static_cast<Interpreter::TraceLevel>(trace_level),
     };
-    Interpeter inter(run_path, mem, opts, cpu_cycles);
+    Interpreter inter(run_path, mem, opts, cpu_cycles);
 
     std::cout << "----------------------------" << std::endl;
     std::cout << dims[0] << ' ' << dims[1] << ' ' << dims[2] << std::endl;
