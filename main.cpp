@@ -23,7 +23,7 @@ WritePolicy parseWritePolicy(const std::string& str)
 }
 
 void generateInstructions(const Config& c, uint m, uint n, uint k,
-                          bool b_stationary, bool b_fifo)
+                          bool b_stationary, bool b_fifo, bool b_scratchpad)
 {
     InstGenerator gen{InstGenerator::Params{
         .a_height    = c.a_height,
@@ -43,7 +43,7 @@ void generateInstructions(const Config& c, uint m, uint n, uint k,
     }
 
     InstGenerator::TileShape tile{m, n, k};
-    gen.generate(tile, ofs, b_stationary, b_fifo);
+    gen.generate(tile, ofs, b_stationary, b_fifo, b_scratchpad);
 }
 
 int main(int argc, char* argv[])
@@ -51,6 +51,7 @@ int main(int argc, char* argv[])
     bool b_generated  = false;
     bool b_fifo       = false;
     bool b_stationary = false;
+    bool b_scratchpad = false;
     uint dims[3];
     int positional = 0;
     std::string trace_file_path;
@@ -66,6 +67,8 @@ int main(int argc, char* argv[])
             b_fifo = true;
         } else if (arg == "--Bstationary") {
             b_stationary = true;
+        } else if (arg == "--scratchpad") {
+            b_scratchpad = true;
         } else if (arg == "--trace_file") {
             if (i + 1 >= argc) { std::cerr << "--trace_file requires a filename\n"; exit(1); }
             trace_file_path = argv[++i];
@@ -100,9 +103,9 @@ int main(int argc, char* argv[])
     }
     if (positional != 3) {
         std::cerr << "usage: " << argv[0]
-                  << " [--Bgenerated] [--Bfifo] [--Bstationary] "
-                     "[--trace_file <file>] [--trace_level <0|1|2>] "
-                     "[--config <file>] [--trace_input <file>] <m> <n> <k>\n";
+                  << " [--Bgenerated] [--Bfifo] [--Bstationary] [--scratchpad] "
+                      "[--trace_file <file>] [--trace_level <0|1|2>] "
+                      "[--config <file>] [--trace_input <file>] <m> <n> <k>\n";
         exit(1);
     }
 
@@ -156,7 +159,7 @@ int main(int argc, char* argv[])
     if (!trace_input_path.empty()) {
         run_path = trace_input_path;
     } else {
-        generateInstructions(cfg, dims[0], dims[1], dims[2], b_stationary, b_fifo);
+        generateInstructions(cfg, dims[0], dims[1], dims[2], b_stationary, b_fifo, b_scratchpad);
     }
 
     Interpreter::Options opts{
@@ -166,6 +169,8 @@ int main(int argc, char* argv[])
         .reg_n           = cfg.reg_n,
         .reg_k           = cfg.reg_k,
         .mulac_cycles    = cfg.mulac_cycles,
+        .sp_banks        = cfg.sp_banks,
+        .sp_word_size_bytes = cfg.sp_word_size_bytes,
     };
     Interpreter inter(run_path, mem, opts, cpu_cycles);
 

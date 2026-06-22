@@ -54,20 +54,20 @@ public:
 
   explicit InstGenerator(Params p);
 
-  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false) const;
+  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false, bool b_scratchpad = false) const;
 
 private:
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo) const;
+                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo, bool b_scratchpad) const;
 
   void emitTraceMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                      TileShape tile, std::ostream &os, bool b_fifo) const;
+                                      TileShape tile, std::ostream &os, bool b_fifo, bool b_scratchpad) const;
   void emitTraceMultiLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                      TileShape tile, std::ostream &os, bool b_fifo) const;
+                                      TileShape tile, std::ostream &os, bool b_fifo, bool b_scratchpad) const;
   void emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                       TileShape tile, std::ostream &os, bool b_fifo) const;
+                                       TileShape tile, std::ostream &os, bool b_fifo, bool b_scratchpad) const;
   void emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                       TileShape tile, std::ostream &os, bool b_fifo) const;
+                                       TileShape tile, std::ostream &os, bool b_fifo, bool b_scratchpad) const;
 
   // Byte address of element (row, col) inside matrix M.
   Addr tileAddr(const GhostMat &M, uint row, uint col) const;
@@ -75,6 +75,10 @@ private:
   // Emit one instruction: "<op> (0x<addr>, w, h, stride, ew), <reg>".
   void emit(std::ostream &os, const char *op, Addr addr, uint w, uint h,
                    uint stride, uint ew, const char *reg) const;
+
+  // Emit DMA instruction: "<op> (0x<src>, 0x<dst>, w, h, stride, ew)"
+  void emitDma(std::ostream &os, const char *op, Addr src, Addr dst, uint w, uint h,
+               uint stride, uint ew) const;
 
   // ltea convenience: load tile from M at (row, col) into <reg>.
   void load(std::ostream &os, const GhostMat &M, uint row, uint col,

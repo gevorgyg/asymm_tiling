@@ -34,6 +34,10 @@ class Interpreter
 
         // Per-tmulac compute cost. Zero means "don't charge anything".
         uint mulac_cycles = 0;
+
+        // Scratchpad banking options
+        uint sp_banks = 8;
+        uint sp_word_size_bytes = 8;
     };
 
     Interpreter(std::filesystem::path input_file, MemoryHierarchy& mem,
@@ -63,6 +67,17 @@ class Interpreter
         uint elem_width;
     };
 
+    // Operand pack for dma_in / dma_out:
+    //     (src_addr, dst_addr, tile_width, tile_height, stride, elem_width)
+    struct DmaParams {
+        Addr src_addr;
+        Addr dst_addr;
+        uint t_width;
+        uint t_height;
+        uint stride;
+        uint elem_width;
+    };
+
     // Dispatch one instruction; returns false at EOF.
     bool handleCmd();
 
@@ -71,9 +86,12 @@ class Interpreter
     void handleTmove();
     void handlePrefetch();
     void handleMulAcc();
+    void handleDmaIn();
+    void handleDmaOut();
 
     // Parsing helpers.
     TileParams parseTileParams();
+    DmaParams  parseDmaParams();
     uint       parseReg();
     void       expect(char c, const char* missing, const char* context);
     void       skipSpaces();
@@ -81,6 +99,7 @@ class Interpreter
     // Cross-cutting helpers.
     void validateRegShape(uint reg, uint t_width, uint t_height) const;
     void setInstHeader(const char* op, const TileParams& p, int reg);
+    void setDmaHeader(const char* op, const DmaParams& p);
     template <typename F>
     void forEachElement(const TileParams& p, F&& fn) const;
 
@@ -115,6 +134,10 @@ class Interpreter
     uint reg_n_;
     uint reg_k_;
     uint mulac_cycles_;
+
+    // Scratchpad config
+    uint sp_banks_;
+    uint sp_word_size_bytes_;
 };
 
 template <typename F>

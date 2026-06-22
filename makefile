@@ -21,7 +21,7 @@ SRCS := main.cpp config.cpp $(GEN_DIR)/instgen.cpp $(INT_SRCS) $(MEM_SRCS)
 DEPS := config.h \
         $(GEN_DIR)/instgen.h \
         $(INT_DIR)/interpreter.h $(MATMUL_DIR)/matmul_actions.h \
-        $(MEM_DIR)/action.h $(MEM_DIR)/memory_object.h $(MEM_DIR)/hierarchy.h \
+        $(MEM_DIR)/action.h $(MEM_DIR)/memory_object.h $(MEM_DIR)/hierarchy.h $(MEM_DIR)/scratchpad_action.h \
         $(CACHE_DIR)/set.h $(CACHE_DIR)/eviction_policy.h \
         $(CACHE_DIR)/cache.h $(CACHE_DIR)/cache_actions.h \
         $(MAIN_DIR)/mainmem.h $(MAIN_DIR)/mainmem_actions.h \

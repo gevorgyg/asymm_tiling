@@ -1,5 +1,6 @@
 #include "interpreter.h"
 #include "matmul/matmul_actions.h"
+#include "../memory-system/scratchpad_action.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -13,7 +14,8 @@ Interpreter::Interpreter(path input_file, MemoryHierarchy& mem, Options opts,
     : in_stream_(input_file), line_(0), cpu_cycles_(cpu_cycles),
       trace_level_(opts.trace_level), vec_regs_{}, mem_(mem),
       reg_m_(opts.reg_m), reg_n_(opts.reg_n), reg_k_(opts.reg_k),
-      mulac_cycles_(opts.mulac_cycles)
+      mulac_cycles_(opts.mulac_cycles), sp_banks_(opts.sp_banks),
+      sp_word_size_bytes_(opts.sp_word_size_bytes)
 {
     if (!in_stream_.is_open()) {
         std::cerr << "error opening trace file" << std::endl;
@@ -50,6 +52,8 @@ bool Interpreter::handleCmd()
         {"tmov",     &Interpreter::handleTmove},
         {"prefetch", &Interpreter::handlePrefetch},
         {"tmulac",   &Interpreter::handleMulAcc},
+        {"dma_in",   &Interpreter::handleDmaIn},
+        {"dma_out",  &Interpreter::handleDmaOut},
     };
 
     skipSpaces();
@@ -106,6 +110,32 @@ void Interpreter::handleTload()
     vec_regs_[dst_reg] = {p.base_addr, p.t_width, p.t_height, p.stride, p.elem_width};
     setInstHeader("ltea", p, static_cast<int>(dst_reg));
 
+    if (p.base_addr >= 0x20000000 && p.base_addr < 0x50000000) {
+        // Scratchpad banking conflict simulation
+        std::vector<uint> bank_counts(sp_banks_, 0);
+        forEachElement(p, [&](Addr addr) {
+            uint bank = (addr / sp_word_size_bytes_) % sp_banks_;
+            bank_counts[bank]++;
+        });
+        uint max_conflicts = 0;
+        for (uint count : bank_counts) {
+            if (count > max_conflicts) max_conflicts = count;
+        }
+        cpu_cycles_ += max_conflicts;
+
+        if (trace_out_.is_open()) {
+            if (trace_level_ >= trace_accesses) {
+                inst_detail_ << "  read  @0x" << std::hex << p.base_addr << std::dec
+                             << " (" << max_conflicts << " cy)\n";
+            }
+            if (trace_level_ >= trace_actions) {
+                inst_detail_ << "    Scratchpad read @0x" << std::hex << p.base_addr << std::dec
+                             << " (" << p.t_width << "x" << p.t_height << ") (" << max_conflicts << " cy)\n";
+            }
+        }
+        return;
+    }
+
     // Generated tiles must consist of whole cache lines; partial-line rows
     // are deliberately unsupported for now.
     const PrngDev& prng = mem_.prng();
@@ -129,6 +159,32 @@ void Interpreter::handleTmove()
 
     validateRegShape(src_reg, p.t_width, p.t_height);
     setInstHeader("tmov", p, static_cast<int>(src_reg));
+
+    if (p.base_addr >= 0x20000000 && p.base_addr < 0x50000000) {
+        // Scratchpad banking conflict simulation
+        std::vector<uint> bank_counts(sp_banks_, 0);
+        forEachElement(p, [&](Addr addr) {
+            uint bank = (addr / sp_word_size_bytes_) % sp_banks_;
+            bank_counts[bank]++;
+        });
+        uint max_conflicts = 0;
+        for (uint count : bank_counts) {
+            if (count > max_conflicts) max_conflicts = count;
+        }
+        cpu_cycles_ += max_conflicts;
+
+        if (trace_out_.is_open()) {
+            if (trace_level_ >= trace_accesses) {
+                inst_detail_ << "  write @0x" << std::hex << p.base_addr << std::dec
+                             << " (" << max_conflicts << " cy)\n";
+            }
+            if (trace_level_ >= trace_actions) {
+                inst_detail_ << "    Scratchpad write @0x" << std::hex << p.base_addr << std::dec
+                             << " (" << p.t_width << "x" << p.t_height << ") (" << max_conflicts << " cy)\n";
+            }
+        }
+        return;
+    }
 
     forEachElement(p, [&](Addr a) { doWrite(a, p.elem_width); });
 }
@@ -194,6 +250,38 @@ void Interpreter::handleMulAcc()
     }
 }
 
+void Interpreter::handleDmaIn()
+{
+    const DmaParams p = parseDmaParams();
+    expect('\n', "new line", "line");
+    setDmaHeader("dma_in", p);
+
+    for (uint row = 0; row < p.t_height; ++row) {
+        for (uint col = 0; col < p.t_width; ++col) {
+            const Addr src_el = p.src_addr + (row * p.stride + col) * p.elem_width;
+            const Addr dst_el = p.dst_addr + (row * p.t_width + col) * p.elem_width;
+            doRead(src_el, p.elem_width);
+            doWrite(dst_el, p.elem_width);
+        }
+    }
+}
+
+void Interpreter::handleDmaOut()
+{
+    const DmaParams p = parseDmaParams();
+    expect('\n', "new line", "line");
+    setDmaHeader("dma_out", p);
+
+    for (uint row = 0; row < p.t_height; ++row) {
+        for (uint col = 0; col < p.t_width; ++col) {
+            const Addr src_el = p.src_addr + (row * p.t_width + col) * p.elem_width;
+            const Addr dst_el = p.dst_addr + (row * p.stride + col) * p.elem_width;
+            doRead(src_el, p.elem_width);
+            doWrite(dst_el, p.elem_width);
+        }
+    }
+}
+
 
 // --- Parsing helpers --------------------------------------------------------
 
@@ -211,6 +299,25 @@ Interpreter::TileParams Interpreter::parseTileParams()
     expect(',', "comma", "stride");
     in_stream_ >> p.elem_width;
     expect(')', "closing parenthesis", "source parameters");
+    return p;
+}
+
+Interpreter::DmaParams Interpreter::parseDmaParams()
+{
+    expect('(', "opening parenthesis", "command name");
+    DmaParams p;
+    in_stream_ >> std::hex >> p.src_addr;
+    expect(',', "comma", "source address");
+    in_stream_ >> std::hex >> p.dst_addr;
+    expect(',', "comma", "destination address");
+    in_stream_ >> std::dec >> p.t_width;
+    expect(',', "comma", "tile width");
+    in_stream_ >> p.t_height;
+    expect(',', "comma", "tile height");
+    in_stream_ >> p.stride;
+    expect(',', "comma", "stride");
+    in_stream_ >> p.elem_width;
+    expect(')', "closing parenthesis", "DMA parameters");
     return p;
 }
 
@@ -286,6 +393,15 @@ void Interpreter::setInstHeader(const char* op, const TileParams& p, int reg)
     if (reg >= 0) {
         h << ", %r" << "abc"[reg];
     }
+    inst_header_ = h.str();
+}
+
+void Interpreter::setDmaHeader(const char* op, const DmaParams& p)
+{
+    std::ostringstream h;
+    h << op << " (0x" << std::hex << p.src_addr << ", 0x" << p.dst_addr << std::dec << ", "
+      << p.t_width << ", " << p.t_height << ", " << p.stride << ", "
+      << p.elem_width << ")";
     inst_header_ = h.str();
 }
 

@@ -123,6 +123,16 @@ test_cases = [
             "l2_tag_lookup": 5,
             "l2_hit_rate": 0.000
         }
+    },
+    {
+        "name": "Decoupled Scratchpad and Banking Conflicts (scratchpad_conflict.trace)",
+        "config": "tests/configs/test_base.conf",
+        "trace": "tests/traces/scratchpad_conflict.trace",
+        "expected": {
+            "l1_tag_lookup": 16,
+            "l2_tag_lookup": 16,
+            "cycles": 3206
+        }
     }
 ]
 

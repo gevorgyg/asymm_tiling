@@ -47,6 +47,10 @@ struct Config {
 
     // Per-tmulac compute cost. Zero means "don't charge anything".
     uint mulac_cycles = 0;
+
+    // Scratchpad settings (optional)
+    uint sp_banks = 8;
+    uint sp_word_size_bytes = 8;
 };
 
 // Load Config from a file. If the file is missing, writes the default file

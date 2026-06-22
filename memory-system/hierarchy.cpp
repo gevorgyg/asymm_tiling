@@ -1,4 +1,5 @@
 #include "hierarchy.h"
+#include "scratchpad_action.h"
 
 
 void AddrRouter::read(Addr addr, size_t size, Trace& trace)
@@ -31,6 +32,12 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
 
 void MemoryHierarchy::access(Addr addr, size_t size, bool is_write, Trace& trace)
 {
+    if (addr >= 0x20000000 && addr < 0x50000000) {
+        trace.push_back(std::make_unique<ScratchpadAction>(
+            is_write ? "write" : "read", addr, 1, 1, 1));
+        return;
+    }
+
     // FIFO MMIO is the only path that bypasses L1. Caches don't see these
     // addresses at all -- the device handles control/seed/data reads itself.
     if (prng_fifo_.contains(addr)) {

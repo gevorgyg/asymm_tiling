@@ -178,5 +178,8 @@ Config loadConfig(const std::string& path)
         .reg_k = optionalUint(raw, "REG_K"),
 
         .mulac_cycles = optionalUint(raw, "MULAC_CYCLES"),
+
+        .sp_banks = optionalUint(raw, "SP_BANKS") == 0 ? 8 : optionalUint(raw, "SP_BANKS"),
+        .sp_word_size_bytes = optionalUint(raw, "SP_WORD_SIZE_BYTES") == 0 ? 8 : optionalUint(raw, "SP_WORD_SIZE_BYTES"),
     };
 }
