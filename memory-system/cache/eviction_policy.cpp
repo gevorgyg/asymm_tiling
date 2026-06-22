@@ -1,8 +1,6 @@
 #include "eviction_policy.h"
 
 #include <cassert>
-#include <cstdlib>
-#include <iostream>
 
 
 const char* policyName(Policy p)
@@ -12,14 +10,6 @@ const char* policyName(Policy p)
         case Policy::FIFO: return "FIFO";
     }
     return "?";
-}
-
-Policy parsePolicy(const std::string& name)
-{
-    if (name == "LRU")  return Policy::LRU;
-    if (name == "FIFO") return Policy::FIFO;
-    std::cerr << "error: unknown eviction policy: " << name << std::endl;
-    exit(1);
 }
 
 // Both policies evict the front of the per-set insertion-ordered list:

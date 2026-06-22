@@ -1,13 +1,12 @@
 #pragma once
 
+#include "../policies.h"
 #include "cache/cache.h"
 #include "mainmem/mainmem.h"
 #include "memory_object.h"
 #include "prng/prng.h"
 #include "prng_fifo/prng_fifo.h"
 #include "scratchpad/scratchpad.h"
-
-#include <string>
 
 
 // Sits between L1 and L2: L1 misses that land inside the on-demand PRNG
@@ -38,10 +37,10 @@ class MemoryHierarchy
     struct Parameters {
         Cache::InitParameters l1;
         uint l1_access_cycles;
-        std::string l1_policy;
+        Policy l1_policy;
         Cache::InitParameters l2;
         uint l2_access_cycles;
-        std::string l2_policy;
+        Policy l2_policy;
         uint mem_access_cycles;
         PrngDev::InitParameters prng;
         PrngFifoDev::InitParameters prng_fifo;

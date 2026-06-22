@@ -1,8 +1,7 @@
 #pragma once
 
+#include "policies.h"
 #include "utils.h"
-
-#include <string>
 
 
 // Parsed `default.config` (or a user-supplied file). The single source of
@@ -14,8 +13,8 @@ struct CacheConfig {
     uint        line_size_bytes;
     uint        assoc;
     uint        access_cycles;
-    std::string replacement_policy;   // "LRU" | "FIFO"
-    std::string write_policy;         // "WRITE_THROUGH" | "WRITE_BACK"
+    Policy      replacement_policy;
+    WritePolicy write_policy;
 };
 
 struct Config {

@@ -1,4 +1,5 @@
 #include "interpreter.h"
+#include "../memory-system/address_map.h"
 #include "../memory-system/scratchpad/scratchpad_action.h"
 #include "matmul/matmul_actions.h"
 
@@ -110,7 +111,7 @@ void Interpreter::handleTload()
                           p.elem_width};
     setInstHeader("ltea", p, static_cast<int>(dst_reg));
 
-    if (p.base_addr >= 0x20000000 && p.base_addr < 0x50000000) {
+    if (p.base_addr >= SP_A_ADDR && p.base_addr < SP_END) {
         doRead(p);
         return;
     }
@@ -139,7 +140,7 @@ void Interpreter::handleTmove()
     validateRegShape(src_reg, p.t_width, p.t_height);
     setInstHeader("tmov", p, static_cast<int>(src_reg));
 
-    if (p.base_addr >= 0x20000000 && p.base_addr < 0x50000000) {
+    if (p.base_addr >= SP_A_ADDR && p.base_addr < SP_END) {
         doWrite(p);
         return;
     }

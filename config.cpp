@@ -1,4 +1,5 @@
 #include "config.h"
+#include "policies.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -140,12 +141,12 @@ CacheConfig loadCache(const RawConfig& c, const char* prefix)
         return std::string(prefix) + suffix;
     };
     return CacheConfig{
-        .size_bytes        = requireUint(c, k("_SIZE_BYTES").c_str()),
-        .line_size_bytes   = requireUint(c, k("_LINE_SIZE_BYTES").c_str()),
-        .assoc             = requireUint(c, k("_ASSOC").c_str()),
-        .access_cycles     = requireUint(c, k("_ACCESS_CYCLES").c_str()),
-        .replacement_policy= requireStr(c, k("_REPLACEMENT_POLICY").c_str()),
-        .write_policy      = requireStr(c, k("_WRITE_POLICY").c_str()),
+        .size_bytes          = requireUint(c, k("_SIZE_BYTES").c_str()),
+        .line_size_bytes     = requireUint(c, k("_LINE_SIZE_BYTES").c_str()),
+        .assoc               = requireUint(c, k("_ASSOC").c_str()),
+        .access_cycles       = requireUint(c, k("_ACCESS_CYCLES").c_str()),
+        .replacement_policy  = parsePolicy(requireStr(c, k("_REPLACEMENT_POLICY").c_str())),
+        .write_policy        = parseWritePolicy(requireStr(c, k("_WRITE_POLICY").c_str())),
     };
 }
 

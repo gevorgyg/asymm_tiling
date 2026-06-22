@@ -1,6 +1,7 @@
 #ifndef INSTRUCTION_GENERATOR_H_
 #define INSTRUCTION_GENERATOR_H_
 
+#include "../memory-system/address_map.h"
 #include "../utils.h"
 
 #include <cstddef>
@@ -91,6 +92,10 @@ private:
   // prefetch convenience: prefetch cache tile from M at (row, col).
   void emitPrefetch(std::ostream &os, const GhostMat &M, uint row, uint col,
                     uint w, uint h) const;
+
+  // FIFO start/stop: emit seed load + ctrl_start / ctrl_stop sequences.
+  void emitFifoStart(std::ostream &os, Addr seed_mem_addr, const char *reg) const;
+  void emitFifoStop(std::ostream &os, const char *reg) const;
 
   const GhostMat A_;
   const GhostMat B_;

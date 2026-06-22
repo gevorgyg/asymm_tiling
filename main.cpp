@@ -1,6 +1,7 @@
 #include "config.h"
 #include "instruction-stream-generator/instgen.h"
 #include "interpreter/interpreter.h"
+#include "memory-system/address_map.h"
 #include "memory-system/cache/cache.h"
 #include "memory-system/hierarchy.h"
 #include "utils.h"
@@ -13,14 +14,6 @@
 
 constexpr char instruction_path[] = "./matmul.matv";
 
-
-WritePolicy parseWritePolicy(const std::string& str)
-{
-    if (str == "WRITE_THROUGH") return WritePolicy::WRITE_THROUGH;
-    if (str == "WRITE_BACK")    return WritePolicy::WRITE_BACK;
-    std::cerr << "error: unknown write policy: " << str << std::endl;
-    exit(1);
-}
 
 void generateInstructions(const Config& c, uint m, uint n, uint k,
                           bool b_stationary, bool b_fifo, bool b_scratchpad)
@@ -195,7 +188,7 @@ int main(int argc, char* argv[])
                .size         = cfg.l1.size_bytes,
                .line_size    = cfg.l1.line_size_bytes,
                .assoc        = cfg.l1.assoc,
-               .write_policy = parseWritePolicy(cfg.l1.write_policy)},
+               .write_policy = cfg.l1.write_policy},
         .l1_access_cycles = cfg.l1.access_cycles,
         .l1_policy        = cfg.l1.replacement_policy,
 
@@ -203,7 +196,7 @@ int main(int argc, char* argv[])
                .size         = cfg.l2.size_bytes,
                .line_size    = cfg.l2.line_size_bytes,
                .assoc        = cfg.l2.assoc,
-               .write_policy = parseWritePolicy(cfg.l2.write_policy)},
+               .write_policy = cfg.l2.write_policy},
         .l2_access_cycles = cfg.l2.access_cycles,
         .l2_policy        = cfg.l2.replacement_policy,
 
@@ -215,11 +208,11 @@ int main(int argc, char* argv[])
                  .access_cycles     = cfg.prng_access_cycles,
                  .gen_cost_per_line = cfg.prng_gen_cost_per_line},
 
-        .prng_fifo = {.ctrl_start_addr = 0xFF000000, // MMIO addresses
-                      .ctrl_stop_addr  = 0xFF00000C,
-                      .seed_addr       = 0xFF000004,
-                      .data_start_addr = 0xFF000008,
-                      .data_end_addr   = 0xFF100008,
+        .prng_fifo = {.ctrl_start_addr = FIFO_CTRL_START_ADDR,
+                      .ctrl_stop_addr  = FIFO_CTRL_STOP_ADDR,
+                      .seed_addr       = FIFO_SEED_ADDR,
+                      .data_start_addr = FIFO_DATA_START_ADDR,
+                      .data_end_addr   = FIFO_DATA_END_ADDR,
                       .access_cycles   = cfg.prng_access_cycles,
                       .fifo_capacity   = b_fifo ? cfg.prng_fifo_capacity : 0,
                       .gen_cost        = b_fifo ? cfg.prng_fifo_gen_cost : 0},

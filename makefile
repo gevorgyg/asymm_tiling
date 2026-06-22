@@ -17,9 +17,10 @@ MEM_SRCS := $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp \
 
 INT_SRCS := $(INT_DIR)/interpreter.cpp $(MATMUL_DIR)/matmul_actions.cpp
 
-SRCS := main.cpp config.cpp $(GEN_DIR)/instgen.cpp $(INT_SRCS) $(MEM_SRCS)
+SRCS := main.cpp config.cpp policies.cpp $(GEN_DIR)/instgen.cpp $(INT_SRCS) $(MEM_SRCS)
 
-DEPS := config.h \
+DEPS := config.h policies.h \
+        $(MEM_DIR)/address_map.h \
         $(GEN_DIR)/instgen.h \
         $(INT_DIR)/interpreter.h $(MATMUL_DIR)/matmul_actions.h \
         $(MEM_DIR)/action.h $(MEM_DIR)/memory_object.h $(MEM_DIR)/hierarchy.h $(MEM_DIR)/scratchpad/scratchpad_action.h \
@@ -31,7 +32,7 @@ DEPS := config.h \
         $(FIFO_DIR)/prng_fifo.h $(FIFO_DIR)/prng_fifo_actions.h \
         utils.h
 
-TEST_SRCS := tests/unit_tests.cpp $(MEM_SRCS)
+TEST_SRCS := tests/unit_tests.cpp policies.cpp $(MEM_SRCS)
 
 all: main
 

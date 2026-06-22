@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../policies.h"
 #include "../action.h"
 #include "../memory_object.h"
 #include "eviction_policy.h"
@@ -13,11 +14,6 @@
 // Cache-emitted events live in cache_actions.h (TagLookup, LineFill, Evict).
 // They are pure-data records: Cache::read/write does all the state mutation
 // and then appends a witness.
-
-enum class WritePolicy {
-    WRITE_THROUGH,
-    WRITE_BACK
-};
 
 
 class Cache : public MemoryObject

@@ -1,3 +1,4 @@
+#include "memory-system/address_map.h"
 #include "memory-system/cache/set.h"
 #include "memory-system/cache/eviction_policy.h"
 #include "memory-system/cache/cache.h"
@@ -206,11 +207,11 @@ void testPrngFifo() {
     std::cout << "Running PRNG FIFO unit tests..." << std::endl;
 
     PrngFifoDev::InitParameters params;
-    params.ctrl_start_addr = 0xFF000000;
-    params.ctrl_stop_addr  = 0xFF00000C;
-    params.seed_addr       = 0xFF000004;
-    params.data_start_addr = 0xFF000008;
-    params.data_end_addr   = 0xFF100008;
+    params.ctrl_start_addr = FIFO_CTRL_START_ADDR;
+    params.ctrl_stop_addr  = FIFO_CTRL_STOP_ADDR;
+    params.seed_addr       = FIFO_SEED_ADDR;
+    params.data_start_addr = FIFO_DATA_START_ADDR;
+    params.data_end_addr   = FIFO_DATA_END_ADDR;
     params.access_cycles   = 2;
     params.fifo_capacity   = 4; 
     params.gen_cost        = 10;
@@ -218,10 +219,10 @@ void testPrngFifo() {
     size_t cpu_cycles = 0;
     PrngFifoDev dev(params, cpu_cycles);
 
-    assert(dev.contains(0xFF000000));
-    assert(dev.contains(0xFF000004));
-    assert(dev.contains(0xFF000008));
-    assert(dev.contains(0xFF00000C));
+    assert(dev.contains(FIFO_CTRL_START_ADDR));
+    assert(dev.contains(FIFO_SEED_ADDR));
+    assert(dev.contains(FIFO_DATA_START_ADDR));
+    assert(dev.contains(FIFO_CTRL_STOP_ADDR));
     assert(!dev.contains(0x0));
 
     // 1. Initial State
@@ -230,12 +231,12 @@ void testPrngFifo() {
 
     // 2. Write seed
     Trace t1;
-    dev.write(0xFF000004, 8, t1); 
+    dev.write(FIFO_SEED_ADDR, 8, t1);
     assert(hasAction(t1, "PrngFifoDev::SeedWrite"));
 
     // 3. Write start
     Trace t2;
-    dev.write(0xFF000000, 8, t2); 
+    dev.write(FIFO_CTRL_START_ADDR, 8, t2);
     assert(hasAction(t2, "PrngFifoDev::ControlWrite"));
     assert(dev.stats().starts == 1);
 
@@ -246,19 +247,19 @@ void testPrngFifo() {
 
     // 5. Read elements from the data register
     Trace t3;
-    dev.read(0xFF000008, 2, t3);
+    dev.read(FIFO_DATA_START_ADDR, 2, t3);
     assert(hasAction(t3, "PrngFifoDev::ReadFifo"));
     assert(totalCycles(t3) == 2); 
     assert(dev.stats().reads == 1);
 
     Trace t4;
-    dev.read(0xFF000008, 2, t4);
+    dev.read(FIFO_DATA_START_ADDR, 2, t4);
     assert(totalCycles(t4) == 2); 
     assert(dev.stats().reads == 2);
 
     // 6. Read empty FIFO (triggers stall)
     Trace t5;
-    dev.read(0xFF000008, 2, t5);
+    dev.read(FIFO_DATA_START_ADDR, 2, t5);
     assert(totalCycles(t5) == 7);
     assert(dev.stats().reads == 3);
     assert(dev.stats().stalls == 1);
@@ -268,7 +269,7 @@ void testPrngFifo() {
 
     // 7. Write stop
     Trace t6;
-    dev.write(0xFF00000C, 8, t6); 
+    dev.write(FIFO_CTRL_STOP_ADDR, 8, t6);
     assert(hasAction(t6, "PrngFifoDev::ControlWrite"));
     assert(dev.stats().stops == 1);
 
@@ -282,20 +283,20 @@ void testScratchpad() {
 
     // Test single element read
     Trace t1;
-    dev.read(0x20000000, 8, t1);
+    dev.read(SP_A_ADDR, 8, t1);
     assert(hasAction(t1, "Scratchpad"));
     assert(totalCycles(t1) == 1);
 
     // Test single element write
     Trace t2;
-    dev.write(0x20000000, 8, t2);
+    dev.write(SP_A_ADDR, 8, t2);
     assert(hasAction(t2, "Scratchpad"));
     assert(totalCycles(t2) == 1);
 
     // Test tile access with conflict checks
     // Tile size: 4x4, stride: 4, elem_width: 8
     Trace t3;
-    uint conflicts = dev.accessTile(0x20000000, 4, 4, 4, 8, false, t3);
+    uint conflicts = dev.accessTile(SP_A_ADDR, 4, 4, 4, 8, false, t3);
     assert(conflicts == 2);
     assert(hasAction(t3, "Scratchpad"));
     assert(totalCycles(t3) == 2);
