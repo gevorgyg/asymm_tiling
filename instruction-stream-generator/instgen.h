@@ -97,6 +97,43 @@ private:
   void emitFifoStart(std::ostream &os, Addr seed_mem_addr, const char *reg) const;
   void emitFifoStop(std::ostream &os, const char *reg) const;
 
+  // --- Scratchpad / tile helpers ---
+
+  // Single-level: DMA a tile from DRAM into sp_addr, then ltea; or direct load.
+  void emitTileLoad(std::ostream &os, const GhostMat &M,
+                    uint dram_row, uint dram_col, uint w, uint h,
+                    Addr sp_addr, bool b_scratchpad, const char *reg) const;
+
+  // Single-level: tmov into sp_addr then DMA out to DRAM; or direct store.
+  void emitTileStore(std::ostream &os, const GhostMat &M,
+                     uint dram_row, uint dram_col, uint w, uint h,
+                     Addr sp_addr, bool b_scratchpad, const char *reg) const;
+
+  // Single-level B: load B tile from DRAM or FIFO, into register or scratchpad.
+  void emitLoadBSingleLevel(std::ostream &os, const GhostMat &B,
+                             uint dram_row_k, uint dram_col_j, Addr seed_addr,
+                             uint w, uint h,
+                             bool b_fifo, bool b_scratchpad, const char *reg) const;
+
+  // Multi-level: prefetch a cache tile and, if using scratchpad, DMA it in.
+  void emitCacheTileSetup(std::ostream &os, const GhostMat &M,
+                          uint dram_row, uint dram_col, uint w, uint h,
+                          Addr sp_addr, bool b_scratchpad) const;
+
+  // Multi-level register tile load/store (reg_m_, reg_n_, reg_k_ are members).
+  void emitRegTileLoadA(std::ostream &os, const GhostMat &A, TileShape tile,
+                        uint ti, uint rti, uint tk, uint rtk,
+                        bool b_scratchpad, const char *reg) const;
+  void emitRegTileLoadB(std::ostream &os, const GhostMat &B, TileShape tile,
+                        uint tk, uint rtk, uint tj, uint rtj,
+                        bool b_fifo, bool b_scratchpad, const char *reg) const;
+  void emitRegTileLoadC(std::ostream &os, const GhostMat &C, TileShape tile,
+                        uint ti, uint rti, uint tj, uint rtj,
+                        bool b_scratchpad, const char *reg) const;
+  void emitRegTileStoreC(std::ostream &os, const GhostMat &C, TileShape tile,
+                         uint ti, uint rti, uint tj, uint rtj,
+                         bool b_scratchpad, const char *reg) const;
+
   const GhostMat A_;
   const GhostMat B_;
   uint reg_m_;

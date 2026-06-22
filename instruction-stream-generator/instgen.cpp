@@ -18,6 +18,133 @@ void InstGenerator::emitFifoStop(std::ostream& os, const char* reg) const
     emit(os, "tmov", FIFO_CTRL_STOP_ADDR, 1, 1, 1, 8, reg);
 }
 
+void InstGenerator::emitTileLoad(std::ostream& os, const GhostMat& M,
+                                  uint dram_row, uint dram_col, uint w, uint h,
+                                  Addr sp_addr, bool b_scratchpad,
+                                  const char* reg) const
+{
+    if (!b_scratchpad) {
+        load(os, M, dram_row, dram_col, w, h, reg);
+    } else {
+        emitDma(os, "dma_in", tileAddr(M, dram_row, dram_col), sp_addr,
+                w, h, M.width, M.elem_width);
+        emit(os, "ltea", sp_addr, w, h, w, M.elem_width, reg);
+    }
+}
+
+void InstGenerator::emitTileStore(std::ostream& os, const GhostMat& M,
+                                   uint dram_row, uint dram_col, uint w, uint h,
+                                   Addr sp_addr, bool b_scratchpad,
+                                   const char* reg) const
+{
+    if (!b_scratchpad) {
+        store(os, M, dram_row, dram_col, w, h, reg);
+    } else {
+        emit(os, "tmov", sp_addr, w, h, w, M.elem_width, reg);
+        emitDma(os, "dma_out", sp_addr, tileAddr(M, dram_row, dram_col),
+                w, h, M.width, M.elem_width);
+    }
+}
+
+void InstGenerator::emitLoadBSingleLevel(std::ostream& os, const GhostMat& B,
+                                          uint dram_row_k, uint dram_col_j,
+                                          Addr seed_addr, uint w, uint h,
+                                          bool b_fifo, bool b_scratchpad,
+                                          const char* reg) const
+{
+    if (!b_fifo) {
+        emitTileLoad(os, B, dram_row_k, dram_col_j, w, h, SP_B_ADDR,
+                     b_scratchpad, reg);
+    } else {
+        emitFifoStart(os, seed_addr, reg);
+        if (!b_scratchpad) {
+            emit(os, "ltea", FIFO_DATA_START_ADDR, w, h, w, B.elem_width, reg);
+        } else {
+            emitDma(os, "dma_in", FIFO_DATA_START_ADDR, SP_B_ADDR, w, h, w,
+                    B.elem_width);
+            emit(os, "ltea", SP_B_ADDR, w, h, w, B.elem_width, reg);
+        }
+    }
+}
+
+void InstGenerator::emitCacheTileSetup(std::ostream& os, const GhostMat& M,
+                                        uint dram_row, uint dram_col,
+                                        uint w, uint h,
+                                        Addr sp_addr, bool b_scratchpad) const
+{
+    emitPrefetch(os, M, dram_row, dram_col, w, h);
+    if (b_scratchpad) {
+        emitDma(os, "dma_in", tileAddr(M, dram_row, dram_col), sp_addr,
+                w, h, M.width, M.elem_width);
+    }
+}
+
+void InstGenerator::emitRegTileLoadA(std::ostream& os, const GhostMat& A,
+                                      TileShape tile,
+                                      uint ti, uint rti, uint tk, uint rtk,
+                                      bool b_scratchpad, const char* reg) const
+{
+    if (!b_scratchpad) {
+        load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_,
+             reg_k_, reg_m_, reg);
+    } else {
+        emit(os, "ltea",
+             SP_A_ADDR + (rti * reg_m_ * tile.k + rtk * reg_k_) * A.elem_width,
+             reg_k_, reg_m_, tile.k, A.elem_width, reg);
+    }
+}
+
+void InstGenerator::emitRegTileLoadB(std::ostream& os, const GhostMat& B,
+                                      TileShape tile,
+                                      uint tk, uint rtk, uint tj, uint rtj,
+                                      bool b_fifo, bool b_scratchpad,
+                                      const char* reg) const
+{
+    if (!b_scratchpad) {
+        if (!b_fifo) {
+            load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_,
+                 reg_n_, reg_k_, reg);
+        } else {
+            emit(os, "ltea", FIFO_DATA_START_ADDR, reg_n_, reg_k_, reg_n_,
+                 B.elem_width, reg);
+        }
+    } else {
+        emit(os, "ltea",
+             SP_B_ADDR + (rtk * reg_k_ * tile.n + rtj * reg_n_) * B.elem_width,
+             reg_n_, reg_k_, tile.n, B.elem_width, reg);
+    }
+}
+
+void InstGenerator::emitRegTileLoadC(std::ostream& os, const GhostMat& C,
+                                      TileShape tile,
+                                      uint ti, uint rti, uint tj, uint rtj,
+                                      bool b_scratchpad, const char* reg) const
+{
+    if (!b_scratchpad) {
+        load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_,
+             reg_n_, reg_m_, reg);
+    } else {
+        emit(os, "ltea",
+             SP_C_ADDR + (rti * reg_m_ * tile.n + rtj * reg_n_) * C.elem_width,
+             reg_n_, reg_m_, tile.n, C.elem_width, reg);
+    }
+}
+
+void InstGenerator::emitRegTileStoreC(std::ostream& os, const GhostMat& C,
+                                       TileShape tile,
+                                       uint ti, uint rti, uint tj, uint rtj,
+                                       bool b_scratchpad, const char* reg) const
+{
+    if (!b_scratchpad) {
+        store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_,
+              reg_n_, reg_m_, reg);
+    } else {
+        emit(os, "tmov",
+             SP_C_ADDR + (rti * reg_m_ * tile.n + rtj * reg_n_) * C.elem_width,
+             reg_n_, reg_m_, tile.n, C.elem_width, reg);
+    }
+}
+
 InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
     : width(w), height(h), elem_width(elem_w),
       total_byte_size(width * height * elem_width), addr(a)
@@ -107,122 +234,50 @@ void InstGenerator::emitTraceMultiLevelBStationary(
 
     for (uint tk = 0; tk < K_tiles; ++tk) {
         for (uint tj = 0; tj < N_tiles; ++tj) {
-            if (!b_scratchpad) {
-                if (!b_fifo) {
-                    emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n,
-                                 tile.k);
-                } else {
-                    emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8, b_id);
-                }
+            if (!b_fifo) {
+                emitCacheTileSetup(os, B, tk * tile.k, tj * tile.n,
+                                   tile.n, tile.k, SP_B_ADDR, b_scratchpad);
             } else {
-                if (!b_fifo) {
-                    emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n,
-                                 tile.k);
-                    emitDma(os, "dma_in", tileAddr(B, tk * tile.k, tj * tile.n),
-                            SP_B_ADDR, tile.n, tile.k, B.width, B.elem_width);
-                } else {
-                    emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8, b_id);
+                emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8, b_id);
+                if (b_scratchpad)
                     emitDma(os, "dma_in", FIFO_DATA_START_ADDR, SP_B_ADDR,
                             tile.n, tile.k, tile.n, B.elem_width);
-                }
             }
 
             for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
                 for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
-                    if (!b_scratchpad) {
-                        if (!b_fifo) {
-                            load(os, B, tk * tile.k + rtk * reg_k_,
-                                 tj * tile.n + rtj * reg_n_, reg_n_, reg_k_,
-                                 b_id);
-                        } else {
-                            emit(os, "ltea", FIFO_DATA_START_ADDR, reg_n_, reg_k_,
-                                 reg_n_, B.elem_width, b_id);
-                        }
-                    } else {
-                        // Load B register tile from Scratchpad B
-                        emit(os, "ltea",
-                             SP_B_ADDR +
-                                 (rtk * reg_k_ * tile.n + rtj * reg_n_) *
-                                     B.elem_width,
-                             reg_n_, reg_k_, tile.n, B.elem_width, b_id);
-                    }
+                    emitRegTileLoadB(os, B, tile, tk, rtk, tj, rtj,
+                                     b_fifo, b_scratchpad, b_id);
 
                     for (uint ti = 0; ti < M_tiles; ++ti) {
-                        if (!b_scratchpad) {
-                            emitPrefetch(os, A, ti * tile.m, tk * tile.k,
-                                         tile.k, tile.m);
-                            emitPrefetch(os, C, ti * tile.m, tj * tile.n,
-                                         tile.n, tile.m);
-                        } else {
-                            emitPrefetch(os, A, ti * tile.m, tk * tile.k,
-                                         tile.k, tile.m);
-                            emitPrefetch(os, C, ti * tile.m, tj * tile.n,
-                                         tile.n, tile.m);
-                            emitDma(os, "dma_in",
-                                    tileAddr(A, ti * tile.m, tk * tile.k),
-                                    SP_A_ADDR, tile.k, tile.m, A.width,
-                                    A.elem_width);
-                            emitDma(os, "dma_in",
-                                    tileAddr(C, ti * tile.m, tj * tile.n),
-                                    SP_C_ADDR, tile.n, tile.m, C.width,
-                                    C.elem_width);
-                        }
+                        emitCacheTileSetup(os, A, ti * tile.m, tk * tile.k,
+                                           tile.k, tile.m, SP_A_ADDR, b_scratchpad);
+                        emitCacheTileSetup(os, C, ti * tile.m, tj * tile.n,
+                                           tile.n, tile.m, SP_C_ADDR, b_scratchpad);
 
                         for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
-                            if (!b_scratchpad) {
-                                load(os, A, ti * tile.m + rti * reg_m_,
-                                     tk * tile.k + rtk * reg_k_, reg_k_, reg_m_,
-                                     a_id);
-                                load(os, C, ti * tile.m + rti * reg_m_,
-                                     tj * tile.n + rtj * reg_n_, reg_n_, reg_m_,
-                                     c_id);
-                            } else {
-                                // Load register tiles from Scratchpads A and C
-                                emit(os, "ltea",
-                                     SP_A_ADDR + (rti * reg_m_ * tile.k +
-                                                  rtk * reg_k_) *
-                                                     A.elem_width,
-                                     reg_k_, reg_m_, tile.k, A.elem_width,
-                                     a_id);
-                                emit(os, "ltea",
-                                     SP_C_ADDR + (rti * reg_m_ * tile.n +
-                                                  rtj * reg_n_) *
-                                                     C.elem_width,
-                                     reg_n_, reg_m_, tile.n, C.elem_width,
-                                     c_id);
-                            }
+                            emitRegTileLoadA(os, A, tile, ti, rti, tk, rtk,
+                                             b_scratchpad, a_id);
+                            emitRegTileLoadC(os, C, tile, ti, rti, tj, rtj,
+                                             b_scratchpad, c_id);
 
                             os << "tmulac " << a_id << ", " << b_id << ", "
                                << c_id << std::endl;
 
-                            if (!b_scratchpad) {
-                                store(os, C, ti * tile.m + rti * reg_m_,
-                                      tj * tile.n + rtj * reg_n_, reg_n_,
-                                      reg_m_, c_id);
-                            } else {
-                                // Store register tile back to Scratchpad C
-                                emit(os, "tmov",
-                                     SP_C_ADDR + (rti * reg_m_ * tile.n +
-                                                  rtj * reg_n_) *
-                                                     C.elem_width,
-                                     reg_n_, reg_m_, tile.n, C.elem_width,
-                                     c_id);
-                            }
+                            emitRegTileStoreC(os, C, tile, ti, rti, tj, rtj,
+                                              b_scratchpad, c_id);
                         }
 
-                        if (b_scratchpad) {
-                            // DMA-out from Scratchpad C back to DRAM C
+                        if (b_scratchpad)
                             emitDma(os, "dma_out", SP_C_ADDR,
                                     tileAddr(C, ti * tile.m, tj * tile.n),
                                     tile.n, tile.m, C.width, C.elem_width);
-                        }
                     }
                 }
             }
 
-            if (b_fifo) {
+            if (b_fifo)
                 emitFifoStop(os, b_id);
-            }
         }
     }
 }
@@ -241,116 +296,51 @@ void InstGenerator::emitTraceMultiLevelCStationary(
 
     for (uint ti = 0; ti < M_tiles; ++ti) {
         for (uint tj = 0; tj < N_tiles; ++tj) {
-            if (!b_scratchpad) {
-                emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
-            } else {
-                emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
-                emitDma(os, "dma_in", tileAddr(C, ti * tile.m, tj * tile.n),
-                        SP_C_ADDR, tile.n, tile.m, C.width, C.elem_width);
-            }
+            emitCacheTileSetup(os, C, ti * tile.m, tj * tile.n,
+                               tile.n, tile.m, SP_C_ADDR, b_scratchpad);
 
             for (uint tk = 0; tk < K_tiles; ++tk) {
-                if (!b_scratchpad) {
-                    emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k,
-                                 tile.m);
-                    if (!b_fifo) {
-                        emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n,
-                                     tile.k);
-                    } else {
-                        emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8,
-                                      b_id);
-                    }
+                emitCacheTileSetup(os, A, ti * tile.m, tk * tile.k,
+                                   tile.k, tile.m, SP_A_ADDR, b_scratchpad);
+
+                if (!b_fifo) {
+                    emitCacheTileSetup(os, B, tk * tile.k, tj * tile.n,
+                                       tile.n, tile.k, SP_B_ADDR, b_scratchpad);
                 } else {
-                    emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k,
-                                 tile.m);
-                    emitDma(os, "dma_in", tileAddr(A, ti * tile.m, tk * tile.k),
-                            SP_A_ADDR, tile.k, tile.m, A.width, A.elem_width);
-                    if (!b_fifo) {
-                        emitPrefetch(os, B, tk * tile.k, tj * tile.n, tile.n,
-                                     tile.k);
-                        emitDma(os, "dma_in",
-                                tileAddr(B, tk * tile.k, tj * tile.n),
-                                SP_B_ADDR, tile.n, tile.k, B.width,
-                                B.elem_width);
-                    } else {
-                        emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8,
-                                      b_id);
+                    emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8, b_id);
+                    if (b_scratchpad)
                         emitDma(os, "dma_in", FIFO_DATA_START_ADDR, SP_B_ADDR,
                                 tile.n, tile.k, tile.n, B.elem_width);
-                    }
                 }
 
                 for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
                     for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
-                        if (!b_scratchpad) {
-                            load(os, C, ti * tile.m + rti * reg_m_,
-                                 tj * tile.n + rtj * reg_n_, reg_n_, reg_m_,
-                                 c_id);
-                        } else {
-                            emit(os, "ltea",
-                                 SP_C_ADDR +
-                                     (rti * reg_m_ * tile.n + rtj * reg_n_) *
-                                         C.elem_width,
-                                 reg_n_, reg_m_, tile.n, C.elem_width, c_id);
-                        }
+                        emitRegTileLoadC(os, C, tile, ti, rti, tj, rtj,
+                                         b_scratchpad, c_id);
 
                         for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
-                            if (!b_scratchpad) {
-                                load(os, A, ti * tile.m + rti * reg_m_,
-                                     tk * tile.k + rtk * reg_k_, reg_k_, reg_m_,
-                                     a_id);
-                                if (!b_fifo) {
-                                    load(os, B, tk * tile.k + rtk * reg_k_,
-                                         tj * tile.n + rtj * reg_n_, reg_n_,
-                                         reg_k_, b_id);
-                                } else {
-                                    emit(os, "ltea", FIFO_DATA_START_ADDR,
-                                         reg_n_, reg_k_, reg_n_, B.elem_width,
-                                         b_id);
-                                }
-                            } else {
-                                emit(os, "ltea",
-                                     SP_A_ADDR + (rti * reg_m_ * tile.k +
-                                                  rtk * reg_k_) *
-                                                     A.elem_width,
-                                     reg_k_, reg_m_, tile.k, A.elem_width,
-                                     a_id);
-                                emit(os, "ltea",
-                                     SP_B_ADDR + (rtk * reg_k_ * tile.n +
-                                                  rtj * reg_n_) *
-                                                     B.elem_width,
-                                     reg_n_, reg_k_, tile.n, B.elem_width,
-                                     b_id);
-                            }
+                            emitRegTileLoadA(os, A, tile, ti, rti, tk, rtk,
+                                             b_scratchpad, a_id);
+                            emitRegTileLoadB(os, B, tile, tk, rtk, tj, rtj,
+                                             b_fifo, b_scratchpad, b_id);
 
                             os << "tmulac " << a_id << ", " << b_id << ", "
                                << c_id << std::endl;
                         }
 
-                        if (!b_scratchpad) {
-                            store(os, C, ti * tile.m + rti * reg_m_,
-                                  tj * tile.n + rtj * reg_n_, reg_n_, reg_m_,
-                                  c_id);
-                        } else {
-                            emit(os, "tmov",
-                                 SP_C_ADDR +
-                                     (rti * reg_m_ * tile.n + rtj * reg_n_) *
-                                         C.elem_width,
-                                 reg_n_, reg_m_, tile.n, C.elem_width, c_id);
-                        }
+                        emitRegTileStoreC(os, C, tile, ti, rti, tj, rtj,
+                                          b_scratchpad, c_id);
                     }
                 }
 
-                if (b_fifo) {
+                if (b_fifo)
                     emitFifoStop(os, b_id);
-                }
             }
 
-            if (b_scratchpad) {
+            if (b_scratchpad)
                 emitDma(os, "dma_out", SP_C_ADDR,
                         tileAddr(C, ti * tile.m, tj * tile.n), tile.n, tile.m,
                         C.width, C.elem_width);
-            }
         }
     }
 }
@@ -373,60 +363,27 @@ void InstGenerator::emitTraceSingleLevelBStationary(
         for (uint tj = 0; tj < N_tiles; ++tj) {
             const uint ctw = std::min(tile.n, B.width - tj * tile.n);
 
-            if (!b_scratchpad) {
-                if (b_fifo) {
-                    emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8, b_id);
-                    emit(os, "ltea", FIFO_DATA_START_ADDR, ctw, atw, ctw,
-                         B.elem_width, b_id);
-                } else {
-                    load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
-                }
-            } else {
-                if (b_fifo) {
-                    emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8, b_id);
-                    emitDma(os, "dma_in", FIFO_DATA_START_ADDR, SP_B_ADDR, ctw,
-                            atw, ctw, B.elem_width);
-                } else {
-                    emitDma(os, "dma_in", tileAddr(B, tk * tile.k, tj * tile.n),
-                            SP_B_ADDR, ctw, atw, B.width, B.elem_width);
-                }
-                emit(os, "ltea", SP_B_ADDR, ctw, atw, ctw, B.elem_width, b_id);
-            }
+            emitLoadBSingleLevel(os, B, tk * tile.k, tj * tile.n,
+                                 B.addr + (tk * N_tiles + tj) * 8,
+                                 ctw, atw, b_fifo, b_scratchpad, b_id);
 
             for (uint ti = 0; ti < M_tiles; ++ti) {
                 const uint cth = std::min(tile.m, A.height - ti * tile.m);
 
-                if (!b_scratchpad) {
-                    load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
-                    load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
-                } else {
-                    emitDma(os, "dma_in", tileAddr(A, ti * tile.m, tk * tile.k),
-                            SP_A_ADDR, atw, cth, A.width, A.elem_width);
-                    emitDma(os, "dma_in", tileAddr(C, ti * tile.m, tj * tile.n),
-                            SP_C_ADDR, ctw, cth, C.width, C.elem_width);
-                    emit(os, "ltea", SP_A_ADDR, atw, cth, atw, A.elem_width,
-                         a_id);
-                    emit(os, "ltea", SP_C_ADDR, ctw, cth, ctw, C.elem_width,
-                         c_id);
-                }
+                emitTileLoad(os, A, ti * tile.m, tk * tile.k, atw, cth,
+                             SP_A_ADDR, b_scratchpad, a_id);
+                emitTileLoad(os, C, ti * tile.m, tj * tile.n, ctw, cth,
+                             SP_C_ADDR, b_scratchpad, c_id);
 
                 os << "tmulac " << a_id << ", " << b_id << ", " << c_id
                    << std::endl;
 
-                if (!b_scratchpad) {
-                    store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
-                } else {
-                    emit(os, "tmov", SP_C_ADDR, ctw, cth, ctw, C.elem_width,
-                         c_id);
-                    emitDma(os, "dma_out", SP_C_ADDR,
-                            tileAddr(C, ti * tile.m, tj * tile.n), ctw, cth,
-                            C.width, C.elem_width);
-                }
+                emitTileStore(os, C, ti * tile.m, tj * tile.n, ctw, cth,
+                              SP_C_ADDR, b_scratchpad, c_id);
             }
 
-            if (b_fifo) {
+            if (b_fifo)
                 emitFifoStop(os, b_id);
-            }
         }
     }
 }
@@ -449,66 +406,27 @@ void InstGenerator::emitTraceSingleLevelCStationary(
         for (uint tj = 0; tj < N_tiles; ++tj) {
             const uint ctw = std::min(tile.n, B.width - tj * tile.n);
 
-            if (!b_scratchpad) {
-                load(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
-            } else {
-                emitDma(os, "dma_in", tileAddr(C, ti * tile.m, tj * tile.n),
-                        SP_C_ADDR, ctw, cth, C.width, C.elem_width);
-                emit(os, "ltea", SP_C_ADDR, ctw, cth, ctw, C.elem_width, c_id);
-            }
+            emitTileLoad(os, C, ti * tile.m, tj * tile.n, ctw, cth,
+                         SP_C_ADDR, b_scratchpad, c_id);
 
             for (uint tk = 0; tk < K_tiles; ++tk) {
                 const uint atw = std::min(tile.k, A.width - tk * tile.k);
 
-                if (!b_scratchpad) {
-                    load(os, A, ti * tile.m, tk * tile.k, atw, cth, a_id);
-                } else {
-                    emitDma(os, "dma_in", tileAddr(A, ti * tile.m, tk * tile.k),
-                            SP_A_ADDR, atw, cth, A.width, A.elem_width);
-                    emit(os, "ltea", SP_A_ADDR, atw, cth, atw, A.elem_width,
-                         a_id);
-                }
-
-                if (!b_scratchpad) {
-                    if (b_fifo) {
-                        emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8,
-                                      b_id);
-                        emit(os, "ltea", FIFO_DATA_START_ADDR, ctw, atw, ctw,
-                             B.elem_width, b_id);
-                    } else {
-                        load(os, B, tk * tile.k, tj * tile.n, ctw, atw, b_id);
-                    }
-                } else {
-                    if (b_fifo) {
-                        emitFifoStart(os, B.addr + (tk * N_tiles + tj) * 8,
-                                      b_id);
-                        emitDma(os, "dma_in", FIFO_DATA_START_ADDR, SP_B_ADDR,
-                                ctw, atw, ctw, B.elem_width);
-                    } else {
-                        emitDma(os, "dma_in",
-                                tileAddr(B, tk * tile.k, tj * tile.n),
-                                SP_B_ADDR, ctw, atw, B.width, B.elem_width);
-                    }
-                    emit(os, "ltea", SP_B_ADDR, ctw, atw, ctw, B.elem_width,
-                         b_id);
-                }
+                emitTileLoad(os, A, ti * tile.m, tk * tile.k, atw, cth,
+                             SP_A_ADDR, b_scratchpad, a_id);
+                emitLoadBSingleLevel(os, B, tk * tile.k, tj * tile.n,
+                                     B.addr + (tk * N_tiles + tj) * 8,
+                                     ctw, atw, b_fifo, b_scratchpad, b_id);
 
                 os << "tmulac " << a_id << ", " << b_id << ", " << c_id
                    << std::endl;
 
-                if (b_fifo) {
+                if (b_fifo)
                     emitFifoStop(os, b_id);
-                }
             }
 
-            if (!b_scratchpad) {
-                store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
-            } else {
-                emit(os, "tmov", SP_C_ADDR, ctw, cth, ctw, C.elem_width, c_id);
-                emitDma(os, "dma_out", SP_C_ADDR,
-                        tileAddr(C, ti * tile.m, tj * tile.n), ctw, cth,
-                        C.width, C.elem_width);
-            }
+            emitTileStore(os, C, ti * tile.m, tj * tile.n, ctw, cth,
+                          SP_C_ADDR, b_scratchpad, c_id);
         }
     }
 }
