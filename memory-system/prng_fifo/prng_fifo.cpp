@@ -4,20 +4,12 @@
 #include <cassert>
 #include <iostream>
 
-
 PrngFifoDev::PrngFifoDev(InitParameters p, const size_t& cpu_cycles)
-    : MemoryObject(p.access_cycles),
-      ctrl_start_addr_(p.ctrl_start_addr),
-      ctrl_stop_addr_(p.ctrl_stop_addr),
-      seed_addr_(p.seed_addr),
-      data_start_addr_(p.data_start_addr),
-      data_end_addr_(p.data_end_addr),
-      fifo_capacity_(p.fifo_capacity),
-      gen_cost_(p.gen_cost),
-      cpu_cycles_(cpu_cycles),
-      seed_(0),
-      active_(false),
-      paused_(false),
+    : MemoryObject(p.access_cycles), ctrl_start_addr_(p.ctrl_start_addr),
+      ctrl_stop_addr_(p.ctrl_stop_addr), seed_addr_(p.seed_addr),
+      data_start_addr_(p.data_start_addr), data_end_addr_(p.data_end_addr),
+      fifo_capacity_(p.fifo_capacity), gen_cost_(p.gen_cost),
+      cpu_cycles_(cpu_cycles), seed_(0), active_(false), paused_(false),
       last_update_cycle_(0)
 {
     if (fifo_capacity_ > 0) {
@@ -27,16 +19,17 @@ PrngFifoDev::PrngFifoDev(InitParameters p, const size_t& cpu_cycles)
 
 bool PrngFifoDev::contains(Addr addr) const
 {
-    if (fifo_capacity_ == 0) return false;
-    return addr == ctrl_start_addr_ ||
-           addr == ctrl_stop_addr_ ||
+    if (fifo_capacity_ == 0)
+        return false;
+    return addr == ctrl_start_addr_ || addr == ctrl_stop_addr_ ||
            addr == seed_addr_ ||
            (addr >= data_start_addr_ && addr < data_end_addr_);
 }
 
 void PrngFifoDev::catchUp(size_t current_cycle)
 {
-    if (!active_ || paused_) return;
+    if (!active_ || paused_)
+        return;
 
     while (last_update_cycle_ + gen_cost_ <= current_cycle) {
         last_update_cycle_ += gen_cost_;
@@ -56,7 +49,8 @@ void PrngFifoDev::read(Addr addr, size_t /*size*/, Trace& trace)
 
     // Control / seed register reads are stateless witnesses.
     if (addr < data_start_addr_ || addr >= data_end_addr_) {
-        trace.push_back(std::make_unique<FifoRegisterRead>(addr, accessCycles()));
+        trace.push_back(
+            std::make_unique<FifoRegisterRead>(addr, accessCycles()));
         return;
     }
 
@@ -70,7 +64,8 @@ void PrngFifoDev::read(Addr addr, size_t /*size*/, Trace& trace)
         stall = static_cast<uint>(next_ready - cpu_cycles_);
         ++stats_.stalls;
         stats_.stall_cycles += stall;
-        trace.push_back(std::make_unique<FifoGenerateElement>(next_ready, gen_cost_));
+        trace.push_back(
+            std::make_unique<FifoGenerateElement>(next_ready, gen_cost_));
         catchUp(next_ready);
     }
     assert(!ready_cycles_.empty());
@@ -80,12 +75,13 @@ void PrngFifoDev::read(Addr addr, size_t /*size*/, Trace& trace)
     // Resuming from a full-FIFO pause: the slot we just freed lets the
     // generator run again starting from the cycle this read completes.
     if (paused_) {
-        paused_ = false;
+        paused_            = false;
         last_update_cycle_ = cpu_cycles_ + stall;
         catchUp(cpu_cycles_ + stall);
     }
 
-    trace.push_back(std::make_unique<FifoReadFifo>(addr, accessCycles(), stall));
+    trace.push_back(
+        std::make_unique<FifoReadFifo>(addr, accessCycles(), stall));
 }
 
 void PrngFifoDev::write(Addr addr, size_t /*size*/, Trace& trace)
@@ -95,29 +91,26 @@ void PrngFifoDev::write(Addr addr, size_t /*size*/, Trace& trace)
     if (addr == ctrl_start_addr_) {
         ++stats_.starts;
         if (!active_) {
-            active_ = true;
-            paused_ = false;
+            active_            = true;
+            paused_            = false;
             last_update_cycle_ = cpu_cycles_;
         }
-        trace.push_back(std::make_unique<FifoControlWrite>(addr, ctrl_start_addr_, accessCycles()));
-        return;
-    }
-    if (addr == ctrl_stop_addr_) {
+        trace.push_back(std::make_unique<FifoControlWrite>(
+            addr, ctrl_start_addr_, accessCycles()));
+    } else if (addr == ctrl_stop_addr_) {
         ++stats_.stops;
         active_ = false;
         paused_ = false;
         while (!ready_cycles_.empty()) {
             ready_cycles_.pop();
         }
-        trace.push_back(std::make_unique<FifoControlWrite>(addr, ctrl_start_addr_, accessCycles()));
-        return;
-    }
-    if (addr == seed_addr_) {
+        trace.push_back(std::make_unique<FifoControlWrite>(
+            addr, ctrl_start_addr_, accessCycles()));
+    } else if (addr == seed_addr_) {
         trace.push_back(std::make_unique<FifoSeedWrite>(addr, accessCycles()));
-        return;
+    } else {
+        std::cerr << "PRNG FIFO data port is read-only: write @0x" << std::hex
+                  << addr << std::dec << std::endl;
+        exit(1);
     }
-
-    std::cerr << "PRNG FIFO data port is read-only: write @0x" << std::hex << addr
-              << std::dec << std::endl;
-    exit(1);
 }
