@@ -60,11 +60,12 @@ class MemoryHierarchy
     uint access(Addr base_addr, uint t_width, uint t_height, uint stride,
                 uint elem_width, bool is_write, Trace& trace);
 
-    const Cache&       l1()         const { return l1_; }
-    const Cache&       l2()         const { return l2_; }
-    const PrngDev&     prng()       const { return prng_; }
-    const PrngFifoDev& prng_fifo()  const { return prng_fifo_; }
-    PrngFifoDev&       prng_fifo()        { return prng_fifo_; }
+    const Cache&          l1()         const { return l1_; }
+    const Cache&          l2()         const { return l2_; }
+    const PrngDev&        prng()       const { return prng_; }
+    const PrngFifoDev&    prng_fifo()  const { return prng_fifo_; }
+    PrngFifoDev&          prng_fifo()        { return prng_fifo_; }
+    const ScratchpadDev&  scratchpad() const { return scratchpad_; }
 
   private:
     MainMemory    mem_;

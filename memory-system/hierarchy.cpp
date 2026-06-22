@@ -26,7 +26,7 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
       l2_(p.l2_access_cycles, p.l2, p.l2_policy, &mem_),
       prng_(p.prng),
       prng_fifo_(p.prng_fifo, cpu_cycles),
-      scratchpad_(p.sp_access_cycles, p.sp_banks, p.sp_word_size_bytes),
+      scratchpad_(p.sp_access_cycles, p.sp_banks, p.sp_word_size_bytes, SP_A_ADDR, SP_END),
       router_(prng_, l2_),
       l1_(p.l1_access_cycles, p.l1, p.l1_policy, &router_)
 {
@@ -34,7 +34,7 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
 
 void MemoryHierarchy::access(Addr addr, size_t size, bool is_write, Trace& trace)
 {
-    if (addr >= SP_A_ADDR && addr < SP_END) {
+    if (scratchpad_.contains(addr)) {
         if (is_write) {
             scratchpad_.write(addr, size, trace);
         } else {

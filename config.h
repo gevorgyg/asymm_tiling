@@ -48,7 +48,8 @@ struct Config {
     uint mulac_cycles = 0;
 
     // Scratchpad settings (optional)
-    uint sp_banks = 8;
+    uint sp_access_cycles   = 1;
+    uint sp_banks           = 8;
     uint sp_word_size_bytes = 8;
 };
 

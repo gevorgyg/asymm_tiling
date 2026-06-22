@@ -279,27 +279,39 @@ void testPrngFifo() {
 void testScratchpad() {
     std::cout << "Running Scratchpad unit tests..." << std::endl;
 
-    ScratchpadDev dev(1, 8, 8); // access_cycles=1, banks=8, word_size_bytes=8
+    ScratchpadDev dev(1, 8, 8, SP_A_ADDR, SP_END);
+
+    assert(dev.contains(SP_A_ADDR));
+    assert(dev.contains(SP_B_ADDR));
+    assert(!dev.contains(0x0));
+    assert(!dev.contains(SP_END));
 
     // Test single element read
     Trace t1;
     dev.read(SP_A_ADDR, 8, t1);
     assert(hasAction(t1, "Scratchpad"));
     assert(totalCycles(t1) == 1);
+    assert(dev.stats().element_reads == 1);
 
     // Test single element write
     Trace t2;
     dev.write(SP_A_ADDR, 8, t2);
     assert(hasAction(t2, "Scratchpad"));
     assert(totalCycles(t2) == 1);
+    assert(dev.stats().element_writes == 1);
 
     // Test tile access with conflict checks
     // Tile size: 4x4, stride: 4, elem_width: 8
+    // With 8 banks and word_size=8: element (r,c) -> bank (r*4+c) % 8
+    // Row 0: banks 0,1,2,3 | Row 1: banks 4,5,6,7
+    // Row 2: banks 0,1,2,3 | Row 3: banks 4,5,6,7 => max 2 per bank
     Trace t3;
-    uint conflicts = dev.accessTile(SP_A_ADDR, 4, 4, 4, 8, false, t3);
-    assert(conflicts == 2);
+    uint cycles = dev.accessTile(SP_A_ADDR, 4, 4, 4, 8, false, t3);
+    assert(cycles == 2);  // max_conflicts(2) * accessCycles(1)
     assert(hasAction(t3, "Scratchpad"));
     assert(totalCycles(t3) == 2);
+    assert(dev.stats().tile_reads == 1);
+    assert(dev.stats().conflict_stalls == 1);  // (2-1)*1
 
     std::cout << "Scratchpad unit tests PASSED!" << std::endl;
 }

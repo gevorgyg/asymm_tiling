@@ -53,7 +53,11 @@ void writeDefaultConfig(const std::string& path)
         << "REG_N=4\n"
         << "REG_K=4\n\n"
         << "# tmulac computation cycles per register tile multiply-accumulate\n"
-        << "MULAC_CYCLES=8\n";
+        << "MULAC_CYCLES=8\n\n"
+        << "# Scratchpad memory\n"
+        << "SP_ACCESS_CYCLES=1\n"
+        << "SP_BANKS=8\n"
+        << "SP_WORD_SIZE_BYTES=8\n";
     std::cout << "Config file not found. Created a default configuration at: "
               << path << std::endl;
 }
@@ -180,7 +184,8 @@ Config loadConfig(const std::string& path)
 
         .mulac_cycles = optionalUint(raw, "MULAC_CYCLES"),
 
-        .sp_banks = optionalUint(raw, "SP_BANKS") == 0 ? 8 : optionalUint(raw, "SP_BANKS"),
-        .sp_word_size_bytes = optionalUint(raw, "SP_WORD_SIZE_BYTES") == 0 ? 8 : optionalUint(raw, "SP_WORD_SIZE_BYTES"),
+        .sp_access_cycles   = optionalUint(raw, "SP_ACCESS_CYCLES")   == 0 ? 1u : optionalUint(raw, "SP_ACCESS_CYCLES"),
+        .sp_banks           = optionalUint(raw, "SP_BANKS")           == 0 ? 8u : optionalUint(raw, "SP_BANKS"),
+        .sp_word_size_bytes = optionalUint(raw, "SP_WORD_SIZE_BYTES") == 0 ? 8u : optionalUint(raw, "SP_WORD_SIZE_BYTES"),
     };
 }
