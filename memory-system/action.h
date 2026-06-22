@@ -7,9 +7,13 @@
 #include <numeric>
 #include <vector>
 
-// An Action is a record of one textbook-level step a memory device took while
-// handling a read or write -- the kind of thing you'd point at in a computer-
-// architecture diagram (tag lookup, line fill, eviction, writeback).
+// An Action is a *record* of one textbook-level step a memory device took
+// while handling a read or write -- the kind of thing you'd point at in a
+// computer-architecture diagram (tag lookup, line fill, eviction, writeback).
+//
+// Actions are pure data: they carry the description and the cycle cost of an
+// event that already happened. The device that produced them did all the
+// state mutation already, then appended the Action as a witness.
 //
 // A request returns a Trace = sequence of Actions. Summing cyclesToPerform()
 // over the Trace gives the access time. Iterating it tells you what the model
@@ -26,10 +30,6 @@ class Action
     virtual uint cyclesToPerform() const       = 0;
     virtual const char* name() const           = 0;
     virtual void print(std::ostream& os) const = 0;
-
-    // Mutates the device this action belongs to. May append further actions
-    // (e.g. an Evict triggered by a LineFill on a full set) to `trace`.
-    virtual void perform(Trace& trace) = 0;
 };
 
 inline static uint totalCycles(const Trace& trace)

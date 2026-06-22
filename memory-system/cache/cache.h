@@ -12,8 +12,9 @@
 
 
 // Cache-emitted actions are nested as Cache::TagLookup, Cache::LineFill,
-// Cache::Evict. They have private access to Cache (nested classes are
-// members), so Cache's public surface stays minimal -- read/write/stats.
+// Cache::Evict -- they describe what the cache *did* on each access, and are
+// produced (with all relevant data already filled in) by Cache::read/write.
+// The Action classes themselves carry no logic.
 
 enum class WritePolicy {
     WRITE_THROUGH,
@@ -49,12 +50,23 @@ class Cache : public MemoryObject
     const char*  name()  const { return name_; }
     const Stats& stats() const { return stats_; }
 
-    // Nested actions -- defined below.
     class TagLookup;
     class LineFill;
     class Evict;
 
   private:
+    // Tag-check the line containing `addr`. Updates stats and (on hit) LRU
+    // order. Returns true iff the line is present.
+    bool probe(Addr addr);
+
+    // Install the line containing `addr` into its set, evicting and (if dirty)
+    // writing back a victim if the set is full. Appends an Evict event (when
+    // applicable) and a LineFill event to `trace`.
+    void fillLine(Addr addr, Trace& trace);
+
+    // Mark the line containing `addr` dirty. Caller guarantees it is resident.
+    void markDirty(Addr addr);
+
     Addr lineAddr(Addr byte_addr) const;
     Set& setFor(Addr byte_addr);
 
@@ -76,21 +88,18 @@ class Cache : public MemoryObject
 class Cache::TagLookup : public Action
 {
   public:
-    TagLookup(Cache& cache, Addr byte_addr);
-
-    void perform(Trace& trace) override;
+    TagLookup(const char* cache, Addr byte_addr, uint cost, bool hit)
+        : cache_(cache), byte_addr_(byte_addr), cost_(cost), hit_(hit) {}
 
     uint        cyclesToPerform() const override { return cost_; }
     const char* name() const override            { return "TagLookup"; }
     void        print(std::ostream& os) const override;
 
-    bool wasHit() const { return hit_; }
-
   private:
-    Cache& cache_;
-    Addr   byte_addr_;
-    uint   cost_;
-    bool   hit_ = false;
+    const char* cache_;
+    Addr        byte_addr_;
+    uint        cost_;
+    bool        hit_;
 };
 
 
@@ -99,17 +108,16 @@ class Cache::TagLookup : public Action
 class Cache::LineFill : public Action
 {
   public:
-    LineFill(Cache& cache, Addr byte_addr);
-
-    void perform(Trace& trace) override;
+    LineFill(const char* cache, Addr byte_addr)
+        : cache_(cache), byte_addr_(byte_addr) {}
 
     uint        cyclesToPerform() const override { return 0; }
     const char* name() const override            { return "LineFill"; }
     void        print(std::ostream& os) const override;
 
   private:
-    Cache& cache_;
-    Addr   byte_addr_;
+    const char* cache_;
+    Addr        byte_addr_;
 };
 
 
@@ -118,16 +126,15 @@ class Cache::LineFill : public Action
 class Cache::Evict : public Action
 {
   public:
-    Evict(Cache& cache, Addr victim_line_addr, bool dirty);
-
-    void perform(Trace& trace) override;
+    Evict(const char* cache, Addr victim_line_addr, bool dirty)
+        : cache_(cache), victim_line_addr_(victim_line_addr), dirty_(dirty) {}
 
     uint        cyclesToPerform() const override { return 0; }
     const char* name() const override            { return "Evict"; }
     void        print(std::ostream& os) const override;
 
   private:
-    Cache& cache_;
-    Addr   victim_line_addr_;
-    bool   dirty_;
+    const char* cache_;
+    Addr        victim_line_addr_;
+    bool        dirty_;
 };

@@ -6,13 +6,11 @@
 void MainMemory::read(Addr addr, size_t /*size*/, Trace& trace)
 {
     trace.push_back(std::make_unique<MemoryAccess>(accessCycles(), addr));
-    trace.back()->perform(trace);
 }
 
 void MainMemory::write(Addr addr, size_t /*size*/, Trace& trace)
 {
     trace.push_back(std::make_unique<MemoryAccess>(accessCycles(), addr));
-    trace.back()->perform(trace);
 }
 
 void MemoryAccess::print(std::ostream& os) const

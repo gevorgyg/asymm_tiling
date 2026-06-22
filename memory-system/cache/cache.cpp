@@ -23,8 +23,7 @@ Cache::Cache(uint access_cycles, InitParameters p,
     assert(policy_ != nullptr);
     assert(next_level_ != nullptr);
 
-    const size_t num_sets =
-        this->size_ / (this->line_size_ * this->assoc_);
+    const size_t num_sets = this->size_ / (this->line_size_ * this->assoc_);
     sets_.reserve(num_sets);
     for (size_t i = 0; i < num_sets; ++i) {
         sets_.emplace_back(this->assoc_);
@@ -33,7 +32,7 @@ Cache::Cache(uint access_cycles, InitParameters p,
 
 Addr Cache::lineAddr(Addr byte_addr) const
 {
-    return byte_addr / this->line_size_;
+    return byte_addr / line_size_;
 }
 
 Set& Cache::setFor(Addr byte_addr)
@@ -41,150 +40,102 @@ Set& Cache::setFor(Addr byte_addr)
     return sets_[lineAddr(byte_addr) % sets_.size()];
 }
 
+bool Cache::probe(Addr addr)
+{
+    ++stats_.tag_lookups;
+    const Addr line = lineAddr(addr);
+    Set& set = setFor(addr);
+    if (set.lookup(line)) {
+        ++stats_.hits;
+        policy_->recordAccess(set, line);
+        return true;
+    }
+    ++stats_.misses;
+    return false;
+}
+
+void Cache::fillLine(Addr addr, Trace& trace)
+{
+    Set& set = setFor(addr);
+    if (set.isFull()) {
+        CacheLine* victim = policy_->pickVictim(set);
+        const Addr victim_la = victim->lineAddr();
+        const bool dirty     = victim->dirty();
+        if (dirty) {
+            next_level_->write(victim_la * line_size_, line_size_, trace);
+        }
+        set.remove(victim_la);
+        ++stats_.evicts;
+        trace.push_back(std::make_unique<Evict>(name_, victim_la, dirty));
+    }
+    set.insert(lineAddr(addr));
+    ++stats_.line_fills;
+    trace.push_back(std::make_unique<LineFill>(name_, addr));
+}
+
+void Cache::markDirty(Addr addr)
+{
+    Set& set = setFor(addr);
+    CacheLine* line = set.lookup(lineAddr(addr));
+    assert(line != nullptr);
+    line->markDirty();
+}
+
 void Cache::read(Addr addr, size_t size, Trace& trace)
 {
-    size_t start_idx = trace.size();
-
-    trace.push_back(std::make_unique<TagLookup>(*this, addr));
-    trace.back()->perform(trace);
-    const bool hit = static_cast<TagLookup*>(trace[start_idx].get())->wasHit();
-
+    const bool hit = probe(addr);
+    trace.push_back(std::make_unique<TagLookup>(name_, addr, accessCycles(), hit));
     if (hit) {
         return;
     }
-
-    // Miss: defer to the next level, then append to trace.
     next_level_->read(addr, size, trace);
-
-    // Install the line locally. LineFill::perform decides whether to evict.
-    trace.push_back(std::make_unique<LineFill>(*this, addr));
-    trace.back()->perform(trace);
+    fillLine(addr, trace);
 }
 
 void Cache::write(Addr addr, size_t size, Trace& trace)
 {
-    if (write_policy_ == WritePolicy::WRITE_BACK) {
-        size_t start_idx = trace.size();
-        trace.push_back(std::make_unique<TagLookup>(*this, addr));
-        trace.back()->perform(trace);
-        const bool hit = static_cast<TagLookup*>(trace[start_idx].get())->wasHit();
+    const bool hit = probe(addr);
+    trace.push_back(std::make_unique<TagLookup>(name_, addr, accessCycles(), hit));
 
-        if (hit) {
-            Addr line_addr = lineAddr(addr);
-            Set& set = setFor(addr);
-            CacheLine* line = set.lookup(line_addr);
-            assert(line != nullptr);
-            line->markDirty();
-            policy_->recordAccess(set, line_addr);
-            return;
-        }
-
-        // Miss: Write-allocate
-        next_level_->read(addr, size, trace);
-
-        trace.push_back(std::make_unique<LineFill>(*this, addr));
-        trace.back()->perform(trace);
-
-        Addr line_addr = lineAddr(addr);
-        Set& set = setFor(addr);
-        CacheLine* line = set.lookup(line_addr);
-        assert(line != nullptr);
-        line->markDirty();
-    } else {
-        // Write-through + no-allocate
-        trace.push_back(std::make_unique<TagLookup>(*this, addr));
-        trace.back()->perform(trace);
-
+    if (write_policy_ == WritePolicy::WRITE_THROUGH) {
+        // No-allocate: forward the write straight through.
         next_level_->write(addr, size, trace);
+        return;
     }
+
+    // Write-back.
+    if (hit) {
+        markDirty(addr);
+        return;
+    }
+    // Write-allocate: fetch, install, then mark dirty.
+    next_level_->read(addr, size, trace);
+    fillLine(addr, trace);
+    markDirty(addr);
 }
 
 
 // --- Cache::TagLookup ---------------------------------------------------
 
-Cache::TagLookup::TagLookup(Cache& cache, Addr byte_addr)
-    : cache_(cache), byte_addr_(byte_addr), cost_(cache.accessCycles())
-{
-}
-
-void Cache::TagLookup::perform(Trace& /*trace*/)
-{
-    ++cache_.stats_.tag_lookups;
-
-    const Addr line = cache_.lineAddr(byte_addr_);
-    Set& set = cache_.setFor(byte_addr_);
-    if (set.lookup(line)) {
-        hit_ = true;
-        ++cache_.stats_.hits;
-        cache_.policy_->recordAccess(set, line);
-    } else {
-        hit_ = false;
-        ++cache_.stats_.misses;
-    }
-}
-
 void Cache::TagLookup::print(std::ostream& os) const
 {
-    os << cache_.name_ << " TagLookup @0x" << std::hex << byte_addr_
-       << std::dec << " " << (hit_ ? "HIT" : "MISS") << " (" << cost_ << " cy)";
+    os << cache_ << " TagLookup @0x" << std::hex << byte_addr_ << std::dec
+       << ' ' << (hit_ ? "HIT" : "MISS") << " (" << cost_ << " cy)";
 }
 
 
 // --- Cache::LineFill ----------------------------------------------------
 
-Cache::LineFill::LineFill(Cache& cache, Addr byte_addr)
-    : cache_(cache), byte_addr_(byte_addr)
-{
-}
-
-void Cache::LineFill::perform(Trace& trace)
-{
-    ++cache_.stats_.line_fills;
-
-    Set& set = cache_.setFor(byte_addr_);
-
-    if (set.isFull()) {
-        CacheLine* victim     = cache_.policy_->pickVictim(set);
-        const Addr victim_la  = victim->lineAddr();
-        const bool victim_drt = victim->dirty();
-
-        trace.push_back(
-            std::make_unique<Evict>(cache_, victim_la, victim_drt));
-        trace.back()->perform(trace);
-    }
-
-    set.insert(cache_.lineAddr(byte_addr_));
-}
-
 void Cache::LineFill::print(std::ostream& os) const
 {
-    os << cache_.name_ << " LineFill @0x" << std::hex << byte_addr_
-       << std::dec;
+    os << cache_ << " LineFill @0x" << std::hex << byte_addr_ << std::dec;
 }
 
 
 // --- Cache::Evict -------------------------------------------------------
 
-Cache::Evict::Evict(Cache& cache, Addr victim_line_addr, bool dirty)
-    : cache_(cache), victim_line_addr_(victim_line_addr), dirty_(dirty)
-{
-}
-
-void Cache::Evict::perform(Trace& trace)
-{
-    ++cache_.stats_.evicts;
-
-    if (dirty_) {
-        cache_.next_level_->write(victim_line_addr_ * cache_.line_size_, cache_.line_size_, trace);
-    }
-
-    cache_.sets_[victim_line_addr_ % cache_.sets_.size()].remove(
-        victim_line_addr_);
-}
-
 void Cache::Evict::print(std::ostream& os) const
 {
-    os << cache_.name_ << " Evict line=0x" << std::hex
-       << victim_line_addr_ << std::dec
-       << (dirty_ ? " (dirty)" : " (clean)");
+    os << cache_ << " Evict line=0x" << std::hex << victim_line_addr_
+       << std::dec << (dirty_ ? " (dirty)" : " (clean)");
 }

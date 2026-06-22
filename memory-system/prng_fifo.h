@@ -45,6 +45,7 @@ class PrngFifoDev : public MemoryObject
     class SeedWrite;
     class ReadFifo;
     class GenerateElement;
+    class RegisterRead;
 
   private:
     Addr   ctrl_start_addr_;
@@ -67,32 +68,34 @@ class PrngFifoDev : public MemoryObject
 };
 
 
-// --- Action Subclasses Full Declarations -------------------------------------
+// --- Action subclasses: pure-data records of FIFO events. -------------------
 
 class PrngFifoDev::ControlWrite : public Action
 {
   public:
-    ControlWrite(PrngFifoDev& dev, Addr addr);
-    uint cyclesToPerform() const override;
-    const char* name() const override;
+    ControlWrite(Addr addr, Addr start_addr, uint cost)
+        : addr_(addr), start_addr_(start_addr), cost_(cost) {}
+
+    uint cyclesToPerform() const override { return cost_; }
+    const char* name() const override     { return "PrngFifoDev::ControlWrite"; }
     void print(std::ostream& os) const override;
-    void perform(Trace& trace) override;
+
   private:
-    PrngFifoDev& dev_;
     Addr addr_;
+    Addr start_addr_;  // remembered just to render START vs STOP
     uint cost_;
 };
 
 class PrngFifoDev::SeedWrite : public Action
 {
   public:
-    SeedWrite(PrngFifoDev& dev, Addr addr);
-    uint cyclesToPerform() const override;
-    const char* name() const override;
+    SeedWrite(Addr addr, uint cost) : addr_(addr), cost_(cost) {}
+
+    uint cyclesToPerform() const override { return cost_; }
+    const char* name() const override     { return "PrngFifoDev::SeedWrite"; }
     void print(std::ostream& os) const override;
-    void perform(Trace& trace) override;
+
   private:
-    PrngFifoDev& dev_;
     Addr addr_;
     uint cost_;
 };
@@ -100,13 +103,14 @@ class PrngFifoDev::SeedWrite : public Action
 class PrngFifoDev::ReadFifo : public Action
 {
   public:
-    ReadFifo(PrngFifoDev& dev, Addr addr);
-    uint cyclesToPerform() const override;
-    const char* name() const override;
+    ReadFifo(Addr addr, uint cost, uint stall_cycles)
+        : addr_(addr), cost_(cost), stall_cycles_(stall_cycles) {}
+
+    uint cyclesToPerform() const override { return cost_ + stall_cycles_; }
+    const char* name() const override     { return "PrngFifoDev::ReadFifo"; }
     void print(std::ostream& os) const override;
-    void perform(Trace& trace) override;
+
   private:
-    PrngFifoDev& dev_;
     Addr addr_;
     uint cost_;
     uint stall_cycles_;
@@ -115,13 +119,28 @@ class PrngFifoDev::ReadFifo : public Action
 class PrngFifoDev::GenerateElement : public Action
 {
   public:
-    GenerateElement(PrngFifoDev& dev, size_t ready_cycle);
-    uint cyclesToPerform() const override;
-    const char* name() const override;
+    GenerateElement(size_t ready_cycle, uint cost)
+        : ready_cycle_(ready_cycle), cost_(cost) {}
+
+    uint cyclesToPerform() const override { return 0; }  // accounted for in ReadFifo stall
+    const char* name() const override     { return "PrngFifoDev::GenerateElement"; }
     void print(std::ostream& os) const override;
-    void perform(Trace& trace) override;
+
   private:
-    PrngFifoDev& dev_;
     size_t ready_cycle_;
+    uint   cost_;
+};
+
+class PrngFifoDev::RegisterRead : public Action
+{
+  public:
+    RegisterRead(Addr addr, uint cost) : addr_(addr), cost_(cost) {}
+
+    uint cyclesToPerform() const override { return cost_; }
+    const char* name() const override     { return "PrngFifoDev::RegisterRead"; }
+    void print(std::ostream& os) const override;
+
+  private:
+    Addr addr_;
     uint cost_;
 };

@@ -26,13 +26,20 @@ void PrngDev::read(Addr addr, size_t /*size*/, Trace& trace)
 {
     assert(contains(addr));
 
-    trace.push_back(std::make_unique<IsGenerated>(*this, addr));
-    trace.back()->perform(trace);
+    const bool was_generated = isGenerated(addr);
+    trace.push_back(std::make_unique<IsGenerated>(addr, accessCycles(), was_generated));
+
+    if (was_generated) {
+        ++stats_.regenerates;
+    } else {
+        ++stats_.generates;
+    }
+    const Addr line_base = lineBase(addr);
+    head_ = std::max(head_, static_cast<Addr>(line_base + line_size_));
 
     // First generation and re-derivation cost the same: any line is produced
     // from its window offset alone.
-    trace.push_back(std::make_unique<Generate>(*this, addr));
-    trace.back()->perform(trace);
+    trace.push_back(std::make_unique<Generate>(line_base, gen_cost_per_line_, was_generated));
 }
 
 void PrngDev::write(Addr addr, size_t /*size*/, Trace& /*trace*/)
@@ -45,16 +52,6 @@ void PrngDev::write(Addr addr, size_t /*size*/, Trace& /*trace*/)
 
 // --- PrngDev::IsGenerated ----------------------------------------------------
 
-PrngDev::IsGenerated::IsGenerated(PrngDev& dev, Addr byte_addr)
-    : dev_(dev), byte_addr_(byte_addr), cost_(dev.accessCycles())
-{
-}
-
-void PrngDev::IsGenerated::perform(Trace& /*trace*/)
-{
-    generated_ = dev_.isGenerated(byte_addr_);
-}
-
 void PrngDev::IsGenerated::print(std::ostream& os) const
 {
     os << "PRNG IsGenerated @0x" << std::hex << byte_addr_ << std::dec << " "
@@ -62,28 +59,10 @@ void PrngDev::IsGenerated::print(std::ostream& os) const
 }
 
 
-// --- PrngDev::Generate --------------------------------------------------------
-
-PrngDev::Generate::Generate(PrngDev& dev, Addr byte_addr)
-    : dev_(dev), byte_addr_(byte_addr), cost_(dev.gen_cost_per_line_)
-{
-}
-
-void PrngDev::Generate::perform(Trace& /*trace*/)
-{
-    regen_ = dev_.isGenerated(byte_addr_);
-    if (regen_) {
-        ++dev_.stats_.regenerates;
-    } else {
-        ++dev_.stats_.generates;
-    }
-
-    const Addr line_end = dev_.lineBase(byte_addr_) + dev_.line_size_;
-    dev_.head_          = std::max(dev_.head_, line_end);
-}
+// --- PrngDev::Generate -------------------------------------------------------
 
 void PrngDev::Generate::print(std::ostream& os) const
 {
-    os << "PRNG Generate line @0x" << std::hex << dev_.lineBase(byte_addr_)
-       << std::dec << " (" << cost_ << " cy)" << (regen_ ? " REGEN" : "");
+    os << "PRNG Generate line @0x" << std::hex << line_base_ << std::dec
+       << " (" << cost_ << " cy)" << (regen_ ? " REGEN" : "");
 }

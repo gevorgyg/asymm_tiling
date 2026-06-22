@@ -18,14 +18,12 @@ class MainMemory : public MemoryObject
 };
 
 
-// Records one access to main memory. No state to mutate -> perform() is a
-// no-op; the device cost is snapshotted at construction.
+// Records one access to main memory. Pure data: the device cost is
+// snapshotted at construction.
 class MemoryAccess : public Action
 {
   public:
     MemoryAccess(uint cost, Addr addr) : addr_(addr), cost_(cost) {}
-
-    void perform(Trace& /*trace*/) override {}
 
     uint        cyclesToPerform() const override { return cost_; }
     const char* name() const override            { return "MemoryAccess"; }

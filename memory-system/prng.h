@@ -61,21 +61,17 @@ class PrngDev : public MemoryObject
 class PrngDev::IsGenerated : public Action
 {
   public:
-    IsGenerated(PrngDev& dev, Addr byte_addr);
-
-    void perform(Trace& trace) override;
+    IsGenerated(Addr byte_addr, uint cost, bool generated)
+        : byte_addr_(byte_addr), cost_(cost), generated_(generated) {}
 
     uint        cyclesToPerform() const override { return cost_; }
     const char* name() const override            { return "IsGenerated"; }
     void        print(std::ostream& os) const override;
 
-    bool wasGenerated() const { return generated_; }
-
   private:
-    PrngDev& dev_;
-    Addr     byte_addr_;
-    uint     cost_;
-    bool     generated_ = false;
+    Addr byte_addr_;
+    uint cost_;
+    bool generated_;
 };
 
 
@@ -84,17 +80,15 @@ class PrngDev::IsGenerated : public Action
 class PrngDev::Generate : public Action
 {
   public:
-    Generate(PrngDev& dev, Addr byte_addr);
-
-    void perform(Trace& trace) override;
+    Generate(Addr line_base, uint cost, bool regen)
+        : line_base_(line_base), cost_(cost), regen_(regen) {}
 
     uint        cyclesToPerform() const override { return cost_; }
     const char* name() const override            { return "Generate"; }
     void        print(std::ostream& os) const override;
 
   private:
-    PrngDev& dev_;
-    Addr     byte_addr_;
-    uint     cost_;
-    bool     regen_ = false;
+    Addr line_base_;
+    uint cost_;
+    bool regen_;
 };
