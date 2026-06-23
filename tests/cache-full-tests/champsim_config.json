@@ -1,0 +1,173 @@
+{
+  "executable_name": "champsim",
+  "block_size": 8,
+  "page_size": 4096,
+  "heartbeat_frequency": 10000000,
+  "num_cores": 1,
+
+  "ooo_cpu": [
+    {
+      "frequency": 4000,
+      "ifetch_buffer_size": 1,
+      "decode_buffer_size": 1,
+      "dispatch_buffer_size": 1,
+      "register_file_size": 32,
+      "rob_size": 1,
+      "lq_size": 1,
+      "sq_size": 1,
+      "fetch_width": 1,
+      "decode_width": 1,
+      "dispatch_width": 1,
+      "execute_width": 1,
+      "lq_width": 1,
+      "sq_width": 1,
+      "retire_width": 1,
+      "mispredict_penalty": 1,
+      "scheduler_size": 1,
+      "decode_latency": 1,
+      "dispatch_latency": 1,
+      "schedule_latency": 0,
+      "execute_latency": 0,
+      "branch_predictor": "bimodal",
+      "btb": "basic_btb"
+    }
+  ],
+
+  "DIB": {
+    "window_size": 1,
+    "sets": 1,
+    "ways": 1
+  },
+
+  "L1I": {
+    "sets": 1,
+    "ways": 1,
+    "rq_size": 1,
+    "wq_size": 1,
+    "pq_size": 1,
+    "mshr_size": 1,
+    "latency": 1,
+    "max_tag_check": 1,
+    "max_fill": 1,
+    "prefetch_as_load": false,
+    "virtual_prefetch": false,
+    "prefetch_activate": "LOAD,PREFETCH",
+    "prefetcher": "no",
+    "lower_level": "DRAM"
+  },
+
+  "L1D": {
+    "sets": 8,
+    "ways": 4,
+    "rq_size": 64,
+    "wq_size": 64,
+    "pq_size": 8,
+    "mshr_size": 16,
+    "latency": 4,
+    "max_tag_check": 2,
+    "max_fill": 2,
+    "prefetch_as_load": false,
+    "virtual_prefetch": false,
+    "prefetch_activate": "LOAD,PREFETCH",
+    "prefetcher": "no",
+    "lower_level": "cpu0_L2C"
+  },
+
+  "L2C": {
+    "sets": 16,
+    "ways": 8,
+    "rq_size": 32,
+    "wq_size": 32,
+    "pq_size": 16,
+    "mshr_size": 32,
+    "latency": 15,
+    "max_tag_check": 1,
+    "max_fill": 1,
+    "prefetch_as_load": false,
+    "virtual_prefetch": false,
+    "prefetch_activate": "LOAD,PREFETCH",
+    "prefetcher": "no",
+    "lower_level": "DRAM"
+  },
+
+  "ITLB": {
+    "sets": 1024,
+    "ways": 64,
+    "rq_size": 16,
+    "wq_size": 16,
+    "pq_size": 0,
+    "mshr_size": 8,
+    "latency": 0,
+    "max_tag_check": 2,
+    "max_fill": 2,
+    "prefetch_as_load": false
+  },
+
+  "DTLB": {
+    "sets": 1024,
+    "ways": 64,
+    "rq_size": 16,
+    "wq_size": 16,
+    "pq_size": 0,
+    "mshr_size": 8,
+    "latency": 0,
+    "max_tag_check": 2,
+    "max_fill": 2,
+    "prefetch_as_load": false
+  },
+
+  "STLB": {
+    "sets": 1024,
+    "ways": 64,
+    "rq_size": 32,
+    "wq_size": 32,
+    "pq_size": 0,
+    "mshr_size": 16,
+    "latency": 0,
+    "max_tag_check": 1,
+    "max_fill": 1,
+    "prefetch_as_load": false
+  },
+
+  "PTW": {
+    "pscl5_set": 1,
+    "pscl5_way": 2,
+    "pscl4_set": 1,
+    "pscl4_way": 4,
+    "pscl3_set": 2,
+    "pscl3_way": 4,
+    "pscl2_set": 4,
+    "pscl2_way": 8,
+    "rq_size": 16,
+    "mshr_size": 5,
+    "max_read": 2,
+    "max_write": 2,
+    "lower_level": "DRAM"
+  },
+
+  "physical_memory": {
+    "data_rate": 3200,
+    "channels": 1,
+    "ranks": 1,
+    "bankgroups": 8,
+    "banks": 4,
+    "bank_rows": 65536,
+    "bank_columns": 1024,
+    "channel_width": 8,
+    "wq_size": 64,
+    "rq_size": 64,
+    "tCAS": 24,
+    "tRCD": 24,
+    "tRP": 24,
+    "tRAS": 52,
+    "refresh_period": 32,
+    "refreshes_per_period": 8192
+  },
+
+  "virtual_memory": {
+    "pte_page_size": 4096,
+    "num_levels": 5,
+    "minor_fault_penalty": 200,
+    "randomization": 1
+  }
+}

@@ -225,7 +225,8 @@ void printStats(const MemoryHierarchy& mem, size_t cpu_cycles, bool b_generated,
         printf("--- Scratchpad ---\n");
         printf("TileReads:      %llu\n", (unsigned long long)ss.tile_reads);
         printf("TileWrites:     %llu\n", (unsigned long long)ss.tile_writes);
-        printf("ConflictStalls: %llu\n", (unsigned long long)ss.conflict_stalls);
+        printf("ConflictStalls: %llu\n",
+               (unsigned long long)ss.conflict_stalls);
     }
 
     printf("--- System ---\n");
@@ -287,9 +288,10 @@ void writeStatsFile(const std::string& path, const MemoryHierarchy& mem,
 
     {
         const ScratchpadDev::Stats& ss = mem.scratchpad().stats();
-        out << "| Scratchpad | TileReads | "      << ss.tile_reads      << " |\n";
-        out << "| Scratchpad | TileWrites | "     << ss.tile_writes     << " |\n";
-        out << "| Scratchpad | ConflictStalls | " << ss.conflict_stalls << " |\n";
+        out << "| Scratchpad | TileReads | " << ss.tile_reads << " |\n";
+        out << "| Scratchpad | TileWrites | " << ss.tile_writes << " |\n";
+        out << "| Scratchpad | ConflictStalls | " << ss.conflict_stalls
+            << " |\n";
     }
 
     out << "| System | Total Cycles | " << cpu_cycles << " |\n";
