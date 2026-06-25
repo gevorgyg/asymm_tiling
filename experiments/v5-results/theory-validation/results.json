@@ -1,0 +1,102 @@
+[
+  {
+    "tm": 4,
+    "tn": 64,
+    "ratio": 16.0,
+    "theory_kb": 11264.0,
+    "sim_kb": 19568.0,
+    "overhead": 73.7215909090909,
+    "stats": {
+      "cycles": 103083072,
+      "l1_lookups": 15007744,
+      "l1_fills": 727296,
+      "l1_evicts": 727040,
+      "l2_lookups": 805056,
+      "l2_fills": 156800,
+      "l2_evicts": 156288,
+      "dram_traffic": 20037632,
+      "l1_hit_rate": 0.9515386189956332,
+      "l2_hit_rate": 0.805230940456316
+    }
+  },
+  {
+    "tm": 8,
+    "tn": 32,
+    "ratio": 4.0,
+    "theory_kb": 9216.0,
+    "sim_kb": 12048.0,
+    "overhead": 30.729166666666668,
+    "stats": {
+      "cycles": 84746384,
+      "l1_lookups": 13172736,
+      "l1_fills": 675968,
+      "l1_evicts": 675712,
+      "l2_lookups": 775632,
+      "l2_fills": 96640,
+      "l2_evicts": 96128,
+      "dram_traffic": 12337152,
+      "l1_hit_rate": 0.9486843128109452,
+      "l2_hit_rate": 0.8754048311570436
+    }
+  },
+  {
+    "tm": 16,
+    "tn": 16,
+    "ratio": 1.0,
+    "theory_kb": 11264.0,
+    "sim_kb": 23492.0,
+    "overhead": 108.55823863636364,
+    "stats": {
+      "cycles": 115348536,
+      "l1_lookups": 12648448,
+      "l1_fills": 1117440,
+      "l1_evicts": 1117184,
+      "l2_lookups": 1379568,
+      "l2_fills": 188192,
+      "l2_evicts": 187680,
+      "dram_traffic": 24055808,
+      "l1_hit_rate": 0.9116539831606217,
+      "l2_hit_rate": 0.863586282082507
+    }
+  },
+  {
+    "tm": 32,
+    "tn": 8,
+    "ratio": 0.25,
+    "theory_kb": 18432.0,
+    "sim_kb": 104023.0,
+    "overhead": 464.36089409722223,
+    "stats": {
+      "cycles": 256216912,
+      "l1_lookups": 13172736,
+      "l1_fills": 1625408,
+      "l1_evicts": 1625152,
+      "l2_lookups": 1887544,
+      "l2_fills": 832440,
+      "l2_evicts": 831928,
+      "dram_traffic": 106519552,
+      "l1_hit_rate": 0.8766081700870647,
+      "l2_hit_rate": 0.5589824661041014
+    }
+  },
+  {
+    "tm": 64,
+    "tn": 4,
+    "ratio": 0.0625,
+    "theory_kb": 34304.0,
+    "sim_kb": 202002.0,
+    "overhead": 488.85844216417905,
+    "stats": {
+      "cycles": 440368680,
+      "l1_lookups": 15007744,
+      "l1_fills": 2614368,
+      "l1_evicts": 2614112,
+      "l2_lookups": 2876508,
+      "l2_fills": 1616272,
+      "l2_evicts": 1615760,
+      "dram_traffic": 206850048,
+      "l1_hit_rate": 0.8257987343067685,
+      "l2_hit_rate": 0.4381131566468788
+    }
+  }
+]

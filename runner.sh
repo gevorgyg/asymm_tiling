@@ -16,5 +16,5 @@ if [ ! -z "$bflag" ]; then
     make
 fi
 
-./asymm --scratchpad --stat_file stats-scratch.md --trace_file sp.trace --trace_level 2 4 4 4
+# ./asymm --scratchpad --stat_file stats-scratch.md --trace_file sp.trace --trace_level 2 4 4 4
 ./asymm --stat_file stats-no-scratch.md --trace_file sp.trace --trace_level 2 4 4 4
