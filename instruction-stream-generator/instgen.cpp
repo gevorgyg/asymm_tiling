@@ -244,16 +244,16 @@ void InstGenerator::emitTraceMultiLevelBStationary(
                             tile.n, tile.k, tile.n, B.elem_width);
             }
 
-            for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
-                for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
-                    emitRegTileLoadB(os, B, tile, tk, rtk, tj, rtj,
-                                     b_fifo, b_scratchpad, b_id);
+            for (uint ti = 0; ti < M_tiles; ++ti) {
+                emitCacheTileSetup(os, A, ti * tile.m, tk * tile.k,
+                                   tile.k, tile.m, SP_A_ADDR, b_scratchpad);
+                emitCacheTileSetup(os, C, ti * tile.m, tj * tile.n,
+                                   tile.n, tile.m, SP_C_ADDR, b_scratchpad);
 
-                    for (uint ti = 0; ti < M_tiles; ++ti) {
-                        emitCacheTileSetup(os, A, ti * tile.m, tk * tile.k,
-                                           tile.k, tile.m, SP_A_ADDR, b_scratchpad);
-                        emitCacheTileSetup(os, C, ti * tile.m, tj * tile.n,
-                                           tile.n, tile.m, SP_C_ADDR, b_scratchpad);
+                for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
+                    for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
+                        emitRegTileLoadB(os, B, tile, tk, rtk, tj, rtj,
+                                         b_fifo, b_scratchpad, b_id);
 
                         for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
                             emitRegTileLoadA(os, A, tile, ti, rti, tk, rtk,
@@ -267,13 +267,13 @@ void InstGenerator::emitTraceMultiLevelBStationary(
                             emitRegTileStoreC(os, C, tile, ti, rti, tj, rtj,
                                               b_scratchpad, c_id);
                         }
-
-                        if (b_scratchpad)
-                            emitDma(os, "dma_out", SP_C_ADDR,
-                                    tileAddr(C, ti * tile.m, tj * tile.n),
-                                    tile.n, tile.m, C.width, C.elem_width);
                     }
                 }
+
+                if (b_scratchpad)
+                    emitDma(os, "dma_out", SP_C_ADDR,
+                            tileAddr(C, ti * tile.m, tj * tile.n),
+                            tile.n, tile.m, C.width, C.elem_width);
             }
 
             if (b_fifo)
