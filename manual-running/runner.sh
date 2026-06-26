@@ -16,7 +16,7 @@ if [ ! -z "$bflag" ]; then
     make
 fi
 
-echo "working set"
-./asymm --config workingset.conf --stat_file stats-no-scratch.md --trace_file sp.trace --trace_level 2 16 16 16
-echo "bigger than working set"
-./asymm --config bigger-than-workingset.conf --stat_file stats-no-scratch.md --trace_file sp.trace --trace_level 2 8 32 16
+echo "b - stat"
+./asymm --Bstationary --config bvscstat.conf --stat_file bstat.md --trace_file btrace.trace --trace_level 2 16 16 16
+echo "c - stat"
+./asymm --config bvscstat.conf --stat_file cstat.md --trace_file ctrace.trace --trace_level 2 16 16 16

@@ -248,6 +248,7 @@ witnesses; `totalCycles(trace)` sums their `cyclesToPerform()`.
 
 We evaluated five architectural sweeps on a $256 \times 256$ matrix multiply using the simulator:
 
+
 ### 1. C-Stationary vs. B-Stationary (Multi-Level Tiling)
 * **Results:** C-Stationary outperforms B-Stationary by up to **200x** (e.g. 52M vs 9.9B cycles for Normal Mode).
 * **Finding:** In C-Stationary, accumulation is kept resident in registers (`%rc`), only writing to cache once at the end of the reduction. B-Stationary must continuously load/store intermediate output tiles from cache to accumulate products, creating massive writeback traffic and thrashing the caches.
