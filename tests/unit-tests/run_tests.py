@@ -55,8 +55,8 @@ def run_test_trace(config_file, trace_file, prng=False, fifo=False):
 test_cases = [
     {
         "name": "Compulsory Read Misses & Hits (read_compulsory.trace)",
-        "config": "tests/configs/test_base.conf",
-        "trace": "tests/traces/read_compulsory.trace",
+        "config": "tests/unit-tests/configs/test_base.conf",
+        "trace": "tests/unit-tests/traces/read_compulsory.trace",
         "expected": {
             "l1_hit_rate": 0.500,
             "l1_tag_lookup": 8,
@@ -66,8 +66,8 @@ test_cases = [
     },
     {
         "name": "Write-Through No-Allocate Policy (write_through.trace)",
-        "config": "tests/configs/write_through.conf",
-        "trace": "tests/traces/write_through.trace",
+        "config": "tests/unit-tests/configs/write_through.conf",
+        "trace": "tests/unit-tests/traces/write_through.trace",
         "expected": {
             "l1_hit_rate": 0.500,
             "l1_tag_lookup": 4,
@@ -77,8 +77,8 @@ test_cases = [
     },
     {
         "name": "Write-Back + Write-Allocate Policy (write_back.trace)",
-        "config": "tests/configs/write_back.conf",
-        "trace": "tests/traces/write_back.trace",
+        "config": "tests/unit-tests/configs/write_back.conf",
+        "trace": "tests/unit-tests/traces/write_back.trace",
         "expected": {
             "l1_hit_rate": 0.667,
             "l1_tag_lookup": 3,
@@ -88,8 +88,8 @@ test_cases = [
     },
     {
         "name": "Write-Back Capacity Eviction and Writebacks (capacity_evict.trace)",
-        "config": "tests/configs/write_back.conf",
-        "trace": "tests/traces/capacity_evict.trace",
+        "config": "tests/unit-tests/configs/write_back.conf",
+        "trace": "tests/unit-tests/traces/capacity_evict.trace",
         "expected": {
             "l1_hit_rate": 0.000,
             "l1_tag_lookup": 3,
@@ -100,8 +100,8 @@ test_cases = [
     },
     {
         "name": "MMIO PRNG FIFO Device & Stall Latency (prng_fifo_stall.trace)",
-        "config": "tests/configs/test_base.conf",
-        "trace": "tests/traces/prng_fifo_stall.trace",
+        "config": "tests/unit-tests/configs/test_base.conf",
+        "trace": "tests/unit-tests/traces/prng_fifo_stall.trace",
         "fifo": True,
         "expected": {
             "fifo_starts": 1,
@@ -115,8 +115,8 @@ test_cases = [
     },
     {
         "name": "Multi-Level Tiling Prefetch & Reg Constraints (multitile_test.trace)",
-        "config": "tests/configs/multitile_test.conf",
-        "trace": "tests/traces/multitile_test.trace",
+        "config": "tests/unit-tests/configs/multitile_test.conf",
+        "trace": "tests/unit-tests/traces/multitile_test.trace",
         "expected": {
             "l1_hit_rate": 0.948,
             "l1_tag_lookup": 96,
@@ -126,8 +126,8 @@ test_cases = [
     },
     {
         "name": "Decoupled Scratchpad and Banking Conflicts (scratchpad_conflict.trace)",
-        "config": "tests/configs/test_base.conf",
-        "trace": "tests/traces/scratchpad_conflict.trace",
+        "config": "tests/unit-tests/configs/test_base.conf",
+        "trace": "tests/unit-tests/traces/scratchpad_conflict.trace",
         "expected": {
             "l1_tag_lookup": 16,
             "l2_tag_lookup": 16,
@@ -184,7 +184,7 @@ except Exception as e:
 
 print("\nRunning test: Register Size Constraints validation...")
 try:
-    res = subprocess.run([EXECUTABLE, "--config", "tests/configs/multitile_test.conf", "--trace_input", "tests/traces/multitile_invalid.trace", "16", "16", "16"], capture_output=True)
+    res = subprocess.run([EXECUTABLE, "--config", "tests/unit-tests/configs/multitile_test.conf", "--trace_input", "tests/unit-tests/traces/multitile_invalid.trace", "16", "16", "16"], capture_output=True)
     if res.returncode != 0 and b"do not match hardware config" in res.stderr:
         print("  PASSED! Invalid register dimension detected and rejected successfully.")
     else:

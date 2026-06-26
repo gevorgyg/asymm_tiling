@@ -32,7 +32,7 @@ DEPS := config.h policies.h \
         $(FIFO_DIR)/prng_fifo.h $(FIFO_DIR)/prng_fifo_actions.h \
         utils.h
 
-TEST_SRCS := tests/unit_tests.cpp policies.cpp $(MEM_SRCS)
+TEST_SRCS := tests/unit-tests/unit_tests.cpp policies.cpp $(MEM_SRCS)
 
 all: main
 
@@ -44,12 +44,13 @@ main: $(DEPS)
 main_d: $(DEPS)
 	g++ -std=c++17 $(SRCS) -o asymm -g
 
-unit_tests: $(DEPS) tests/unit_tests.cpp
-	g++ -std=c++17 $(TEST_SRCS) -o tests/unit_tests -I. -g
+unit_tests: $(DEPS) tests/unit-tests/unit_tests.cpp
+	g++ -std=c++17 $(TEST_SRCS) -o tests/unit-tests/unit_tests -I. -g
 
 test: main unit_tests
-	./tests/unit_tests
-	.venv/bin/python3 tests/run_tests.py
+	./tests/unit-tests/unit_tests
+	.venv/bin/python3 tests/unit-tests/run_tests.py
 
 clean:
-	rm -f asymm matmul.matv tests/unit_tests
+	rm -f asymm matmul.matv tests/unit-tests/unit_tests
+
