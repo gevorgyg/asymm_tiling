@@ -114,6 +114,8 @@ class Interpreter
     uint reg_n_;
     uint reg_k_;
     uint mulac_cycles_;
+
+    Trace inst_trace_;
 };
 
 template <typename F>
