@@ -26,12 +26,6 @@
 - `--mulac_norecord` - do not log `MulAcc` action into the trace and do not
   count cycles performed by it towards total cycle count
 
-### Input constraints:
-- Tile dimensions must divide matrix dimensions: `m | A_HEIGHT_DIM`, `n | B_WIDTH_DIM`, `k | A_WIDTH_DIM`.
-- With register tiling configured, register dimensions must divide cache tile dimensions: `REG_M | m`, `REG_N | n`, `REG_K | k`.
-- With `--Bsource prng_fifo` or `--Bsource prng_mem`, a B tile row must be a whole number of cache lines: `n * B_PRECISION_BYTES` must be a multiple of `L1_LINE_SIZE_BYTES`.
-- With `--Bsource prng_fifo` or `--Bsource prng_mem`, the PRNG window must be line-aligned: A's byte size and B's byte size must be multiples of `L1_LINE_SIZE_BYTES`.
-
 ---
 
 ## Memory Hierarchy Map (**AI GENERATED**)
@@ -75,7 +69,7 @@
                     main: print L1/L2 stats, PRNG/PRNG FIFO stats, total cycles
 ```
 
-### Trace
+## Trace
 
 Every cycle-costing event in the simulator is a subclass of `Action` and is
 logged. **If it's not in the trace, it didn't happen!** Some examples :
@@ -110,6 +104,72 @@ prefetch (0x6c0, 4, 4, 24, 8) (3184 cy) #LEVEL 0 ACTION#
 
 ```
 ---
+
+## Configuration
+
+In the configuration file we can choose numerical parameters for the simulation
+(with some constraints -- see below). Here is `default.config`:
+
+```
+# Matrix dimensions (elements)
+A_HEIGHT_DIM=12
+A_WIDTH_DIM=12
+B_WIDTH_DIM=24
+
+# Element widths (bytes)
+A_PRECISION_BYTES=8
+B_PRECISION_BYTES=2
+
+# Cache tile dimensions (elements)
+TILE_M=4
+TILE_N=4
+TILE_K=4
+
+# L1 cache
+L1_SIZE_BYTES=256
+L1_LINE_SIZE_BYTES=8
+L1_ASSOC=4
+L1_ACCESS_CYCLES=4
+L1_REPLACEMENT_POLICY=LRU
+L1_WRITE_POLICY=WRITE_BACK
+
+# L2 cache
+L2_SIZE_BYTES=1024
+L2_LINE_SIZE_BYTES=8
+L2_ASSOC=8
+L2_ACCESS_CYCLES=15
+L2_REPLACEMENT_POLICY=LRU
+L2_WRITE_POLICY=WRITE_BACK
+
+# Main memory
+MEM_ACCESS_CYCLES=180
+
+# Used by: --Bsource prng_mem
+# PRNG device (generates B's cache lines on demand)
+PRNG_ACCESS_CYCLES=2
+PRNG_GEN_COST_PER_LINE=64
+
+# Used by: --Bsource prng_fifo
+# PRNG FIFO device
+PRNG_FIFO_CAPACITY=64
+PRNG_FIFO_GEN_COST=10
+
+# Used by: --3dreg
+# Hardware register tile dimensions
+REG_M=4
+REG_N=4
+REG_K=4
+
+# Suppressed by: --mulac_norecord
+# tmulac computation cycles per register tile multiply-accumulate
+MULAC_CYCLES=8
+```
+### Constraints
+- Tile dimensions must divide matrix dimensions: `m | A_HEIGHT_DIM`, `n | B_WIDTH_DIM`, `k | A_WIDTH_DIM`.
+- With register tiling configured, register dimensions must divide cache tile dimensions: `REG_M | m`, `REG_N | n`, `REG_K | k`.
+- With `--Bsource prng_fifo` or `--Bsource prng_mem`, a B tile row must be a whole number of cache lines: `n * B_PRECISION_BYTES` must be a multiple of `L1_LINE_SIZE_BYTES`.
+- With `--Bsource prng_fifo` or `--Bsource prng_mem`, the PRNG window must be line-aligned: A's byte size and B's byte size must be multiples of `L1_LINE_SIZE_BYTES`.
+
 
 ## Completed Experiments & Architectural Findings
 
