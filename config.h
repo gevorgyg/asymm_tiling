@@ -26,26 +26,31 @@ struct Config {
     uint a_precision;
     uint b_precision;
 
+    // Cache tile dimensions (elements). With --3dreg, register tile below
+    // further subdivides each cache tile.
+    uint tile_m;
+    uint tile_n;
+    uint tile_k;
+
     // Memory hierarchy
     CacheConfig l1;
     CacheConfig l2;
     uint mem_access_cycles;
 
-    // PRNG (on-demand line generator)
+    // PRNG (on-demand line generator) -- used only with --Bsource prng_mem
     uint prng_access_cycles;
     uint prng_gen_cost_per_line;
 
-    // PRNG FIFO (cycle-accurate MMIO generator)
+    // PRNG FIFO (cycle-accurate MMIO generator) -- used only with --Bsource prng_fifo
     uint prng_fifo_capacity;
     uint prng_fifo_gen_cost;
 
-    // Hardware register tile. Zero in any dimension disables register
-    // tiling (interpreter falls back to scalar element-by-element loads).
+    // Hardware register tile -- used only with --3dreg.
     uint reg_m = 0;
     uint reg_n = 0;
     uint reg_k = 0;
 
-    // Per-tmulac compute cost. Zero means "don't charge anything".
+    // Per-tmulac compute cost -- recorded by default, suppressed by --mulac_norecord.
     uint mulac_cycles = 0;
 };
 

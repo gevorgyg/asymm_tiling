@@ -10,8 +10,13 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 constexpr char instruction_path[] = "./matmul.matv";
+
+
+enum class BSource    { Memory, PrngMem, PrngFifo };
+enum class Stationary { C, B };
 
 
 WritePolicy parseWritePolicy(const std::string& str)
@@ -22,8 +27,26 @@ WritePolicy parseWritePolicy(const std::string& str)
     exit(1);
 }
 
-void generateInstructions(const Config& c, uint m, uint n, uint k,
-                          bool b_stationary, bool b_fifo)
+BSource parseBSource(const std::string& str)
+{
+    if (str == "mem")       return BSource::Memory;
+    if (str == "prng_mem")  return BSource::PrngMem;
+    if (str == "prng_fifo") return BSource::PrngFifo;
+    std::cerr << "error: --Bsource must be one of {prng_fifo, prng_mem, mem}; got '"
+              << str << "'\n";
+    exit(1);
+}
+
+Stationary parseStationary(const std::string& str)
+{
+    if (str == "C") return Stationary::C;
+    if (str == "B") return Stationary::B;
+    std::cerr << "error: --stationary must be B or C; got '" << str << "'\n";
+    exit(1);
+}
+
+void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
+                          uint reg_m, uint reg_n, uint reg_k)
 {
     InstGenerator gen{InstGenerator::Params{
         .a_height    = c.a_height,
@@ -31,9 +54,9 @@ void generateInstructions(const Config& c, uint m, uint n, uint k,
         .b_width     = c.b_width,
         .a_precision = c.a_precision,
         .b_precision = c.b_precision,
-        .reg_m       = c.reg_m,
-        .reg_n       = c.reg_n,
-        .reg_k       = c.reg_k,
+        .reg_m       = reg_m,
+        .reg_n       = reg_n,
+        .reg_k       = reg_k,
     }};
 
     std::ofstream ofs(instruction_path);
@@ -42,75 +65,155 @@ void generateInstructions(const Config& c, uint m, uint n, uint k,
         exit(1);
     }
 
-    InstGenerator::TileShape tile{m, n, k};
+    InstGenerator::TileShape tile{c.tile_m, c.tile_n, c.tile_k};
     gen.generate(tile, ofs, b_stationary, b_fifo);
 }
 
+
+// Config keys whose values are ignored under the current CLI flag combination.
+// Used by both --- UNUSED OPTIONS --- output (humans) and the experiment
+// harness (cache-key normalization).
+std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
+                                          bool record_mulac)
+{
+    std::vector<const char*> u;
+    if (source != BSource::PrngMem) {
+        u.push_back("PRNG_ACCESS_CYCLES");
+        u.push_back("PRNG_GEN_COST_PER_LINE");
+    }
+    if (source != BSource::PrngFifo) {
+        u.push_back("PRNG_FIFO_CAPACITY");
+        u.push_back("PRNG_FIFO_GEN_COST");
+    }
+    if (!use_3dregisters) {
+        u.push_back("REG_M");
+        u.push_back("REG_N");
+        u.push_back("REG_K");
+    }
+    if (!record_mulac) {
+        u.push_back("MULAC_CYCLES");
+    }
+    return u;
+}
+
+
+void printCacheTable(const Cache& l1, const Cache& l2)
+{
+    const auto& a = l1.stats();
+    const auto& b = l2.stats();
+    const double hr_a = (a.hits + a.misses) ? (double)a.hits / (a.hits + a.misses) : 0.0;
+    const double hr_b = (b.hits + b.misses) ? (double)b.hits / (b.hits + b.misses) : 0.0;
+
+    printf("| Cache | Hit rate | TagLookup | LineFill | Evict |\n");
+    printf("|---|---|---|---|---|\n");
+    printf("| %s | %.03f | %llu | %llu | %llu |\n", l1.name(), hr_a,
+           (unsigned long long)a.tag_lookups,
+           (unsigned long long)a.line_fills,
+           (unsigned long long)a.evicts);
+    printf("| %s | %.03f | %llu | %llu | %llu |\n", l2.name(), hr_b,
+           (unsigned long long)b.tag_lookups,
+           (unsigned long long)b.line_fills,
+           (unsigned long long)b.evicts);
+}
+
+void printPrngTable(const PrngDev::Stats& s)
+{
+    printf("\n| PRNG | Generate | Regenerate |\n");
+    printf("|---|---|---|\n");
+    printf("| PRNG | %llu | %llu |\n",
+           (unsigned long long)s.generates,
+           (unsigned long long)s.regenerates);
+}
+
+void printPrngFifoTable(const PrngFifoDev::Stats& s)
+{
+    printf("\n| PRNG FIFO | Starts | Stops | Reads | Stalls | StallCycles | Generates |\n");
+    printf("|---|---|---|---|---|---|---|\n");
+    printf("| PRNG FIFO | %llu | %llu | %llu | %llu | %llu | %llu |\n",
+           (unsigned long long)s.starts,
+           (unsigned long long)s.stops,
+           (unsigned long long)s.reads,
+           (unsigned long long)s.stalls,
+           (unsigned long long)s.stall_cycles,
+           (unsigned long long)s.generates);
+}
+
+void printSystemTable(size_t cycles)
+{
+    printf("\n| System | Cycles |\n");
+    printf("|---|---|\n");
+    printf("| System | %llu |\n", (unsigned long long)cycles);
+}
+
+
 int main(int argc, char* argv[])
 {
-    bool b_generated  = false;
-    bool b_fifo       = false;
-    bool b_stationary = false;
-    uint dims[3];
-    int positional = 0;
-    std::string trace_file_path;
-    std::string trace_input_path = "";
-    std::string config_file_path = "";
-    int trace_level              = Interpreter::trace_actions;
+    BSource     b_source         = BSource::Memory;
+    Stationary  stationary       = Stationary::C;
+    std::string config_path      = "default.config";
+    std::string trace_file_path  = "trace.log";
+    std::string assembler_input;
+    int         trace_level      = Interpreter::trace_instructions;
+    bool        use_3dregisters  = false;
+    bool        mulac_norecord   = false;
 
     for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg == "--Bgenerated") {
-            b_generated = true;
-        } else if (arg == "--Bfifo") {
-            b_fifo = true;
-        } else if (arg == "--Bstationary") {
-            b_stationary = true;
-        } else if (arg == "--trace_file") {
-            if (i + 1 >= argc) { std::cerr << "--trace_file requires a filename\n"; exit(1); }
-            trace_file_path = argv[++i];
-        } else if (arg == "--trace_input") {
-            if (i + 1 >= argc) { std::cerr << "--trace_input requires a filename\n"; exit(1); }
-            trace_input_path = argv[++i];
-        } else if (arg == "--trace_level") {
+        const std::string arg = argv[i];
+        const auto need_arg = [&](const char* flag) {
             if (i + 1 >= argc) {
-                std::cerr << "--trace_level requires 0|1|2\n";
+                std::cerr << flag << " requires an argument\n";
                 exit(1);
             }
-            trace_level = std::atoi(argv[++i]);
+            return std::string(argv[++i]);
+        };
+
+        if      (arg == "--Bsource")         b_source        = parseBSource(need_arg("--Bsource"));
+        else if (arg == "--stationary")      stationary      = parseStationary(need_arg("--stationary"));
+        else if (arg == "--config")          config_path     = need_arg("--config");
+        else if (arg == "--trace_file")      trace_file_path = need_arg("--trace_file");
+        else if (arg == "--assembler_input") assembler_input = need_arg("--assembler_input");
+        else if (arg == "--3dregisters")     use_3dregisters = true;
+        else if (arg == "--mulac_norecord")  mulac_norecord  = true;
+        else if (arg == "--trace_level") {
+            trace_level = std::atoi(need_arg("--trace_level").c_str());
             if (trace_level < Interpreter::trace_instructions ||
                 trace_level > Interpreter::trace_actions) {
                 std::cerr << "--trace_level must be 0, 1 or 2\n";
                 exit(1);
             }
-        } else if (arg == "--config") {
-            if (i + 1 >= argc) { std::cerr << "--config requires a filename\n"; exit(1); }
-            config_file_path = argv[++i];
-        } else if (positional < 3) {
-            dims[positional++] = std::atoi(argv[i]);
         } else {
-            std::cerr << "unexpected argument: " << arg << std::endl;
+            std::cerr << "unexpected argument: " << arg << '\n'
+                      << "see README.md for the supported flags.\n";
             exit(1);
         }
     }
 
-    if (b_generated && b_fifo) {
-        std::cerr << "error: --Bgenerated and --Bfifo are mutually exclusive.\n";
-        exit(1);
-    }
-    if (positional != 3) {
-        std::cerr << "usage: " << argv[0]
-                  << " [--Bgenerated] [--Bfifo] [--Bstationary] "
-                     "[--trace_file <file>] [--trace_level <0|1|2>] "
-                     "[--config <file>] [--trace_input <file>] <m> <n> <k>\n";
-        exit(1);
+    const Config cfg = loadConfig(config_path);
+
+    // Apply CLI gates to config values: a flag absent means the corresponding
+    // config block is unused, and its values are zeroed before reaching the
+    // simulator. This is the *one* place "feature on/off" is decided.
+    uint reg_m = 0, reg_n = 0, reg_k = 0;
+    if (use_3dregisters) {
+        if (cfg.reg_m == 0 || cfg.reg_n == 0 || cfg.reg_k == 0) {
+            std::cerr << "error: --3dregisters requires REG_M, REG_N, REG_K > 0 in config\n";
+            exit(1);
+        }
+        reg_m = cfg.reg_m;
+        reg_n = cfg.reg_n;
+        reg_k = cfg.reg_k;
     }
 
-    if (config_file_path.empty()) config_file_path = "default.config";
-    const Config cfg = loadConfig(config_file_path);
+    const bool record_mulac = !mulac_norecord;
+    uint mulac_cycles = 0;
+    if (record_mulac) {
+        mulac_cycles = cfg.mulac_cycles;
+    }
 
-    // B lives right after A; with --Bgenerated those addresses are served by
-    // the PRNG device instead of L2/memory. A zero-byte window disables it.
+    const bool b_generated  = (b_source == BSource::PrngMem);
+    const bool b_fifo       = (b_source == BSource::PrngFifo);
+    const bool b_stationary = (stationary == Stationary::B);
+
     const uint a_bytes = cfg.a_height * cfg.a_width  * cfg.a_precision;
     const uint b_bytes = cfg.a_width  * cfg.b_width  * cfg.b_precision;
 
@@ -153,67 +256,35 @@ int main(int argc, char* argv[])
     MemoryHierarchy mem(mp, cpu_cycles);
 
     std::string run_path = instruction_path;
-    if (!trace_input_path.empty()) {
-        run_path = trace_input_path;
+    if (!assembler_input.empty()) {
+        run_path = assembler_input;
     } else {
-        generateInstructions(cfg, dims[0], dims[1], dims[2], b_stationary, b_fifo);
+        generateInstructions(cfg, b_stationary, b_fifo, reg_m, reg_n, reg_k);
     }
 
     Interpreter::Options opts{
         .trace_file_path = trace_file_path,
         .trace_level     = static_cast<Interpreter::TraceLevel>(trace_level),
-        .reg_m           = cfg.reg_m,
-        .reg_n           = cfg.reg_n,
-        .reg_k           = cfg.reg_k,
-        .mulac_cycles    = cfg.mulac_cycles,
+        .reg_m           = reg_m,
+        .reg_n           = reg_n,
+        .reg_k           = reg_k,
+        .mulac_cycles    = mulac_cycles,
     };
     Interpreter inter(run_path, mem, opts, cpu_cycles);
 
-    std::cout << "----------------------------\n"
-              << dims[0] << ' ' << dims[1] << ' ' << dims[2] << '\n'
-              << "----------------------------\n";
-
     inter.run();
 
-    const Cache::Stats& s = mem.l1().stats();
-    const size_t total    = s.hits + s.misses;
-    const double hit_rate = total ? (double)s.hits / (double)total : 0.0;
-
-    printf("--- %s ---\n", mem.l1().name());
-    printf("Hit rate:  %.03f\n", hit_rate);
-    printf("TagLookup: %llu\n", (unsigned long long)s.tag_lookups);
-    printf("LineFill:  %llu\n", (unsigned long long)s.line_fills);
-    printf("Evict:     %llu\n", (unsigned long long)s.evicts);
-
-    const Cache::Stats& s2 = mem.l2().stats();
-    const size_t total2    = s2.hits + s2.misses;
-    const double hit_rate2 = total2 ? (double)s2.hits / (double)total2 : 0.0;
-    printf("--- %s ---\n", mem.l2().name());
-    printf("Hit rate:  %.03f\n", hit_rate2);
-    printf("TagLookup: %llu\n", (unsigned long long)s2.tag_lookups);
-    printf("LineFill:  %llu\n", (unsigned long long)s2.line_fills);
-    printf("Evict:     %llu\n", (unsigned long long)s2.evicts);
-
-    if (b_generated) {
-        const PrngDev::Stats& ps = mem.prng().stats();
-        printf("--- PRNG ---\n");
-        printf("Generate:   %llu\n", (unsigned long long)ps.generates);
-        printf("Regenerate: %llu\n", (unsigned long long)ps.regenerates);
+    // Header: which config blocks were ignored by this run.
+    printf("--- UNUSED OPTIONS ---\n");
+    for (const char* k : unusedConfigKeys(b_source, use_3dregisters, record_mulac)) {
+        printf("# %s\n", k);
     }
+    printf("--- END ---\n\n");
 
-    if (b_fifo) {
-        const PrngFifoDev::Stats& pfs = mem.prng_fifo().stats();
-        printf("--- PRNG FIFO ---\n");
-        printf("Starts:      %llu\n", (unsigned long long)pfs.starts);
-        printf("Stops:       %llu\n", (unsigned long long)pfs.stops);
-        printf("Reads:       %llu\n", (unsigned long long)pfs.reads);
-        printf("Stalls:      %llu\n", (unsigned long long)pfs.stalls);
-        printf("StallCycles: %llu\n", (unsigned long long)pfs.stall_cycles);
-        printf("Generates:   %llu\n", (unsigned long long)pfs.generates);
-    }
-
-    printf("--- System ---\n");
-    printf("Cycles:    %llu\n", (unsigned long long)cpu_cycles);
+    printCacheTable(mem.l1(), mem.l2());
+    if (b_generated) printPrngTable(mem.prng().stats());
+    if (b_fifo)      printPrngFifoTable(mem.prng_fifo().stats());
+    printSystemTable(cpu_cycles);
 
     return 0;
 }

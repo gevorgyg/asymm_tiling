@@ -5,12 +5,13 @@
 ```
 
 ### Flags:
-- `--Bsource <prng_fifo|prng_mem|mem>` - how we assume to receive the matrix B:
+- `--Bsource <prng_fifo|prng_mem|mem>` - how we assume to receive the matrix B.
+  Default: `mem`:
     - `prng_fifo` - store only seeds of tiles, for each seed a tile will be generated and stored in a FIFO. FIFO size and cycle cost per element is configured in config file.
     - `prng_mem` - store B as a whole, generate parts of B on-demand and if it
       has been generated look for it in memory
     - `mem` - non-PRNG mode (B is simply stored in memory)
-- `--stationary <B|C>` - accumulate either into B or C
+- `--stationary <B|C>` - accumulate either into B or C. Default: `C`
 - `--config <file:default.config>` - configuration file with hardware parameters. Default: `default.config`
 - `--trace_file <file:trace.log>` - store the execution trace into a file.
   Default: `trace.log`
@@ -20,7 +21,7 @@
   - `2` (actions): adds every device Action (hits, misses, fills, evictions,
     generations)
 - `--assembler_input <file>` - run the interpreter directly on an existing trace file instead of generating a new one
-- `--3dreg` - enable 3D registers, each one storing a part of a 3D tile (where
+- `--3dregisters` - enable 3D registers, each one storing a part of a 3D tile (where
   the depth dimension is the common dimension between A and B)
 - `--mulac_norecord` - do not log `MulAcc` action into the trace and do not
   count cycles performed by it towards total cycle count

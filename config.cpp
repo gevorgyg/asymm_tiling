@@ -25,6 +25,10 @@ void writeDefaultConfig(const std::string& path)
         << "# Element widths (bytes)\n"
         << "A_PRECISION_BYTES=8\n"
         << "B_PRECISION_BYTES=2\n\n"
+        << "# Cache tile dimensions (elements)\n"
+        << "TILE_M=4\n"
+        << "TILE_N=4\n"
+        << "TILE_K=4\n\n"
         << "# L1 cache\n"
         << "L1_SIZE_BYTES=256\n"
         << "L1_LINE_SIZE_BYTES=8\n"
@@ -41,16 +45,20 @@ void writeDefaultConfig(const std::string& path)
         << "L2_WRITE_POLICY=WRITE_BACK\n\n"
         << "# Main memory\n"
         << "MEM_ACCESS_CYCLES=180\n\n"
+        << "# Used by: --Bsource prng_mem\n"
         << "# PRNG device (generates B's cache lines on demand)\n"
         << "PRNG_ACCESS_CYCLES=2\n"
         << "PRNG_GEN_COST_PER_LINE=64\n\n"
+        << "# Used by: --Bsource prng_fifo\n"
         << "# PRNG FIFO device\n"
         << "PRNG_FIFO_CAPACITY=64\n"
         << "PRNG_FIFO_GEN_COST=10\n\n"
-        << "# Hardware register tile dimensions (for multi-level tiling)\n"
+        << "# Used by: --3dreg\n"
+        << "# Hardware register tile dimensions\n"
         << "REG_M=4\n"
         << "REG_N=4\n"
         << "REG_K=4\n\n"
+        << "# Suppressed by: --mulac_norecord\n"
         << "# tmulac computation cycles per register tile multiply-accumulate\n"
         << "MULAC_CYCLES=8\n";
     std::cout << "Config file not found. Created a default configuration at: "
@@ -162,6 +170,10 @@ Config loadConfig(const std::string& path)
         .b_width     = requireUint(raw, "B_WIDTH_DIM"),
         .a_precision = requireUint(raw, "A_PRECISION_BYTES"),
         .b_precision = requireUint(raw, "B_PRECISION_BYTES"),
+
+        .tile_m = requireUint(raw, "TILE_M"),
+        .tile_n = requireUint(raw, "TILE_N"),
+        .tile_k = requireUint(raw, "TILE_K"),
 
         .l1                = loadCache(raw, "L1"),
         .l2                = loadCache(raw, "L2"),

@@ -1,54 +1,46 @@
 import subprocess
-import re
 import sys
+
+# Reuse the harness's markdown parser so the integration tests track the
+# same output schema the production runner sees.
+sys.path.insert(0, ".")
+from experiments.harness.parse import parse_stdout
 
 EXECUTABLE = "./asymm"
 
-def run_test_trace(config_file, trace_file, prng=False, fifo=False):
-    cmd = [EXECUTABLE, "--config", config_file, "--trace_input", trace_file]
+
+def run_test_trace(config_file, trace_file, prng=False, fifo=False, three_d_reg=False):
+    cmd = [EXECUTABLE, "--config", config_file, "--assembler_input", trace_file]
     if prng:
-        cmd.append("--Bgenerated")
-    if fifo:
-        cmd.append("--Bfifo")
-    # Add dummy dimensions (required by argv positional parsing)
-    cmd.extend(["16", "16", "16"])
-    
+        cmd += ["--Bsource", "prng_mem"]
+    elif fifo:
+        cmd += ["--Bsource", "prng_fifo"]
+    if three_d_reg:
+        cmd += ["--3dregisters"]
+
     res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    stdout = res.stdout
-    
-    # Parse stats
-    stats = {}
-    
-    # L1 Stats
-    l1_section = re.search(r"--- L1 ---\nHit rate:\s+([\d.]+)\nTagLookup:\s+(\d+)\nLineFill:\s+(\d+)\nEvict:\s+(\d+)", stdout)
-    if l1_section:
-        stats["l1_hit_rate"] = float(l1_section.group(1))
-        stats["l1_tag_lookup"] = int(l1_section.group(2))
-        stats["l1_line_fill"] = int(l1_section.group(3))
-        stats["l1_evict"] = int(l1_section.group(4))
-        
-    # L2 Stats
-    l2_section = re.search(r"--- L2 ---\nHit rate:\s+([\d.]+)\nTagLookup:\s+(\d+)\nLineFill:\s+(\d+)\nEvict:\s+(\d+)", stdout)
-    if l2_section:
-        stats["l2_hit_rate"] = float(l2_section.group(1))
-        stats["l2_tag_lookup"] = int(l2_section.group(2))
-        stats["l2_line_fill"] = int(l2_section.group(3))
-        stats["l2_evict"] = int(l2_section.group(4))
+    m = parse_stdout(res.stdout)
 
-    # PRNG FIFO Stats
-    fifo_section = re.search(r"--- PRNG FIFO ---\nStarts:\s+(\d+)\nStops:\s+(\d+)\nReads:\s+(\d+)\nStalls:\s+(\d+)\nStallCycles:\s+(\d+)\nGenerates:\s+(\d+)", stdout)
-    if fifo_section:
-        stats["fifo_starts"] = int(fifo_section.group(1))
-        stats["fifo_stops"] = int(fifo_section.group(2))
-        stats["fifo_reads"] = int(fifo_section.group(3))
-        stats["fifo_stalls"] = int(fifo_section.group(4))
-        stats["fifo_stall_cycles"] = int(fifo_section.group(5))
-        stats["fifo_generates"] = int(fifo_section.group(6))
-
-    cycles_match = re.search(r"\nCycles:\s+(\d+)", stdout)
-    if cycles_match:
-        stats["cycles"] = int(cycles_match.group(1))
-        
+    stats = {
+        "l1_hit_rate":   m.l1.hit_rate,
+        "l1_tag_lookup": m.l1.tag_lookups,
+        "l1_line_fill":  m.l1.line_fills,
+        "l1_evict":      m.l1.evicts,
+        "l2_hit_rate":   m.l2.hit_rate,
+        "l2_tag_lookup": m.l2.tag_lookups,
+        "l2_line_fill":  m.l2.line_fills,
+        "l2_evict":      m.l2.evicts,
+        "cycles":        m.cycles,
+    }
+    if m.prng_fifo is not None:
+        stats.update({
+            "fifo_starts":       m.prng_fifo.starts,
+            "fifo_stops":        m.prng_fifo.stops,
+            "fifo_reads":        m.prng_fifo.reads,
+            "fifo_stalls":       m.prng_fifo.stalls,
+            "fifo_stall_cycles": m.prng_fifo.stall_cycles,
+            "fifo_generates":    m.prng_fifo.generates,
+        })
     return stats
 
 # Test Cases
@@ -117,6 +109,7 @@ test_cases = [
         "name": "Multi-Level Tiling Prefetch & Reg Constraints (multitile_test.trace)",
         "config": "tests/configs/multitile_test.conf",
         "trace": "tests/traces/multitile_test.trace",
+        "three_d_reg": True,
         "expected": {
             "l1_hit_rate": 0.948,
             "l1_tag_lookup": 96,
@@ -135,7 +128,9 @@ print("==================================================")
 for tc in test_cases:
     print(f"Running test: {tc['name']}...")
     try:
-        stats = run_test_trace(tc["config"], tc["trace"], fifo=tc.get("fifo", False))
+        stats = run_test_trace(tc["config"], tc["trace"],
+                                fifo=tc.get("fifo", False),
+                                three_d_reg=tc.get("three_d_reg", False))
         
         # Verify stats
         mismatch = False
@@ -152,8 +147,8 @@ for tc in test_cases:
 
 print("\nRunning test: PRNG Equivalence Self-Consistency check...")
 try:
-    # Generate matmul.matv first using default.config
-    subprocess.run([EXECUTABLE, "--config", "default.config", "4", "4", "4"], capture_output=True, check=True)
+    # Generate matmul.matv first using default.config (tile dims come from config)
+    subprocess.run([EXECUTABLE, "--config", "default.config"], capture_output=True, check=True)
 
     # Run matmul 16x16x16 with PRNG enabled vs. disabled using default config
     stats_prng = run_test_trace("default.config", "matmul.matv", prng=True)
@@ -174,8 +169,10 @@ except Exception as e:
 
 print("\nRunning test: Register Size Constraints validation...")
 try:
-    res = subprocess.run([EXECUTABLE, "--config", "tests/configs/multitile_test.conf", "--trace_input", "tests/traces/multitile_invalid.trace", "16", "16", "16"], capture_output=True)
-    if res.returncode != 0 and b"Error: register %ra load dimensions" in res.stderr:
+    res = subprocess.run([EXECUTABLE, "--config", "tests/configs/multitile_test.conf",
+                          "--assembler_input", "tests/traces/multitile_invalid.trace",
+                          "--3dregisters"], capture_output=True)
+    if res.returncode != 0 and b"register %ra" in res.stderr:
         print("  PASSED! Invalid register dimension detected and rejected successfully.")
     else:
         print(f"  FAILED: Expected non-zero exit code and error message. Got code {res.returncode}, stderr: {res.stderr}")
