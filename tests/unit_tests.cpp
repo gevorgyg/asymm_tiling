@@ -9,43 +9,44 @@
 
 void testEvictionPolicies() {
     std::cout << "Running unit test for LRU Set..." << std::endl;
-    Set set_lru(2); // Assoc = 2
-
+    Set set_lru(2, Policy::LRU);
     set_lru.insert(10);
     set_lru.insert(20);
     assert(set_lru.isFull());
-    assert(set_lru.lines().front().lineAddr() == 10);
-    assert(set_lru.lines().back().lineAddr() == 20);
-
-    // Touch 10 (promoting it to MRU)
-    recordAccess(Policy::LRU, set_lru, 10);
-    assert(set_lru.lines().front().lineAddr() == 20); // LRU
-    assert(set_lru.lines().back().lineAddr() == 10);  // MRU
-
-    CacheLine* victim = pickVictim(Policy::LRU, set_lru);
-    assert(victim->lineAddr() == 20);
-
+    assert(set_lru.pickVictim()->lineAddr() == 10);
+    set_lru.lookup(10); // hit promotes 10 to MRU
+    assert(set_lru.pickVictim()->lineAddr() == 20);
     set_lru.remove(20);
     set_lru.insert(30);
-    assert(set_lru.lines().front().lineAddr() == 10);
-    assert(set_lru.lines().back().lineAddr() == 30);
-
+    assert(set_lru.pickVictim()->lineAddr() == 10);
     std::cout << "LRU unit test PASSED!" << std::endl;
 
     std::cout << "Running unit test for FIFO Set..." << std::endl;
-    Set set_fifo(2);
-
+    Set set_fifo(2, Policy::FIFO);
     set_fifo.insert(10);
     set_fifo.insert(20);
-
-    // Touch 10 (FIFO should ignore this)
-    recordAccess(Policy::FIFO, set_fifo, 10);
-    assert(set_fifo.lines().front().lineAddr() == 10);
-
-    CacheLine* victim_fifo = pickVictim(Policy::FIFO, set_fifo);
-    assert(victim_fifo->lineAddr() == 10);
-
+    set_fifo.lookup(10); // FIFO ignores hits
+    assert(set_fifo.pickVictim()->lineAddr() == 10);
     std::cout << "FIFO unit test PASSED!" << std::endl;
+
+    std::cout << "Running unit test for MRU Set..." << std::endl;
+    Set set_mru(2, Policy::MRU);
+    set_mru.insert(10);
+    set_mru.insert(20);
+    assert(set_mru.pickVictim()->lineAddr() == 20); // most-recently-inserted
+    set_mru.lookup(10); // promotes 10 to MRU
+    assert(set_mru.pickVictim()->lineAddr() == 10);
+    std::cout << "MRU unit test PASSED!" << std::endl;
+
+    std::cout << "Running unit test for Random Set..." << std::endl;
+    Set set_rand(2, Policy::Random);
+    set_rand.insert(10);
+    set_rand.insert(20);
+    for (int i = 0; i < 50; ++i) {
+        Addr a = set_rand.pickVictim()->lineAddr();
+        assert(a == 10 || a == 20);
+    }
+    std::cout << "Random unit test PASSED!" << std::endl;
 }
 
 // Helper to check action types in trace

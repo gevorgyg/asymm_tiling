@@ -1,9 +1,11 @@
 #pragma once
 
 #include "../../utils.h"
+#include "eviction_policy.h"
 
 #include <cstddef>
 #include <list>
+#include <random>
 
 
 class CacheLine
@@ -24,20 +26,18 @@ class CacheLine
 class Set
 {
   public:
-    explicit Set(size_t assoc) : assoc_(assoc) {}
+    Set(size_t assoc, Policy policy)
+        : assoc_(assoc), policy_(policy), rng_(42) {}
 
     bool       isFull() const { return lines_.size() >= assoc_; }
     CacheLine* lookup(Addr line_addr);
     void       insert(Addr line_addr);
     void       remove(Addr line_addr);
-    void       touch(Addr line_addr);
-
-    // Exposed so eviction policies can iterate in insertion order
-    // (front = oldest, back = newest).
-    std::list<CacheLine>&       lines()       { return lines_; }
-    const std::list<CacheLine>& lines() const { return lines_; }
+    CacheLine* pickVictim();
 
   private:
     size_t               assoc_;
+    Policy               policy_;
     std::list<CacheLine> lines_;
+    std::mt19937         rng_;
 };

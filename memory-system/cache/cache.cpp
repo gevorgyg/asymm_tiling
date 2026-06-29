@@ -23,7 +23,7 @@ Cache::Cache(uint access_cycles, InitParameters p, Policy policy,
     const size_t num_sets = size_ / (line_size_ * assoc_);
     sets_.reserve(num_sets);
     for (size_t i = 0; i < num_sets; ++i) {
-        sets_.emplace_back(assoc_);
+        sets_.emplace_back(assoc_, policy_);
     }
 }
 
@@ -44,7 +44,6 @@ bool Cache::probe(Addr addr)
     Set& set = setFor(addr);
     if (set.lookup(line)) {
         ++stats_.hits;
-        recordAccess(policy_, set, line);
         return true;
     }
     ++stats_.misses;
@@ -55,7 +54,7 @@ void Cache::fillLine(Addr addr, Trace& trace)
 {
     Set& set = setFor(addr);
     if (set.isFull()) {
-        CacheLine* victim    = pickVictim(policy_, set);
+        CacheLine* victim    = set.pickVictim();
         const Addr victim_la = victim->lineAddr();
         const bool dirty     = victim->dirty();
         if (dirty) {
