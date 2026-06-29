@@ -91,17 +91,17 @@ void InstGenerator::emitTraceMultiLevelBStationary(const GhostMat &A, const Ghos
         emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
       }
 
-      for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
-        for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
-          if (!b_fifo) {
-            load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
-          } else {
-            emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
-          }
+      for (uint ti = 0; ti < M_tiles; ++ti) {
+        emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k, tile.m);
+        emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
 
-          for (uint ti = 0; ti < M_tiles; ++ti) {
-            emitPrefetch(os, A, ti * tile.m, tk * tile.k, tile.k, tile.m);
-            emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
+        for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
+          for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
+            if (!b_fifo) {
+              load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
+            } else {
+              emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
+            }
 
             for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
               load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
