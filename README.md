@@ -1,4 +1,13 @@
 # Asymmetric Matrix Multiplication Sim
+## Compilation
+
+Just do 
+
+```
+make
+```
+
+in the root directory of the project.
 ## Usage
 ```
 ./asymm [--Bsource <prng_fifo|prng_mem|mem>] [--stationary <B|C>] [--config <file:default.config>] [--trace_file <file:trace.log>] [--trace_level <0|1|2:0>] [--assembler_input <file>] --3dregisters --mulacc_norecord
