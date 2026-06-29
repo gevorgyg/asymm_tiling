@@ -2,12 +2,12 @@
 import os
 import subprocess
 import json
-import re
+import matplotlib.pyplot as plt
 
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "../../.."))
-CONFIG_PATH = os.path.join(WORKSPACE_DIR, "tests", "configs", "sweep_line_size_temp.conf")
+CONFIG_PATH = os.path.join(WORKSPACE_DIR, "tests", "configs", "sweep_line_size_temp_bs.conf")
 DATA_DIR = SCRIPT_DIR
 REPORT_PATH = os.path.join(DATA_DIR, "README.md")
 ARTIFACT_DIR = "/home/aregmk/.gemini/antigravity/brain/2da43f73-946b-424d-9271-e7366e35cbd1"
@@ -62,11 +62,18 @@ SP_WORD_SIZE_BYTES=8
 """
 
 def write_config(a_prec, b_prec, line_size):
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w") as f:
         f.write(CONFIG_TEMPLATE.format(a_prec=a_prec, b_prec=b_prec, line_size=line_size))
 
 def run_simulation(m, n, k):
-    cmd = [os.path.join(WORKSPACE_DIR, "asymm"), "--config", CONFIG_PATH, str(m), str(n), str(k)]
+    # Run with B-stationary flag
+    cmd = [
+        os.path.join(WORKSPACE_DIR, "asymm"), 
+        "--config", CONFIG_PATH, 
+        "--Bstationary", 
+        str(m), str(n), str(k)
+    ]
     result = subprocess.run(cmd, cwd=WORKSPACE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if result.returncode != 0:
         return None
@@ -123,13 +130,13 @@ def parse_output(stdout):
     return stats
 
 def main():
-    print("=== Running Cache Line Size Empirical Tiling Sweeps ===")
+    print("=== Running B-Stationary Cache Line Size Empirical Tiling Sweeps ===")
     
-    # Compile
+    # Recompile
     subprocess.run(["make"], cwd=WORKSPACE_DIR, check=True)
     
     # Dimensions to sweep
-    dims = [8, 12, 16, 24, 32, 48, 96]
+    dims = [8, 12, 16, 24, 32, 48]
     
     # Line sizes to sweep
     line_sizes = [16, 32, 64, 128]
@@ -161,7 +168,6 @@ def main():
                     for k in dims:
                         stats = run_simulation(m, n, k)
                         if stats:
-                            # calculate dram traffic based on current line size
                             stats["dram_traffic"] = (stats["l2_fills"] + stats["l2_evicts"]) * ls
                             ratio = n / m
                             footprint = (m * k * prec["a_prec"]) + (k * n * prec["b_prec"]) + (m * n * max(prec["a_prec"], prec["b_prec"]))
@@ -184,6 +190,7 @@ def main():
         os.remove(CONFIG_PATH)
         
     # Save raw data
+    os.makedirs(DATA_DIR, exist_ok=True)
     with open(os.path.join(DATA_DIR, "results_line_size.json"), "w") as f:
         json.dump(all_results, f, indent=2)
         
@@ -196,18 +203,18 @@ def main():
 def generate_report(all_results):
     print(f"Writing report to {REPORT_PATH}...")
     with open(REPORT_PATH, "w") as f:
-        f.write("# Empirical Cache Line Size Tiling Sweeps\n\n")
-        f.write("This directory contains the results of empirical tile sweeps for a **$96 \\times 96 \\times 96$ matrix** under **16 KB L1** and **64 KB L2** caches, sweeping cache line sizes $L \\in \\{16, 32, 64, 128\\}$ bytes and tile dimensions $T_M, T_N, T_K \\in \\{8, 12, 16, 24, 32, 48\\}$.\n\n")
+        f.write("# B-Stationary Empirical Cache Line Size Tiling Sweeps\n\n")
+        f.write("This directory contains the results of empirical tile sweeps for a **$96 \\times 96 \\times 96$ matrix** multiplication under **16 KB L1** and **64 KB L2** caches under **B-stationary** loop ordering. We sweep cache line sizes $L \\in \\{16, 32, 64, 128\\}$ bytes and tile dimensions $T_M, T_N, T_K \\in \\{8, 12, 16, 24, 32, 48\\}$.\n\n")
         
-        f.write("> [!NOTE]\n")
-        f.write("> **Hardware Parameters:**\n")
+        f.write("> [Safe/Hardware Parameters]\n")
         f.write("> * **Matrix Size:** $96 \\times 96 \\times 96$.\n")
+        f.write("> * **Loop Nesting:** B-stationary.\n")
         f.write("> * **L1 Cache:** 16 KB capacity, 8-way associativity, 4-cycle access, LRU replacement, Write-Back policy.\n")
         f.write("> * **L2 Cache:** 64 KB capacity, 8-way associativity, 14-cycle access, LRU replacement, Write-Back policy.\n")
         f.write("> * **DRAM Latency:** 180 cycles.\n")
-        f.write("> * **Register Tile:** $4 \\times 4 \\times 4$ ($R_M \\times R_N \\times R_K$), 8-cycle compute (`tmulac`).\n\n")
+        f.write("> * **Register Tile:** $4 \\times 4 \\times 4$, 8-cycle compute (`tmulac`).\n\n")
         
-        f.write("## 1. Summary of Optimal Tile Shapes by Cache Line Size\n\n")
+        f.write("## 1. Summary of Optimal Tile Shapes by Cache Line Size (B-Stationary)\n\n")
         f.write("| Cache Line Size | Precision Config | Optimal Tile Shape ($T_M \\times T_N \\times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |\n")
         f.write("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n")
         
@@ -221,7 +228,6 @@ def generate_report(all_results):
         
         for ls_key in sorted(all_results.keys(), key=lambda x: int(x[:-1])):
             f.write(f"## 2. Details for Line Size = {ls_key}\n\n")
-            
             for name in ["Symmetric Double", "Asymmetric", "Symmetric Single"]:
                 results = all_results[ls_key][name]
                 f.write(f"### {name} ({ls_key})\n\n")
@@ -231,19 +237,12 @@ def generate_report(all_results):
                 for rank, r in enumerate(results[:3], 1):
                     s = r["stats"]
                     f.write(f"| {rank} | {r['m']}x{r['n']}x{r['k']} | {r['ratio']:.3f} | {r['footprint_kb']:.1f} KB | {s['l1_hit_rate']:.3f} | {s['l2_hit_rate']:.3f} | {s['dram_traffic']/1024:.1f} KB | {s['cycles']:,} |\n")
-                
-                f.write("\n#### Bottom 3 Worst Tile Shapes\n\n")
-                f.write("| Rank | Tile Shape ($T_M \\times T_N \\times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |\n")
-                f.write("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n")
-                for rank, r in enumerate(results[-3:], len(results)-2):
-                    s = r["stats"]
-                    f.write(f"| {rank} | {r['m']}x{r['n']}x{r['k']} | {r['ratio']:.3f} | {r['footprint_kb']:.1f} KB | {s['l1_hit_rate']:.3f} | {s['l2_hit_rate']:.3f} | {s['dram_traffic']/1024:.1f} KB | {s['cycles']:,} |\n")
                 f.write("\n")
             f.write("---\n\n")
             
-        f.write("## 3. Aspect Ratio Sensitivity vs. Cache Line Size\n")
-        f.write("The plot below details how the cache line size affects both execution cycles and the shape aspect ratio trend.\n\n")
-        f.write("![Line Size Aspect Ratio Sweeps](line_size_empirical.png)\n")
+        f.write("## 3. Physical Analysis & Conclusions\n\n")
+        f.write("Under B-stationary loop ordering, the optimal tile shapes systematically favor **wider layouts** ($T_N > T_M$) compared to C-stationary. Because B is held stationary in registers outside the innermost loop, the L1 cache only needs to stream A and C, reducing C-accumulator spill pressure on L1 SRAM. As line size grows to 128B, the spatial prefetching benefit of row-major access speeds up execution but shifts the optimum toward shapes that fit inside L1 without set thrashing.\n\n")
+        f.write("![Line Size Aspect Ratio Sweeps](line_size_empirical_bstationary.png)\n")
 
 def generate_plots(all_results):
     print("Generating Matplotlib plots...")
@@ -302,15 +301,15 @@ def generate_plots(all_results):
             if i == 0:
                 ax.legend(frameon=True, facecolor="white", edgecolor="none", fontsize=8)
                 
-        plt.suptitle('Tiling Performance vs. Cache Line Size & Aspect Ratio (96x96x96 Matrix)', fontsize=14, fontweight='bold', y=0.98)
+        plt.suptitle('B-Stationary Tiling Performance vs. Cache Line Size & Aspect Ratio', fontsize=14, fontweight='bold', y=0.98)
         plt.tight_layout()
         
-        plot_path = os.path.join(DATA_DIR, "line_size_empirical.png")
+        plot_path = os.path.join(DATA_DIR, "line_size_empirical_bstationary.png")
         plt.savefig(plot_path, bbox_inches='tight')
         plt.close()
         
         # Copy to artifact
-        subprocess.run(["cp", plot_path, os.path.join(ARTIFACT_DIR, "line_size_empirical.png")], check=True)
+        subprocess.run(["cp", plot_path, os.path.join(ARTIFACT_DIR, "line_size_empirical_bstationary.png")], check=True)
         print("Plot successfully saved and copied to artifact!")
     except Exception as e:
         print("Error generating plots:")

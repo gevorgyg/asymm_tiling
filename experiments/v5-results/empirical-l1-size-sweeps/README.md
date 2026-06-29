@@ -1,11 +1,11 @@
-# Empirical L1 Cache Capacity Tiling Sweeps (16B Lines)
+# Empirical L1 Cache Capacity Tiling Sweeps (32B Lines)
 
-This directory contains the results of empirical tile sweeps for a **$96 \times 96 \times 96$ matrix** under a fixed **16B cache line size**, sweeping L1 Cache Capacities $C_{L1} \in \{4, 8, 16, 32, 64\}$ KB and tile dimensions $T_M, T_N, T_K \in \{8, 12, 16, 24, 32, 48\}$.
+This directory contains the results of empirical tile sweeps for a **$96 \times 96 \times 96$ matrix** under a fixed **32B cache line size**, sweeping L1 Cache Capacities $C_{L1} \in \{4, 8, 16, 32, 64\}$ KB and tile dimensions $T_M, T_N, T_K \in \{8, 12, 16, 24, 32, 48, 96\}$.
 
 > [!NOTE]
 > **Hardware Parameters:**
 > * **Matrix Size:** $96 \times 96 \times 96$.
-> * **Cache Line Size:** 16B for both L1 and L2 caches.
+> * **Cache Line Size:** 32B for both L1 and L2 caches.
 > * **L1 Cache:** Swept capacity, 8-way associativity, 4-cycle access, LRU replacement, Write-Back policy.
 > * **L2 Cache:** 64 KB capacity, 8-way associativity, 14-cycle access, LRU replacement, Write-Back policy.
 > * **DRAM Latency:** 180 cycles.
@@ -15,21 +15,21 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | L1 Capacity | Precision Config | Optimal Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 4KB | Symmetric Double | 32x32x32 | 1.000 | 24.0 KB | 0.638 | 0.894 | 656.0 KB | 10,271,488 |
-| 4KB | Asymmetric | 16x48x32 | 3.000 | 13.0 KB | 0.884 | 0.869 | 267.8 KB | 6,048,904 |
-| 4KB | Symmetric Single | 12x32x16 | 2.667 | 4.2 KB | 0.938 | 0.865 | 158.5 KB | 5,046,464 |
-| 8KB | Symmetric Double | 32x32x16 | 1.000 | 16.0 KB | 0.881 | 0.772 | 656.0 KB | 8,789,376 |
-| 8KB | Asymmetric | 12x32x16 | 2.667 | 5.5 KB | 0.958 | 0.677 | 260.0 KB | 5,648,916 |
-| 8KB | Symmetric Single | 16x32x32 | 2.000 | 8.0 KB | 0.954 | 0.771 | 173.2 KB | 4,562,168 |
-| 16KB | Symmetric Double | 32x32x32 | 1.000 | 24.0 KB | 0.898 | 0.676 | 656.0 KB | 8,145,952 |
-| 16KB | Asymmetric | 12x48x48 | 4.000 | 13.5 KB | 0.952 | 0.711 | 260.0 KB | 5,355,272 |
-| 16KB | Symmetric Single | 16x16x48 | 1.000 | 7.0 KB | 0.963 | 0.731 | 156.6 KB | 4,390,160 |
-| 32KB | Symmetric Double | 48x48x32 | 1.000 | 42.0 KB | 0.929 | 0.539 | 676.1 KB | 7,941,204 |
-| 32KB | Asymmetric | 16x32x48 | 2.000 | 13.0 KB | 0.972 | 0.487 | 260.0 KB | 5,047,984 |
-| 32KB | Symmetric Single | 24x32x48 | 1.333 | 13.5 KB | 0.975 | 0.520 | 174.7 KB | 4,123,428 |
-| 64KB | Symmetric Double | 48x16x48 | 0.333 | 30.0 KB | 0.954 | 0.197 | 720.8 KB | 7,866,876 |
-| 64KB | Asymmetric | 16x16x48 | 1.000 | 9.5 KB | 0.982 | 0.196 | 282.4 KB | 4,994,784 |
-| 64KB | Symmetric Single | 12x48x48 | 4.000 | 13.5 KB | 0.988 | 0.159 | 165.0 KB | 3,879,806 |
+| 4KB | Symmetric Double | 32x32x96 | 1.000 | 56.0 KB | 0.819 | 0.882 | 656.0 KB | 6,010,688 |
+| 4KB | Asymmetric | 16x96x32 | 6.000 | 22.0 KB | 0.946 | 0.860 | 266.0 KB | 4,150,532 |
+| 4KB | Symmetric Single | 96x16x16 | 0.167 | 13.0 KB | 0.963 | 0.885 | 152.0 KB | 3,773,728 |
+| 8KB | Symmetric Double | 96x32x16 | 0.333 | 40.0 KB | 0.946 | 0.749 | 656.0 KB | 5,500,608 |
+| 8KB | Asymmetric | 16x96x48 | 6.000 | 27.0 KB | 0.949 | 0.839 | 263.2 KB | 3,996,884 |
+| 8KB | Symmetric Single | 96x32x32 | 0.333 | 28.0 KB | 0.977 | 0.718 | 218.8 KB | 3,439,984 |
+| 16KB | Symmetric Double | 32x32x32 | 1.000 | 24.0 KB | 0.949 | 0.676 | 656.0 KB | 5,252,624 |
+| 16KB | Asymmetric | 24x96x96 | 4.000 | 54.0 KB | 0.952 | 0.807 | 261.1 KB | 3,763,998 |
+| 16KB | Symmetric Single | 96x96x24 | 1.000 | 54.0 KB | 0.983 | 0.716 | 178.3 KB | 3,250,238 |
+| 32KB | Symmetric Double | 48x96x16 | 2.000 | 54.0 KB | 0.958 | 0.734 | 565.6 KB | 5,096,636 |
+| 32KB | Asymmetric | 16x48x96 | 3.000 | 27.0 KB | 0.984 | 0.508 | 264.5 KB | 3,639,274 |
+| 32KB | Symmetric Single | 96x32x96 | 0.333 | 60.0 KB | 0.980 | 0.662 | 176.5 KB | 3,105,286 |
+| 64KB | Symmetric Double | 32x32x96 | 1.000 | 56.0 KB | 0.978 | 0.072 | 720.9 KB | 4,938,264 |
+| 64KB | Asymmetric | 24x96x96 | 4.000 | 54.0 KB | 0.990 | 0.019 | 349.4 KB | 3,598,360 |
+| 64KB | Symmetric Single | 24x96x96 | 4.000 | 54.0 KB | 0.993 | 0.116 | 170.2 KB | 2,908,810 |
 
 ---
 
@@ -41,17 +41,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 32x32x32 | 1.000 | 24.0 KB | 0.638 | 0.894 | 656.0 KB | 10,271,488 |
-| 2 | 32x32x48 | 1.000 | 32.0 KB | 0.638 | 0.882 | 696.5 KB | 10,277,824 |
-| 3 | 32x24x48 | 0.750 | 27.0 KB | 0.630 | 0.888 | 686.4 KB | 10,364,112 |
+| 1 | 32x32x96 | 1.000 | 56.0 KB | 0.819 | 0.882 | 656.0 KB | 6,010,688 |
+| 2 | 32x24x96 | 0.750 | 48.0 KB | 0.815 | 0.886 | 656.0 KB | 6,101,424 |
+| 3 | 32x32x48 | 1.000 | 32.0 KB | 0.819 | 0.882 | 696.5 KB | 6,281,696 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 8x12x16 | 1.500 | 3.2 KB | 0.620 | 0.793 | 1952.0 KB | 19,829,040 |
-| 215 | 8x8x12 | 1.000 | 2.0 KB | 0.690 | 0.779 | 1952.0 KB | 19,845,568 |
-| 216 | 8x8x16 | 1.000 | 2.5 KB | 0.615 | 0.804 | 1952.0 KB | 20,234,656 |
+| 341 | 16x96x96 | 6.000 | 96.0 KB | 0.825 | 0.270 | 4314.8 KB | 16,600,496 |
+| 342 | 12x96x96 | 8.000 | 90.0 KB | 0.822 | 0.296 | 4359.9 KB | 16,868,876 |
+| 343 | 8x96x96 | 12.000 | 84.0 KB | 0.818 | 0.346 | 4422.2 KB | 17,324,816 |
 
 ### Asymmetric (4KB)
 
@@ -59,17 +59,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 16x48x32 | 3.000 | 13.0 KB | 0.884 | 0.869 | 267.8 KB | 6,048,904 |
-| 2 | 12x48x32 | 4.000 | 10.5 KB | 0.885 | 0.874 | 260.0 KB | 6,093,616 |
-| 3 | 16x32x32 | 2.000 | 10.0 KB | 0.883 | 0.872 | 268.4 KB | 6,116,296 |
+| 1 | 16x96x32 | 6.000 | 22.0 KB | 0.946 | 0.860 | 266.0 KB | 4,150,532 |
+| 2 | 32x96x32 | 3.000 | 38.0 KB | 0.946 | 0.830 | 319.2 KB | 4,171,250 |
+| 3 | 24x96x32 | 4.000 | 30.0 KB | 0.946 | 0.835 | 313.8 KB | 4,189,544 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x8x8 | 0.167 | 6.1 KB | 0.784 | 0.949 | 296.0 KB | 9,193,016 |
-| 215 | 32x8x8 | 0.250 | 4.1 KB | 0.786 | 0.945 | 331.5 KB | 9,402,428 |
-| 216 | 24x8x8 | 0.333 | 3.1 KB | 0.787 | 0.944 | 338.0 KB | 9,541,280 |
+| 341 | 96x12x96 | 0.125 | 83.2 KB | 0.782 | 0.653 | 2600.0 KB | 12,097,904 |
+| 342 | 96x96x8 | 1.000 | 79.5 KB | 0.933 | 0.541 | 2046.6 KB | 14,620,566 |
+| 343 | 96x8x96 | 0.083 | 79.5 KB | 0.777 | 0.543 | 3752.0 KB | 15,722,384 |
 
 ### Symmetric Single (4KB)
 
@@ -77,17 +77,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 12x32x16 | 2.667 | 4.2 KB | 0.938 | 0.865 | 158.5 KB | 5,046,464 |
-| 2 | 16x32x16 | 2.000 | 5.0 KB | 0.936 | 0.860 | 175.4 KB | 5,094,240 |
-| 3 | 48x32x16 | 0.667 | 11.0 KB | 0.943 | 0.809 | 224.0 KB | 5,100,288 |
+| 1 | 96x16x16 | 0.167 | 13.0 KB | 0.963 | 0.885 | 152.0 KB | 3,773,728 |
+| 2 | 48x32x16 | 0.667 | 11.0 KB | 0.972 | 0.809 | 224.0 KB | 3,821,952 |
+| 3 | 96x32x16 | 0.333 | 20.0 KB | 0.973 | 0.787 | 241.4 KB | 3,823,320 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 32x12x8 | 0.375 | 2.9 KB | 0.920 | 0.880 | 272.5 KB | 6,667,860 |
-| 215 | 48x8x8 | 0.167 | 3.2 KB | 0.888 | 0.922 | 224.0 KB | 6,843,120 |
-| 216 | 32x8x8 | 0.250 | 2.2 KB | 0.912 | 0.890 | 275.5 KB | 6,965,736 |
+| 341 | 32x8x32 | 0.250 | 6.0 KB | 0.859 | 0.946 | 267.9 KB | 5,152,336 |
+| 342 | 32x8x8 | 0.250 | 2.2 KB | 0.956 | 0.890 | 275.5 KB | 5,160,180 |
+| 343 | 8x8x32 | 1.000 | 2.2 KB | 0.871 | 0.966 | 152.0 KB | 5,188,384 |
 
 ---
 
@@ -99,17 +99,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 32x32x16 | 1.000 | 16.0 KB | 0.881 | 0.772 | 656.0 KB | 8,789,376 |
-| 2 | 32x24x16 | 0.750 | 13.0 KB | 0.875 | 0.782 | 656.0 KB | 8,891,648 |
-| 3 | 32x16x16 | 0.500 | 10.0 KB | 0.864 | 0.800 | 656.0 KB | 9,095,296 |
+| 1 | 96x32x16 | 0.333 | 40.0 KB | 0.946 | 0.749 | 656.0 KB | 5,500,608 |
+| 2 | 32x32x16 | 1.000 | 16.0 KB | 0.940 | 0.772 | 656.0 KB | 5,684,928 |
+| 3 | 32x24x16 | 0.750 | 13.0 KB | 0.938 | 0.782 | 656.0 KB | 5,754,496 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 8x16x32 | 2.000 | 7.0 KB | 0.644 | 0.745 | 1952.0 KB | 18,728,896 |
-| 215 | 8x12x32 | 1.500 | 5.8 KB | 0.654 | 0.745 | 1952.0 KB | 18,795,904 |
-| 216 | 8x8x32 | 1.000 | 4.5 KB | 0.670 | 0.746 | 1952.0 KB | 18,958,144 |
+| 341 | 16x96x96 | 6.000 | 96.0 KB | 0.829 | 0.253 | 4314.8 KB | 16,569,584 |
+| 342 | 12x96x96 | 8.000 | 90.0 KB | 0.826 | 0.280 | 4359.9 KB | 16,837,964 |
+| 343 | 8x96x96 | 12.000 | 84.0 KB | 0.821 | 0.333 | 4422.2 KB | 17,293,904 |
 
 ### Asymmetric (8KB)
 
@@ -117,17 +117,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 12x32x16 | 2.667 | 5.5 KB | 0.958 | 0.677 | 260.0 KB | 5,648,916 |
-| 2 | 16x32x48 | 2.000 | 13.0 KB | 0.919 | 0.807 | 269.6 KB | 5,662,784 |
-| 3 | 12x48x32 | 4.000 | 10.5 KB | 0.935 | 0.804 | 260.0 KB | 5,674,264 |
+| 1 | 16x96x48 | 6.000 | 27.0 KB | 0.949 | 0.839 | 263.2 KB | 3,996,884 |
+| 2 | 24x96x48 | 4.000 | 36.0 KB | 0.949 | 0.817 | 299.2 KB | 4,005,876 |
+| 3 | 32x96x48 | 3.000 | 45.0 KB | 0.949 | 0.806 | 314.9 KB | 4,023,872 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x8x12 | 0.167 | 7.7 KB | 0.788 | 0.940 | 296.0 KB | 8,381,380 |
-| 215 | 48x12x8 | 0.250 | 7.7 KB | 0.821 | 0.940 | 296.0 KB | 8,541,628 |
-| 216 | 48x8x8 | 0.167 | 6.1 KB | 0.784 | 0.949 | 296.0 KB | 9,192,388 |
+| 341 | 96x12x96 | 0.125 | 83.2 KB | 0.795 | 0.632 | 2600.0 KB | 11,996,284 |
+| 342 | 96x96x8 | 1.000 | 79.5 KB | 0.949 | 0.460 | 2046.6 KB | 14,460,600 |
+| 343 | 96x8x96 | 0.083 | 79.5 KB | 0.779 | 0.540 | 3752.0 KB | 15,709,356 |
 
 ### Symmetric Single (8KB)
 
@@ -135,17 +135,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 16x32x32 | 2.000 | 8.0 KB | 0.954 | 0.771 | 173.2 KB | 4,562,168 |
-| 2 | 12x32x32 | 2.667 | 7.0 KB | 0.949 | 0.805 | 158.5 KB | 4,593,248 |
-| 3 | 16x24x32 | 1.500 | 6.5 KB | 0.952 | 0.781 | 174.2 KB | 4,629,548 |
+| 1 | 96x32x32 | 0.333 | 28.0 KB | 0.977 | 0.718 | 218.8 KB | 3,439,984 |
+| 2 | 96x16x32 | 0.167 | 20.0 KB | 0.966 | 0.850 | 152.0 KB | 3,455,552 |
+| 3 | 96x24x32 | 0.250 | 24.0 KB | 0.973 | 0.768 | 202.1 KB | 3,461,268 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x8x8 | 0.167 | 3.2 KB | 0.935 | 0.862 | 224.0 KB | 6,130,296 |
-| 215 | 32x8x12 | 0.250 | 2.9 KB | 0.933 | 0.823 | 275.2 KB | 6,142,036 |
-| 216 | 32x8x8 | 0.250 | 2.2 KB | 0.942 | 0.813 | 274.8 KB | 6,386,408 |
+| 341 | 8x8x96 | 1.000 | 6.2 KB | 0.878 | 0.960 | 152.0 KB | 4,842,016 |
+| 342 | 32x8x8 | 0.250 | 2.2 KB | 0.971 | 0.812 | 275.0 KB | 4,868,408 |
+| 343 | 32x8x96 | 0.250 | 16.0 KB | 0.845 | 0.947 | 253.8 KB | 4,949,692 |
 
 ---
 
@@ -157,17 +157,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 32x32x32 | 1.000 | 24.0 KB | 0.898 | 0.676 | 656.0 KB | 8,145,952 |
-| 2 | 48x16x32 | 0.333 | 22.0 KB | 0.881 | 0.739 | 610.2 KB | 8,167,328 |
-| 3 | 32x24x32 | 0.750 | 20.0 KB | 0.891 | 0.696 | 656.0 KB | 8,249,400 |
+| 1 | 32x32x32 | 1.000 | 24.0 KB | 0.949 | 0.676 | 656.0 KB | 5,252,624 |
+| 2 | 48x96x12 | 2.000 | 49.5 KB | 0.950 | 0.807 | 534.9 KB | 5,297,682 |
+| 3 | 48x16x32 | 0.333 | 22.0 KB | 0.940 | 0.739 | 610.2 KB | 5,300,176 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 8x48x48 | 6.000 | 24.0 KB | 0.737 | 0.628 | 1928.2 KB | 17,218,584 |
-| 215 | 8x48x8 | 6.000 | 6.5 KB | 0.914 | 0.084 | 2041.3 KB | 17,223,744 |
-| 216 | 8x8x8 | 1.000 | 1.5 KB | 0.910 | 0.240 | 1952.0 KB | 17,246,864 |
+| 341 | 16x96x96 | 6.000 | 96.0 KB | 0.838 | 0.213 | 4317.9 KB | 16,512,188 |
+| 342 | 12x96x96 | 8.000 | 90.0 KB | 0.835 | 0.243 | 4365.4 KB | 16,787,408 |
+| 343 | 8x96x96 | 12.000 | 84.0 KB | 0.829 | 0.302 | 4425.9 KB | 17,238,128 |
 
 ### Asymmetric (16KB)
 
@@ -175,17 +175,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 12x48x48 | 4.000 | 13.5 KB | 0.952 | 0.711 | 260.0 KB | 5,355,272 |
-| 2 | 12x32x48 | 2.667 | 10.5 KB | 0.954 | 0.689 | 260.0 KB | 5,359,976 |
-| 3 | 16x48x48 | 3.000 | 16.5 KB | 0.949 | 0.715 | 269.8 KB | 5,363,504 |
+| 1 | 24x96x96 | 4.000 | 54.0 KB | 0.952 | 0.807 | 261.1 KB | 3,763,998 |
+| 2 | 16x96x48 | 6.000 | 27.0 KB | 0.972 | 0.736 | 269.2 KB | 3,841,152 |
+| 3 | 16x96x96 | 6.000 | 42.0 KB | 0.952 | 0.813 | 260.0 KB | 3,845,838 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x32x8 | 0.667 | 15.5 KB | 0.928 | 0.801 | 415.3 KB | 7,414,888 |
-| 215 | 48x8x8 | 0.167 | 6.1 KB | 0.885 | 0.901 | 296.0 KB | 7,631,816 |
-| 216 | 48x48x8 | 1.000 | 21.8 KB | 0.905 | 0.859 | 430.6 KB | 7,941,788 |
+| 341 | 96x12x96 | 0.125 | 83.2 KB | 0.923 | 0.051 | 2600.0 KB | 10,998,900 |
+| 342 | 96x96x8 | 1.000 | 79.5 KB | 0.949 | 0.457 | 2052.2 KB | 14,470,546 |
+| 343 | 96x8x96 | 0.083 | 79.5 KB | 0.896 | 0.036 | 3752.0 KB | 14,735,416 |
 
 ### Symmetric Single (16KB)
 
@@ -193,17 +193,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 16x16x48 | 1.000 | 7.0 KB | 0.963 | 0.731 | 156.6 KB | 4,390,160 |
-| 2 | 16x32x48 | 2.000 | 11.0 KB | 0.959 | 0.721 | 176.3 KB | 4,410,620 |
-| 3 | 16x16x32 | 1.000 | 5.0 KB | 0.968 | 0.677 | 159.5 KB | 4,417,796 |
+| 1 | 96x96x24 | 1.000 | 54.0 KB | 0.983 | 0.716 | 178.3 KB | 3,250,238 |
+| 2 | 96x96x16 | 1.000 | 48.0 KB | 0.980 | 0.810 | 152.0 KB | 3,309,204 |
+| 3 | 96x16x96 | 0.167 | 48.0 KB | 0.959 | 0.850 | 152.0 KB | 3,323,606 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x8x8 | 0.167 | 3.2 KB | 0.957 | 0.749 | 224.0 KB | 5,713,152 |
-| 215 | 32x12x8 | 0.375 | 2.9 KB | 0.971 | 0.566 | 271.3 KB | 5,731,308 |
-| 216 | 32x8x8 | 0.250 | 2.2 KB | 0.971 | 0.572 | 274.5 KB | 5,904,670 |
+| 341 | 8x12x8 | 1.500 | 1.0 KB | 0.979 | 0.823 | 152.0 KB | 4,551,852 |
+| 342 | 32x8x8 | 0.250 | 2.2 KB | 0.986 | 0.572 | 274.5 KB | 4,629,710 |
+| 343 | 8x8x8 | 1.000 | 0.8 KB | 0.982 | 0.802 | 152.0 KB | 4,669,560 |
 
 ---
 
@@ -215,17 +215,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 48x48x32 | 1.000 | 42.0 KB | 0.929 | 0.539 | 676.1 KB | 7,941,204 |
-| 2 | 32x16x48 | 0.500 | 22.0 KB | 0.915 | 0.596 | 659.0 KB | 8,007,876 |
-| 3 | 48x16x48 | 0.333 | 30.0 KB | 0.892 | 0.681 | 629.9 KB | 8,020,692 |
+| 1 | 48x96x16 | 2.000 | 54.0 KB | 0.958 | 0.734 | 565.6 KB | 5,096,636 |
+| 2 | 48x48x32 | 1.000 | 42.0 KB | 0.965 | 0.539 | 676.1 KB | 5,113,386 |
+| 3 | 32x96x24 | 3.000 | 48.0 KB | 0.961 | 0.627 | 658.0 KB | 5,148,562 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 8x8x8 | 1.000 | 1.5 KB | 0.927 | 0.073 | 1957.8 KB | 17,053,968 |
-| 215 | 8x48x12 | 6.000 | 8.2 KB | 0.905 | 0.065 | 2077.2 KB | 17,128,176 |
-| 216 | 8x48x8 | 6.000 | 6.5 KB | 0.914 | 0.065 | 2077.6 KB | 17,425,584 |
+| 341 | 16x96x96 | 6.000 | 96.0 KB | 0.855 | 0.131 | 4280.9 KB | 16,272,952 |
+| 342 | 12x96x96 | 8.000 | 90.0 KB | 0.851 | 0.170 | 4314.8 KB | 16,507,364 |
+| 343 | 8x96x96 | 12.000 | 84.0 KB | 0.846 | 0.247 | 4327.9 KB | 16,816,492 |
 
 ### Asymmetric (32KB)
 
@@ -233,17 +233,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 16x32x48 | 2.000 | 13.0 KB | 0.972 | 0.487 | 260.0 KB | 5,047,984 |
-| 2 | 16x48x48 | 3.000 | 16.5 KB | 0.969 | 0.505 | 267.2 KB | 5,081,560 |
-| 3 | 16x24x48 | 1.500 | 11.2 KB | 0.972 | 0.487 | 260.1 KB | 5,085,140 |
+| 1 | 16x48x96 | 3.000 | 27.0 KB | 0.984 | 0.508 | 264.5 KB | 3,639,274 |
+| 2 | 16x32x96 | 2.000 | 22.0 KB | 0.985 | 0.488 | 260.0 KB | 3,651,172 |
+| 3 | 16x96x96 | 6.000 | 42.0 KB | 0.978 | 0.609 | 271.8 KB | 3,682,080 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x24x8 | 0.500 | 12.4 KB | 0.965 | 0.437 | 453.1 KB | 6,982,812 |
-| 215 | 48x48x8 | 1.000 | 21.8 KB | 0.960 | 0.603 | 471.1 KB | 7,149,564 |
-| 216 | 48x32x8 | 0.667 | 15.5 KB | 0.971 | 0.248 | 513.4 KB | 7,196,088 |
+| 341 | 96x96x12 | 1.000 | 83.2 KB | 0.958 | 0.373 | 1629.6 KB | 11,033,282 |
+| 342 | 96x8x96 | 0.083 | 79.5 KB | 0.896 | 0.035 | 3752.0 KB | 14,728,806 |
+| 343 | 96x96x8 | 1.000 | 79.5 KB | 0.950 | 0.328 | 2521.2 KB | 15,804,032 |
 
 ### Symmetric Single (32KB)
 
@@ -251,17 +251,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 24x32x48 | 1.333 | 13.5 KB | 0.975 | 0.520 | 174.7 KB | 4,123,428 |
-| 2 | 24x24x48 | 1.000 | 11.2 KB | 0.975 | 0.527 | 171.1 KB | 4,137,884 |
-| 3 | 24x16x48 | 0.667 | 9.0 KB | 0.976 | 0.536 | 165.9 KB | 4,179,924 |
+| 1 | 96x32x96 | 0.333 | 60.0 KB | 0.980 | 0.662 | 176.5 KB | 3,105,286 |
+| 2 | 24x32x96 | 1.333 | 24.0 KB | 0.987 | 0.549 | 160.1 KB | 3,106,852 |
+| 3 | 96x96x24 | 1.000 | 54.0 KB | 0.984 | 0.723 | 156.5 KB | 3,112,194 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 8x12x8 | 1.500 | 1.0 KB | 0.962 | 0.799 | 152.0 KB | 5,495,104 |
-| 215 | 32x48x8 | 1.500 | 8.5 KB | 0.981 | 0.227 | 313.1 KB | 5,575,956 |
-| 216 | 8x8x8 | 1.000 | 0.8 KB | 0.964 | 0.799 | 152.0 KB | 5,642,560 |
+| 341 | 12x8x8 | 0.667 | 1.0 KB | 0.987 | 0.724 | 152.4 KB | 4,449,308 |
+| 342 | 8x12x8 | 1.500 | 1.0 KB | 0.981 | 0.799 | 152.0 KB | 4,517,024 |
+| 343 | 8x8x8 | 1.000 | 0.8 KB | 0.982 | 0.799 | 152.0 KB | 4,664,480 |
 
 ---
 
@@ -273,17 +273,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 48x16x48 | 0.333 | 30.0 KB | 0.954 | 0.197 | 720.8 KB | 7,866,876 |
-| 2 | 48x12x48 | 0.250 | 27.0 KB | 0.956 | 0.199 | 723.6 KB | 7,962,868 |
-| 3 | 32x16x48 | 0.500 | 22.0 KB | 0.960 | 0.044 | 745.0 KB | 7,987,968 |
+| 1 | 32x32x96 | 1.000 | 56.0 KB | 0.978 | 0.072 | 720.9 KB | 4,938,264 |
+| 2 | 32x24x96 | 0.750 | 48.0 KB | 0.978 | 0.087 | 708.6 KB | 4,939,848 |
+| 3 | 32x16x96 | 0.500 | 40.0 KB | 0.979 | 0.101 | 696.4 KB | 4,978,296 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 8x16x8 | 2.000 | 2.5 KB | 0.923 | 0.000 | 2086.0 KB | 17,529,536 |
-| 215 | 8x12x8 | 1.500 | 2.0 KB | 0.925 | 0.000 | 2086.0 KB | 17,603,264 |
-| 216 | 8x8x8 | 1.000 | 1.5 KB | 0.928 | 0.000 | 2086.0 KB | 17,750,720 |
+| 341 | 24x96x96 | 4.000 | 108.0 KB | 0.867 | 0.056 | 4132.1 KB | 15,640,858 |
+| 342 | 96x96x8 | 1.000 | 84.0 KB | 0.949 | 0.315 | 2565.4 KB | 15,642,580 |
+| 343 | 32x96x96 | 3.000 | 120.0 KB | 0.866 | 0.039 | 4151.8 KB | 15,648,360 |
 
 ### Asymmetric (64KB)
 
@@ -291,17 +291,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 16x16x48 | 1.000 | 9.5 KB | 0.982 | 0.196 | 282.4 KB | 4,994,784 |
-| 2 | 16x24x48 | 1.500 | 11.2 KB | 0.982 | 0.164 | 295.9 KB | 4,997,444 |
-| 3 | 16x32x48 | 2.000 | 13.0 KB | 0.981 | 0.136 | 307.9 KB | 5,028,300 |
+| 1 | 24x96x96 | 4.000 | 54.0 KB | 0.990 | 0.019 | 349.4 KB | 3,598,360 |
+| 2 | 16x32x96 | 2.000 | 22.0 KB | 0.990 | 0.160 | 297.2 KB | 3,608,580 |
+| 3 | 16x48x96 | 3.000 | 27.0 KB | 0.990 | 0.121 | 311.8 KB | 3,609,828 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x24x8 | 0.500 | 12.4 KB | 0.981 | 0.097 | 419.3 KB | 6,419,024 |
-| 215 | 48x32x8 | 0.667 | 15.5 KB | 0.979 | 0.085 | 464.2 KB | 6,681,084 |
-| 216 | 48x48x8 | 1.000 | 21.8 KB | 0.978 | 0.091 | 475.2 KB | 6,703,766 |
+| 341 | 96x12x96 | 0.125 | 83.2 KB | 0.923 | 0.013 | 2697.2 KB | 11,264,128 |
+| 342 | 96x96x8 | 1.000 | 79.5 KB | 0.951 | 0.400 | 2169.9 KB | 14,431,580 |
+| 343 | 96x8x96 | 0.083 | 79.5 KB | 0.896 | 0.005 | 3870.0 KB | 15,065,216 |
 
 ### Symmetric Single (64KB)
 
@@ -309,17 +309,17 @@ This directory contains the results of empirical tile sweeps for a **$96 \times 
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | 12x48x48 | 4.000 | 13.5 KB | 0.988 | 0.159 | 165.0 KB | 3,879,806 |
-| 2 | 12x32x48 | 2.667 | 9.8 KB | 0.988 | 0.161 | 162.6 KB | 3,902,038 |
-| 3 | 16x48x48 | 3.000 | 15.0 KB | 0.986 | 0.157 | 180.1 KB | 3,916,766 |
+| 1 | 24x96x96 | 4.000 | 54.0 KB | 0.993 | 0.116 | 170.2 KB | 2,908,810 |
+| 2 | 32x96x96 | 3.000 | 60.0 KB | 0.992 | 0.207 | 181.2 KB | 2,936,730 |
+| 3 | 16x96x96 | 6.000 | 48.0 KB | 0.994 | 0.134 | 164.0 KB | 2,964,326 |
 
 #### Bottom 3 Worst Tile Shapes
 
 | Rank | Tile Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | L1 Hit Rate | L2 Hit Rate | DRAM Traffic (KB) | Total Cycles |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 214 | 48x8x8 | 0.167 | 3.2 KB | 0.989 | 0.051 | 245.9 KB | 5,318,392 |
-| 215 | 32x12x8 | 0.375 | 2.9 KB | 0.986 | 0.168 | 253.2 KB | 5,319,032 |
-| 216 | 32x8x8 | 0.250 | 2.2 KB | 0.987 | 0.171 | 255.3 KB | 5,483,870 |
+| 341 | 48x8x8 | 0.167 | 3.2 KB | 0.994 | 0.051 | 245.9 KB | 4,318,076 |
+| 342 | 8x8x8 | 1.000 | 0.8 KB | 0.996 | 0.178 | 152.5 KB | 4,368,902 |
+| 343 | 32x8x8 | 0.250 | 2.2 KB | 0.993 | 0.171 | 254.6 KB | 4,416,282 |
 
 ---
 

@@ -24,7 +24,7 @@ B_PRECISION_BYTES={b_prec}
 
 # L1 Cache Parameters
 L1_SIZE_BYTES=16384
-L1_LINE_SIZE_BYTES=16
+L1_LINE_SIZE_BYTES=64
 L1_ASSOC={assoc}
 L1_ACCESS_CYCLES=4
 L1_REPLACEMENT_POLICY=LRU
@@ -32,7 +32,7 @@ L1_WRITE_POLICY=WRITE_BACK
 
 # L2 Cache Parameters
 L2_SIZE_BYTES=65536
-L2_LINE_SIZE_BYTES=16
+L2_LINE_SIZE_BYTES=64
 L2_ASSOC={assoc}
 L2_ACCESS_CYCLES=14
 L2_REPLACEMENT_POLICY=LRU
@@ -123,13 +123,13 @@ def parse_output(stdout):
     return stats
 
 def main():
-    print("=== Running Cache Associativity Empirical Tiling Sweeps (16B Lines) ===")
+    print("=== Running Cache Associativity Empirical Tiling Sweeps (64B Lines) ===")
     
     # Compile
     subprocess.run(["make"], cwd=WORKSPACE_DIR, check=True)
     
     # Dimensions to sweep
-    dims = [8, 12, 16, 24, 32, 48]
+    dims = [8, 12, 16, 24, 32, 48, 96]
     
     # Associativities to sweep
     assoc_values = [1, 2, 4, 8, 16]
@@ -161,8 +161,8 @@ def main():
                     for k in dims:
                         stats = run_simulation(m, n, k)
                         if stats:
-                            # 16B cache line size DRAM traffic
-                            stats["dram_traffic"] = (stats["l2_fills"] + stats["l2_evicts"]) * 16
+                            # 64B cache line size DRAM traffic
+                            stats["dram_traffic"] = (stats["l2_fills"] + stats["l2_evicts"]) * 64
                             ratio = n / m
                             footprint = (m * k * prec["a_prec"]) + (k * n * prec["b_prec"]) + (m * n * max(prec["a_prec"], prec["b_prec"]))
                             results.append({
@@ -196,13 +196,13 @@ def main():
 def generate_report(all_results):
     print(f"Writing report to {REPORT_PATH}...")
     with open(REPORT_PATH, "w") as f:
-        f.write("# Empirical Cache Associativity Tiling Sweeps (16B Lines)\n\n")
-        f.write("This directory contains the results of empirical tile sweeps for a **$96 \\times 96 \\times 96$ matrix** under a fixed **16B cache line size**, sweeping Cache Associativity $A \\in \\{1, 2, 4, 8, 16\\}$-way and tile dimensions $T_M, T_N, T_K \\in \\{8, 12, 16, 24, 32, 48\\}$.\n\n")
+        f.write("# Empirical Cache Associativity Tiling Sweeps (64B Lines)\n\n")
+        f.write("This directory contains the results of empirical tile sweeps for a **$96 \\times 96 \\times 96$ matrix** under a fixed **64B cache line size**, sweeping Cache Associativity $A \\in \\{1, 2, 4, 8, 16\\}$-way and tile dimensions $T_M, T_N, T_K \\in \\{8, 12, 16, 24, 32, 48, 96\\}$.\n\n")
         
         f.write("> [!NOTE]\n")
         f.write("> **Hardware Parameters:**\n")
         f.write("> * **Matrix Size:** $96 \\times 96 \\times 96$.\n")
-        f.write("> * **Cache Line Size:** 16B for both L1 and L2 caches.\n")
+        f.write("> * **Cache Line Size:** 64B for both L1 and L2 caches.\n")
         f.write("> * **L1 Cache:** 16 KB capacity, swept associativity, 4-cycle access, LRU replacement, Write-Back policy.\n")
         f.write("> * **L2 Cache:** 64 KB capacity, swept associativity, 14-cycle access, LRU replacement, Write-Back policy.\n")
         f.write("> * **DRAM Latency:** 180 cycles.\n")
@@ -306,7 +306,7 @@ def generate_plots(all_results):
         # Hide the 6th subplot (index 5)
         axs[5].axis('off')
         
-        plt.suptitle('Tiling Performance vs. Cache Associativity & Aspect Ratio (96x96x96 Matrix, 16B Lines)', fontsize=14, fontweight='bold', y=0.98)
+        plt.suptitle('Tiling Performance vs. Cache Associativity & Aspect Ratio (96x96x96 Matrix, 64B Lines)', fontsize=14, fontweight='bold', y=0.98)
         plt.tight_layout()
         
         plot_path = os.path.join(DATA_DIR, "assoc_empirical.png")
