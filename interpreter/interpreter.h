@@ -6,7 +6,6 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <sstream>
 #include <string>
 
 class Interpreter
@@ -87,7 +86,6 @@ class Interpreter
     // Trace I/O.
     void doRead(Addr addr, size_t size);
     void doWrite(Addr addr, size_t size);
-    void logAccess(const char* op, Addr addr, uint cycles, const Trace& t);
 
     std::ifstream in_stream_;
     int line_;
@@ -99,11 +97,9 @@ class Interpreter
     std::ofstream trace_out_;
     TraceLevel    trace_level_;
 
-    // Per-instruction trace state: the header is written once the
-    // instruction completes (so its cycle total is known), followed by the
-    // buffered access/action details.
-    std::string        inst_header_;
-    std::ostringstream inst_detail_;
+    // Set by each handler before it returns; consumed by handleCmd when it
+    // assembles the top-level Instruction Action for that ISA op.
+    std::string inst_header_;
 
     std::array<vec_reg, 3> vec_regs_;
     MemoryHierarchy& mem_;

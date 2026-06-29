@@ -17,8 +17,8 @@ if [ ! -z "$bflag" ]; then
 fi
 
 echo "---NO PRNG---"
-./asymm 3 4 3 --config default.config
+./asymm 4 4 4 --config default.config --trace_file trace.log 
 echo " "
 echo "---PRNG---"
-./asymm 3 4 3 --config default.config --Bgenerated
+./asymm 4 4 4 --config default.config --Bgenerated
 

@@ -1,70 +1,41 @@
 # Asymmetric Matrix Multiplication Sim
 ## Usage
 ```
-./asymm <m> <n> <k> [--Bgenerated | --Bfifo] [--Bstationary] [--config <file>] [--trace_file <file>] [--trace_level <0|1|2>] [--trace_input <file>]
+./asymm [--Bsource <prng_fifo|prng_mem|mem>] [--stationary <B|C>] [--config <file:default.config>] [--trace_file <file:trace.log>] [--trace_level <0|1|2:0>] [--assembler_input <file>] --3dregisters --mulacc_norecord
 ```
 
 ### Flags:
-- `--Bgenerated` - simulate generating B from an on-demand PRNG device (mutually exclusive with `--Bfifo`).
-- `--Bfifo` - simulate streaming B from a cycle-accurate MMIO PRNG FIFO device (mutually exclusive with `--Bgenerated`).
-- `--Bstationary` - use the B-stationary loop tiling policy instead of the default C-stationary policy.
-- `--config <file>` - configuration file with hardware parameters (see `default.config`).
-- `--trace_file <file>` - store the execution trace into a file.
-- `--trace_level <0|1|2>` - trace verbosity (only meaningful with `--trace_file`).
-  - `0` (instructions): one line per ISA instruction with its cycle total.
-  - `1` (accesses): adds one indented line per element read/write.
-  - `2` (actions): adds every device Action (hits, misses, fills, evictions).
-- `--trace_input <file>` - run the interpreter directly on an existing trace file instead of generating a new one.
+- `--Bsource <prng_fifo|prng_mem|mem>` - how we assume to receive the matrix B:
+    - `prng_fifo` - store only seeds of tiles, for each seed a tile will be generated and stored in a FIFO. FIFO size and cycle cost per element is configured in config file.
+    - `prng_mem` - store B as a whole, generate parts of B on-demand and if it
+      has been generated look for it in memory
+    - `mem` - non-PRNG mode (B is simply stored in memory)
+- `--stationary <B|C>` - accumulate either into B or C
+- `--config <file:default.config>` - configuration file with hardware parameters. Default: `default.config`
+- `--trace_file <file:trace.log>` - store the execution trace into a file.
+  Default: `trace.log`
+- `--trace_level <0|1|2:0>` - trace verbosity. Default: `0`
+  - `0` (instructions): one line per ISA instruction with its cycle total
+  - `1` (accesses): adds one indented line per address (element) read/write
+  - `2` (actions): adds every device Action (hits, misses, fills, evictions,
+    generations)
+- `--assembler_input <file>` - run the interpreter directly on an existing trace file instead of generating a new one
+- `--3dreg` - enable 3D registers, each one storing a part of a 3D tile (where
+  the depth dimension is the common dimension between A and B)
+- `--mulac_norecord` - do not log `MulAcc` action into the trace and do not
+  count cycles performed by it towards total cycle count
 
 ### Input constraints:
 - Tile dimensions must divide matrix dimensions: `m | A_HEIGHT_DIM`, `n | B_WIDTH_DIM`, `k | A_WIDTH_DIM`.
 - With register tiling configured, register dimensions must divide cache tile dimensions: `REG_M | m`, `REG_N | n`, `REG_K | k`.
-- With `--Bgenerated`/`--Bfifo`, a B tile row must be a whole number of cache lines: `n * B_PRECISION_BYTES` must be a multiple of `L1_LINE_SIZE_BYTES`.
-- With `--Bgenerated`/`--Bfifo`, the PRNG window must be line-aligned: A's byte size and B's byte size must be multiples of `L1_LINE_SIZE_BYTES`.
+- With `--Bsource prng_fifo` or `--Bsource prng_mem`, a B tile row must be a whole number of cache lines: `n * B_PRECISION_BYTES` must be a multiple of `L1_LINE_SIZE_BYTES`.
+- With `--Bsource prng_fifo` or `--Bsource prng_mem`, the PRNG window must be line-aligned: A's byte size and B's byte size must be multiples of `L1_LINE_SIZE_BYTES`.
 
 ---
 
-## Code Map
-
+## Memory Hierarchy Map (**AI GENERATED**)
+ 
 ```
-                                ./asymm [--Bgenerated | --Bfifo] [--Bstationary] [--config f] <m> <n> <k>
-                                                             │
-                                                             v
-  ┌──────────────────────────────────────────────────── main.cpp ────────────────────────────────────────────────────┐
-  │                                                                                                                  │
-  │   default.config ──> loadConfig(path) ──> Config (typed struct, see config.h)                                    │
-  │        │                                                                                                         │
-  │        ├────────────> matrix dims/precisions ──────────────┐                                                     │
-  │        └────────────> cache + mem + prng + fifo parameters ┼──────────────┐                                      │
-  │                                                            │              │                                      │
-  │   --Bgenerated ──> prng.window_bytes = B bytes (else 0) ───┘              │                                      │
-  │   --Bfifo      ──> prng_fifo.fifo_capacity = cfg val (else 0) ─────────────┤                                      │
-  └───────────────────────────────────────────────────────────┼──────────────┼──────────────────────────────────────┘
-                                                               │              │
-                               ┌────────────────────────────────┘              │
-                               v                                               v
-                 ┌── InstGenerator ──────────────┐                ┌── MemoryHierarchy ctor ──┐
-                 │ GhostMat A @0x0               │                │ builds devices, wires    │
-                 │ GhostMat B @A.bytes           │                │ the topology below       │
-                 │ GhostMat C @A.bytes+B.bytes   │                └──────────────────────────┘
-                 │                               │
-                 │ emitTrace(tile m,n,k):        │
-                 │   ltea / tmulac / tmov stream │      (stream is adapted for Bfifo
-                 └───────────────┬───────────────┘       MMIO writes to control registers)
-                                 v
-                           matmul.matv  (text ISA)
-                                 │
-                                 v
-  ┌─────────────────────────── Interpreter::run() ───────────────────────────────────────────────────────────────────┐
-  │  handleCmd() dispatches via op-table { "ltea", "tmov", "prefetch", "tmulac" } -> member function:                 │
-  │     ltea     -> handleTload():    parseTileParams + validateRegShape; set vec_reg; doRead per element            │
-  │     tmov     -> handleTmove():    parseTileParams + validateRegShape; doWrite per element                        │
-  │     prefetch -> handlePrefetch(): parseTileParams; doRead per element                                            │
-  │     tmulac   -> handleMulAcc():   reg-only path; scalar element loads if reg_m_ == 0; pushes MulAcc Action       │
-  │                                                                                                                  │
-  │  doRead/doWrite: Trace t; mem_.access(addr, sz, is_write, t);                                                    │
-  │                  cpu_cycles_ += totalCycles(t);  buffered per instruction ──> --trace_file (per --trace_level)   │
-  └───────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┘
                                       v
   ┌────────────────────────── MemoryHierarchy::access ────────────────────────────┐
   │                                                                              │
@@ -103,27 +74,40 @@
                     main: print L1/L2 stats, PRNG/PRNG FIFO stats, total cycles
 ```
 
-### Action model
+### Trace
 
-Every cycle-costing event in the simulator is a subclass of `Action`
-(`memory-system/action.h`). Each device's `read`/`write` (or, for compute,
-the interpreter's `handleMulAcc`) does all the state mutation and then
-appends a pure-data witness:
+Every cycle-costing event in the simulator is a subclass of `Action` and is
+logged. **If it's not in the trace, it didn't happen!** Some examples :
 
-| Action          | Where it lives                                  |
-| --------------- | ----------------------------------------------- |
-| `TagLookup`     | `memory-system/cache/cache_actions.h`           |
-| `LineFill`      | same                                            |
-| `Evict`         | same                                            |
-| `MemoryAccess`  | `memory-system/mainmem/mainmem_actions.h`       |
-| `IsGenerated`   | `memory-system/prng/prng_actions.h`             |
-| `Generate`      | same                                            |
-| `Fifo*` (5x)    | `memory-system/prng_fifo/prng_fifo_actions.h`   |
-| `MulAcc`        | `interpreter/matmul/matmul_actions.h`           |
+```
 
-A `Trace = std::vector<std::unique_ptr<Action>>` carries one request's
-witnesses; `totalCycles(trace)` sums their `cyclesToPerform()`.
+prefetch (0x6c0, 4, 4, 24, 8) (3184 cy) #LEVEL 0 ACTION#
+  read  @0x6c0 (199 cy)                 #LEVEL 1 ACTION#
+    L1 TagLookup @0x6c0 MISS (4 cy)     #LEVEL 2 ACTION#
+    L2 TagLookup @0x6c0 MISS (15 cy)
+    MemoryAccess @0x6c0 (180 cy)
+    L2 LineFill @0x6c0
+    L1 LineFill @0x6c0
+  read  @0x6c8 (199 cy)
+    L1 TagLookup @0x6c8 MISS (4 cy)
+    L2 TagLookup @0x6c8 MISS (15 cy)
+    MemoryAccess @0x6c8 (180 cy)
+    L2 LineFill @0x6c8
+    L1 LineFill @0x6c8
+  read  @0x6d0 (199 cy)
+    L1 TagLookup @0x6d0 MISS (4 cy)
+    L2 TagLookup @0x6d0 MISS (15 cy)
+    MemoryAccess @0x6d0 (180 cy)
+    L2 LineFill @0x6d0
+    L1 LineFill @0x6d0
+  read  @0x6d8 (199 cy)
+    L1 TagLookup @0x6d8 MISS (4 cy)
+    L2 TagLookup @0x6d8 MISS (15 cy)
+    MemoryAccess @0x6d8 (180 cy)
+    L2 LineFill @0x6d8
+    L1 LineFill @0x6d8
 
+```
 ---
 
 ## Completed Experiments & Architectural Findings

@@ -14,13 +14,15 @@ MEM_SRCS := $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp \
             $(FIFO_DIR)/prng_fifo.cpp $(FIFO_DIR)/prng_fifo_actions.cpp \
             $(MEM_DIR)/hierarchy.cpp
 
-INT_SRCS := $(INT_DIR)/interpreter.cpp $(MATMUL_DIR)/matmul_actions.cpp
+INT_SRCS := $(INT_DIR)/interpreter.cpp $(INT_DIR)/instruction_actions.cpp \
+            $(MATMUL_DIR)/matmul_actions.cpp
 
 SRCS := main.cpp config.cpp $(GEN_DIR)/instgen.cpp $(INT_SRCS) $(MEM_SRCS)
 
 DEPS := config.h \
         $(GEN_DIR)/instgen.h \
-        $(INT_DIR)/interpreter.h $(MATMUL_DIR)/matmul_actions.h \
+        $(INT_DIR)/interpreter.h $(INT_DIR)/instruction_actions.h \
+        $(MATMUL_DIR)/matmul_actions.h \
         $(MEM_DIR)/action.h $(MEM_DIR)/memory_object.h $(MEM_DIR)/hierarchy.h \
         $(CACHE_DIR)/set.h $(CACHE_DIR)/eviction_policy.h \
         $(CACHE_DIR)/cache.h $(CACHE_DIR)/cache_actions.h \

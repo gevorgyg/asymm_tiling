@@ -1,6 +1,8 @@
 #include "interpreter.h"
+#include "instruction_actions.h"
 #include "matmul/matmul_actions.h"
-
+  
+#include <sstream>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -61,27 +63,14 @@ bool Interpreter::handleCmd()
     for (const auto& entry : kOps) {
         if (op == entry.name) {
             inst_header_.clear();
-            inst_detail_.str("");
             inst_trace_.clear();
-            const size_t cycles_before = cpu_cycles_;
 
             (this->*entry.handler)();
 
-            // Drain any non-access Actions the handler parked in inst_trace_
-            // (only handleMulAcc uses this today). doRead/doWrite have
-            // already emitted their per-access detail into inst_detail_.
-            if (trace_out_.is_open() && trace_level_ >= trace_actions) {
-                for (const auto& a : inst_trace_) {
-                    inst_detail_ << "    ";
-                    a->print(inst_detail_);
-                    inst_detail_ << '\n';
-                }
-            }
-
             if (trace_out_.is_open()) {
-                trace_out_ << inst_header_ << "    # "
-                           << (cpu_cycles_ - cycles_before) << " cy\n"
-                           << inst_detail_.str();
+                Instruction inst(std::move(inst_header_),
+                                 std::move(inst_trace_));
+                printAction(trace_out_, inst, 0, trace_level_);
             }
             ++line_;
             return true;
@@ -296,32 +285,14 @@ void Interpreter::doRead(Addr addr, size_t size)
 {
     Trace t;
     mem_.access(addr, size, /*is_write=*/false, t);
-    const uint cycles = totalCycles(t);
-    cpu_cycles_ += cycles;
-    logAccess("read ", addr, cycles, t);
+    cpu_cycles_ += totalCycles(t);
+    inst_trace_.push_back(std::make_unique<Access>("read ", addr, std::move(t)));
 }
 
 void Interpreter::doWrite(Addr addr, size_t size)
 {
     Trace t;
     mem_.access(addr, size, /*is_write=*/true, t);
-    const uint cycles = totalCycles(t);
-    cpu_cycles_ += cycles;
-    logAccess("write", addr, cycles, t);
-}
-
-void Interpreter::logAccess(const char* op, Addr addr, uint cycles,
-                            const Trace& t)
-{
-    if (!trace_out_.is_open() || trace_level_ < trace_accesses) return;
-
-    inst_detail_ << "  " << op << " @0x" << std::hex << addr << std::dec
-                 << " (" << cycles << " cy)\n";
-
-    if (trace_level_ < trace_actions) return;
-    for (const auto& a : t) {
-        inst_detail_ << "    ";
-        a->print(inst_detail_);
-        inst_detail_ << '\n';
-    }
+    cpu_cycles_ += totalCycles(t);
+    inst_trace_.push_back(std::make_unique<Access>("write", addr, std::move(t)));
 }
