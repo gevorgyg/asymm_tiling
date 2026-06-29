@@ -1,0 +1,512 @@
+{
+  "180": {
+    "Symmetric Double": [
+      {
+        "m": 24,
+        "n": 8,
+        "k": 48,
+        "ratio": 0.3333333333333333,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 4534264,
+          "l1_lookups": 635904,
+          "l1_fills": 30436,
+          "l1_evicts": 30180,
+          "l2_lookups": 32924,
+          "l2_fills": 6912,
+          "l2_evicts": 5888,
+          "dram_traffic": 819200,
+          "l1_hit_rate": 0.9521374295491143,
+          "l2_hit_rate": 0.7900619608796016
+        }
+      },
+      {
+        "m": 16,
+        "n": 12,
+        "k": 48,
+        "ratio": 0.75,
+        "footprint_kb": 12.0,
+        "stats": {
+          "cycles": 4933244,
+          "l1_lookups": 617472,
+          "l1_fills": 33468,
+          "l1_evicts": 33212,
+          "l2_lookups": 36616,
+          "l2_fills": 9216,
+          "l2_evicts": 8192,
+          "dram_traffic": 1114112,
+          "l1_hit_rate": 0.9457983519900498,
+          "l2_hit_rate": 0.7483067511470396
+        }
+      },
+      {
+        "m": 12,
+        "n": 16,
+        "k": 48,
+        "ratio": 1.3333333333333333,
+        "footprint_kb": 12.0,
+        "stats": {
+          "cycles": 5268872,
+          "l1_lookups": 617472,
+          "l1_fills": 28272,
+          "l1_evicts": 28016,
+          "l2_lookups": 30748,
+          "l2_fills": 11520,
+          "l2_evicts": 10496,
+          "dram_traffic": 1409024,
+          "l1_hit_rate": 0.9542133084577115,
+          "l2_hit_rate": 0.6253414856250813
+        }
+      },
+      {
+        "m": 8,
+        "n": 24,
+        "k": 48,
+        "ratio": 3.0,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 6179520,
+          "l1_lookups": 635904,
+          "l1_fills": 28584,
+          "l1_evicts": 28328,
+          "l2_lookups": 30948,
+          "l2_fills": 16122,
+          "l2_evicts": 15098,
+          "dram_traffic": 1998080,
+          "l1_hit_rate": 0.9550498188405797,
+          "l2_hit_rate": 0.4790616518030244
+        }
+      }
+    ],
+    "Asymmetric": [
+      {
+        "m": 32,
+        "n": 8,
+        "k": 48,
+        "ratio": 0.25,
+        "footprint_kb": 14.75,
+        "stats": {
+          "cycles": 3771746,
+          "l1_lookups": 626688,
+          "l1_fills": 29886,
+          "l1_evicts": 29630,
+          "l2_lookups": 32173,
+          "l2_fills": 3120,
+          "l2_evicts": 2096,
+          "dram_traffic": 333824,
+          "l1_hit_rate": 0.9523111979166666,
+          "l2_hit_rate": 0.9030242750132098
+        }
+      },
+      {
+        "m": 24,
+        "n": 16,
+        "k": 48,
+        "ratio": 0.6666666666666666,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 3343638,
+          "l1_lookups": 580608,
+          "l1_fills": 13488,
+          "l1_evicts": 13232,
+          "l2_lookups": 15711,
+          "l2_fills": 3021,
+          "l2_evicts": 1997,
+          "dram_traffic": 321152,
+          "l1_hit_rate": 0.9767691798941799,
+          "l2_hit_rate": 0.8077143402711476
+        }
+      },
+      {
+        "m": 16,
+        "n": 32,
+        "k": 48,
+        "ratio": 2.0,
+        "footprint_kb": 13.0,
+        "stats": {
+          "cycles": 3146452,
+          "l1_lookups": 571392,
+          "l1_fills": 7290,
+          "l1_evicts": 7034,
+          "l2_lookups": 9338,
+          "l2_fills": 2662,
+          "l2_evicts": 1638,
+          "dram_traffic": 275200,
+          "l1_hit_rate": 0.9872416834677419,
+          "l2_hit_rate": 0.714928250160634
+        }
+      },
+      {
+        "m": 12,
+        "n": 48,
+        "k": 48,
+        "ratio": 4.0,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 3182290,
+          "l1_lookups": 580608,
+          "l1_fills": 8116,
+          "l1_evicts": 7860,
+          "l2_lookups": 10319,
+          "l2_fills": 2592,
+          "l2_evicts": 1568,
+          "dram_traffic": 266240,
+          "l1_hit_rate": 0.9860215498236331,
+          "l2_hit_rate": 0.7488128694640954
+        }
+      },
+      {
+        "m": 8,
+        "n": 48,
+        "k": 48,
+        "ratio": 6.0,
+        "footprint_kb": 10.5,
+        "stats": {
+          "cycles": 3336648,
+          "l1_lookups": 617472,
+          "l1_fills": 8784,
+          "l1_evicts": 8528,
+          "l2_lookups": 10812,
+          "l2_fills": 2592,
+          "l2_evicts": 1568,
+          "dram_traffic": 266240,
+          "l1_hit_rate": 0.9857742537313433,
+          "l2_hit_rate": 0.7602663706992231
+        }
+      }
+    ],
+    "Symmetric Float": [
+      {
+        "m": 24,
+        "n": 8,
+        "k": 48,
+        "ratio": 0.3333333333333333,
+        "footprint_kb": 6.75,
+        "stats": {
+          "cycles": 3292278,
+          "l1_lookups": 635904,
+          "l1_fills": 10292,
+          "l1_evicts": 10036,
+          "l2_lookups": 11865,
+          "l2_fills": 2251,
+          "l2_evicts": 1227,
+          "dram_traffic": 222592,
+          "l1_hit_rate": 0.9838151670692432,
+          "l2_hit_rate": 0.8102823430257059
+        }
+      },
+      {
+        "m": 16,
+        "n": 12,
+        "k": 48,
+        "ratio": 0.75,
+        "footprint_kb": 6.0,
+        "stats": {
+          "cycles": 3157808,
+          "l1_lookups": 617472,
+          "l1_fills": 11118,
+          "l1_evicts": 10862,
+          "l2_lookups": 12412,
+          "l2_fills": 1888,
+          "l2_evicts": 864,
+          "dram_traffic": 176128,
+          "l1_hit_rate": 0.9819943252487562,
+          "l2_hit_rate": 0.8478891395423783
+        }
+      },
+      {
+        "m": 12,
+        "n": 16,
+        "k": 48,
+        "ratio": 1.3333333333333333,
+        "footprint_kb": 6.0,
+        "stats": {
+          "cycles": 3056196,
+          "l1_lookups": 617472,
+          "l1_fills": 6448,
+          "l1_evicts": 6192,
+          "l2_lookups": 7224,
+          "l2_fills": 1745,
+          "l2_evicts": 721,
+          "dram_traffic": 157824,
+          "l1_hit_rate": 0.9895574212271974,
+          "l2_hit_rate": 0.7584440753045404
+        }
+      },
+      {
+        "m": 8,
+        "n": 24,
+        "k": 48,
+        "ratio": 3.0,
+        "footprint_kb": 6.75,
+        "stats": {
+          "cycles": 3168156,
+          "l1_lookups": 635904,
+          "l1_fills": 9474,
+          "l1_evicts": 9218,
+          "l2_lookups": 10212,
+          "l2_fills": 1728,
+          "l2_evicts": 704,
+          "dram_traffic": 155648,
+          "l1_hit_rate": 0.9851015247584541,
+          "l2_hit_rate": 0.8307873090481785
+        }
+      }
+    ]
+  },
+  "1000": {
+    "Symmetric Double": [
+      {
+        "m": 24,
+        "n": 8,
+        "k": 48,
+        "ratio": 0.3333333333333333,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 10999144,
+          "l1_lookups": 635904,
+          "l1_fills": 30436,
+          "l1_evicts": 30180,
+          "l2_lookups": 32924,
+          "l2_fills": 6912,
+          "l2_evicts": 5888,
+          "dram_traffic": 819200,
+          "l1_hit_rate": 0.9521374295491143,
+          "l2_hit_rate": 0.7900619608796016
+        }
+      },
+      {
+        "m": 16,
+        "n": 12,
+        "k": 48,
+        "ratio": 0.75,
+        "footprint_kb": 12.0,
+        "stats": {
+          "cycles": 13316104,
+          "l1_lookups": 617472,
+          "l1_fills": 33468,
+          "l1_evicts": 33212,
+          "l2_lookups": 36616,
+          "l2_fills": 9216,
+          "l2_evicts": 8192,
+          "dram_traffic": 1114112,
+          "l1_hit_rate": 0.9457983519900498,
+          "l2_hit_rate": 0.7483067511470396
+        }
+      },
+      {
+        "m": 12,
+        "n": 16,
+        "k": 48,
+        "ratio": 1.3333333333333333,
+        "footprint_kb": 12.0,
+        "stats": {
+          "cycles": 15554952,
+          "l1_lookups": 617472,
+          "l1_fills": 28272,
+          "l1_evicts": 28016,
+          "l2_lookups": 30748,
+          "l2_fills": 11520,
+          "l2_evicts": 10496,
+          "dram_traffic": 1409024,
+          "l1_hit_rate": 0.9542133084577115,
+          "l2_hit_rate": 0.6253414856250813
+        }
+      },
+      {
+        "m": 8,
+        "n": 24,
+        "k": 48,
+        "ratio": 3.0,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 20265480,
+          "l1_lookups": 635904,
+          "l1_fills": 28584,
+          "l1_evicts": 28328,
+          "l2_lookups": 30948,
+          "l2_fills": 16122,
+          "l2_evicts": 15098,
+          "dram_traffic": 1998080,
+          "l1_hit_rate": 0.9550498188405797,
+          "l2_hit_rate": 0.4790616518030244
+        }
+      }
+    ],
+    "Asymmetric": [
+      {
+        "m": 32,
+        "n": 8,
+        "k": 48,
+        "ratio": 0.25,
+        "footprint_kb": 14.75,
+        "stats": {
+          "cycles": 6978766,
+          "l1_lookups": 626688,
+          "l1_fills": 29886,
+          "l1_evicts": 29630,
+          "l2_lookups": 32173,
+          "l2_fills": 3120,
+          "l2_evicts": 2096,
+          "dram_traffic": 333824,
+          "l1_hit_rate": 0.9523111979166666,
+          "l2_hit_rate": 0.9030242750132098
+        }
+      },
+      {
+        "m": 24,
+        "n": 16,
+        "k": 48,
+        "ratio": 0.6666666666666666,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 6489978,
+          "l1_lookups": 580608,
+          "l1_fills": 13488,
+          "l1_evicts": 13232,
+          "l2_lookups": 15711,
+          "l2_fills": 3021,
+          "l2_evicts": 1997,
+          "dram_traffic": 321152,
+          "l1_hit_rate": 0.9767691798941799,
+          "l2_hit_rate": 0.8077143402711476
+        }
+      },
+      {
+        "m": 16,
+        "n": 32,
+        "k": 48,
+        "ratio": 2.0,
+        "footprint_kb": 13.0,
+        "stats": {
+          "cycles": 5968892,
+          "l1_lookups": 571392,
+          "l1_fills": 7290,
+          "l1_evicts": 7034,
+          "l2_lookups": 9338,
+          "l2_fills": 2662,
+          "l2_evicts": 1638,
+          "dram_traffic": 275200,
+          "l1_hit_rate": 0.9872416834677419,
+          "l2_hit_rate": 0.714928250160634
+        }
+      },
+      {
+        "m": 12,
+        "n": 48,
+        "k": 48,
+        "ratio": 4.0,
+        "footprint_kb": 13.5,
+        "stats": {
+          "cycles": 5937490,
+          "l1_lookups": 580608,
+          "l1_fills": 8116,
+          "l1_evicts": 7860,
+          "l2_lookups": 10319,
+          "l2_fills": 2592,
+          "l2_evicts": 1568,
+          "dram_traffic": 266240,
+          "l1_hit_rate": 0.9860215498236331,
+          "l2_hit_rate": 0.7488128694640954
+        }
+      },
+      {
+        "m": 8,
+        "n": 48,
+        "k": 48,
+        "ratio": 6.0,
+        "footprint_kb": 10.5,
+        "stats": {
+          "cycles": 6091848,
+          "l1_lookups": 617472,
+          "l1_fills": 8784,
+          "l1_evicts": 8528,
+          "l2_lookups": 10812,
+          "l2_fills": 2592,
+          "l2_evicts": 1568,
+          "dram_traffic": 266240,
+          "l1_hit_rate": 0.9857742537313433,
+          "l2_hit_rate": 0.7602663706992231
+        }
+      }
+    ],
+    "Symmetric Float": [
+      {
+        "m": 24,
+        "n": 8,
+        "k": 48,
+        "ratio": 0.3333333333333333,
+        "footprint_kb": 6.75,
+        "stats": {
+          "cycles": 5442318,
+          "l1_lookups": 635904,
+          "l1_fills": 10292,
+          "l1_evicts": 10036,
+          "l2_lookups": 11865,
+          "l2_fills": 2251,
+          "l2_evicts": 1227,
+          "dram_traffic": 222592,
+          "l1_hit_rate": 0.9838151670692432,
+          "l2_hit_rate": 0.8102823430257059
+        }
+      },
+      {
+        "m": 16,
+        "n": 12,
+        "k": 48,
+        "ratio": 0.75,
+        "footprint_kb": 6.0,
+        "stats": {
+          "cycles": 4996248,
+          "l1_lookups": 617472,
+          "l1_fills": 11118,
+          "l1_evicts": 10862,
+          "l2_lookups": 12412,
+          "l2_fills": 1888,
+          "l2_evicts": 864,
+          "dram_traffic": 176128,
+          "l1_hit_rate": 0.9819943252487562,
+          "l2_hit_rate": 0.8478891395423783
+        }
+      },
+      {
+        "m": 12,
+        "n": 16,
+        "k": 48,
+        "ratio": 1.3333333333333333,
+        "footprint_kb": 6.0,
+        "stats": {
+          "cycles": 4762616,
+          "l1_lookups": 617472,
+          "l1_fills": 6448,
+          "l1_evicts": 6192,
+          "l2_lookups": 7224,
+          "l2_fills": 1745,
+          "l2_evicts": 721,
+          "dram_traffic": 157824,
+          "l1_hit_rate": 0.9895574212271974,
+          "l2_hit_rate": 0.7584440753045404
+        }
+      },
+      {
+        "m": 8,
+        "n": 24,
+        "k": 48,
+        "ratio": 3.0,
+        "footprint_kb": 6.75,
+        "stats": {
+          "cycles": 4858176,
+          "l1_lookups": 635904,
+          "l1_fills": 9474,
+          "l1_evicts": 9218,
+          "l2_lookups": 10212,
+          "l2_fills": 1728,
+          "l2_evicts": 704,
+          "dram_traffic": 155648,
+          "l1_hit_rate": 0.9851015247584541,
+          "l2_hit_rate": 0.8307873090481785
+        }
+      }
+    ]
+  }
+}

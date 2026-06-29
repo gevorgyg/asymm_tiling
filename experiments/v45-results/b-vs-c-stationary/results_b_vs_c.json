@@ -1,0 +1,560 @@
+{
+  "Symmetric Double": {
+    "C-stationary": [
+      {
+        "tile_size": 8,
+        "stats": {
+          "cycles": 7076936,
+          "l1_lookups": 893952,
+          "l1_fills": 20124,
+          "l1_evicts": 19868,
+          "l2_lookups": 21244,
+          "l2_fills": 16128,
+          "l2_evicts": 15104,
+          "dram_traffic": 1998848,
+          "l1_hit_rate": 0.9774887242268041,
+          "l2_hit_rate": 0.24082093767652046
+        }
+      },
+      {
+        "tile_size": 12,
+        "stats": {
+          "cycles": 5652756,
+          "l1_lookups": 746496,
+          "l1_fills": 20220,
+          "l1_evicts": 19964,
+          "l2_lookups": 21330,
+          "l2_fills": 11522,
+          "l2_evicts": 10498,
+          "dram_traffic": 1409280,
+          "l1_hit_rate": 0.9729134516460906,
+          "l2_hit_rate": 0.4598218471636193
+        }
+      },
+      {
+        "tile_size": 16,
+        "stats": {
+          "cycles": 4859524,
+          "l1_lookups": 672768,
+          "l1_fills": 14478,
+          "l1_evicts": 14222,
+          "l2_lookups": 15590,
+          "l2_fills": 9216,
+          "l2_evicts": 8192,
+          "dram_traffic": 1114112,
+          "l1_hit_rate": 0.9784799514840182,
+          "l2_hit_rate": 0.4088518280949327
+        }
+      },
+      {
+        "tile_size": 24,
+        "stats": {
+          "cycles": 4212568,
+          "l1_lookups": 599040,
+          "l1_fills": 15016,
+          "l1_evicts": 14760,
+          "l2_lookups": 19424,
+          "l2_fills": 7006,
+          "l2_evicts": 5982,
+          "dram_traffic": 831232,
+          "l1_hit_rate": 0.9749332264957264,
+          "l2_hit_rate": 0.6393121911037891
+        }
+      },
+      {
+        "tile_size": 32,
+        "stats": {
+          "cycles": 3806800,
+          "l1_lookups": 562176,
+          "l1_fills": 14424,
+          "l1_evicts": 14168,
+          "l2_lookups": 17816,
+          "l2_fills": 5760,
+          "l2_evicts": 4736,
+          "dram_traffic": 671744,
+          "l1_hit_rate": 0.9743425546448088,
+          "l2_hit_rate": 0.6766951055231253
+        }
+      },
+      {
+        "tile_size": 48,
+        "stats": {
+          "cycles": 4316372,
+          "l1_lookups": 525312,
+          "l1_fills": 34612,
+          "l1_evicts": 34356,
+          "l2_lookups": 37078,
+          "l2_fills": 7119,
+          "l2_evicts": 6095,
+          "dram_traffic": 845696,
+          "l1_hit_rate": 0.9341115375243665,
+          "l2_hit_rate": 0.8079993527158962
+        }
+      }
+    ],
+    "B-stationary": [
+      {
+        "tile_size": 8,
+        "stats": {
+          "cycles": 9955484,
+          "l1_lookups": 1004544,
+          "l1_fills": 28800,
+          "l1_evicts": 28544,
+          "l2_lookups": 42424,
+          "l2_fills": 16128,
+          "l2_evicts": 15104,
+          "dram_traffic": 1998848,
+          "l1_hit_rate": 0.9713302752293578,
+          "l2_hit_rate": 0.6198378276447294
+        }
+      },
+      {
+        "tile_size": 12,
+        "stats": {
+          "cycles": 7811344,
+          "l1_lookups": 893952,
+          "l1_fills": 25728,
+          "l1_evicts": 25472,
+          "l2_lookups": 37856,
+          "l2_fills": 11520,
+          "l2_evicts": 10496,
+          "dram_traffic": 1409024,
+          "l1_hit_rate": 0.9712199312714777,
+          "l2_hit_rate": 0.6956889264581572
+        }
+      },
+      {
+        "tile_size": 16,
+        "stats": {
+          "cycles": 6570140,
+          "l1_lookups": 838656,
+          "l1_fills": 17136,
+          "l1_evicts": 16880,
+          "l2_lookups": 23896,
+          "l2_fills": 9216,
+          "l2_evicts": 8192,
+          "dram_traffic": 1114112,
+          "l1_hit_rate": 0.9795673076923077,
+          "l2_hit_rate": 0.6143287579511215
+        }
+      },
+      {
+        "tile_size": 24,
+        "stats": {
+          "cycles": 5570176,
+          "l1_lookups": 783360,
+          "l1_fills": 14880,
+          "l1_evicts": 14624,
+          "l2_lookups": 19376,
+          "l2_fills": 7400,
+          "l2_evicts": 6376,
+          "dram_traffic": 881664,
+          "l1_hit_rate": 0.9810049019607843,
+          "l2_hit_rate": 0.6180842279108175
+        }
+      },
+      {
+        "tile_size": 32,
+        "stats": {
+          "cycles": 5231432,
+          "l1_lookups": 755712,
+          "l1_fills": 26844,
+          "l1_evicts": 26588,
+          "l2_lookups": 37948,
+          "l2_fills": 5760,
+          "l2_evicts": 4736,
+          "dram_traffic": 671744,
+          "l1_hit_rate": 0.964478531504065,
+          "l2_hit_rate": 0.8482133445767893
+        }
+      },
+      {
+        "tile_size": 48,
+        "stats": {
+          "cycles": 5851232,
+          "l1_lookups": 728064,
+          "l1_fills": 54180,
+          "l1_evicts": 53924,
+          "l2_lookups": 83176,
+          "l2_fills": 7376,
+          "l2_evicts": 6352,
+          "dram_traffic": 878592,
+          "l1_hit_rate": 0.9255834651898734,
+          "l2_hit_rate": 0.9113205732422814
+        }
+      }
+    ]
+  },
+  "Asymmetric": {
+    "C-stationary": [
+      {
+        "tile_size": 8,
+        "stats": {
+          "cycles": 4385968,
+          "l1_lookups": 893952,
+          "l1_fills": 5760,
+          "l1_evicts": 5504,
+          "l2_lookups": 6872,
+          "l2_fills": 2592,
+          "l2_evicts": 1568,
+          "dram_traffic": 266240,
+          "l1_hit_rate": 0.9935567010309279,
+          "l2_hit_rate": 0.6228172293364378
+        }
+      },
+      {
+        "tile_size": 12,
+        "stats": {
+          "cycles": 3924316,
+          "l1_lookups": 746496,
+          "l1_fills": 14468,
+          "l1_evicts": 14212,
+          "l2_lookups": 15590,
+          "l2_fills": 2592,
+          "l2_evicts": 1568,
+          "dram_traffic": 266240,
+          "l1_hit_rate": 0.9806187842935528,
+          "l2_hit_rate": 0.8337395766516998
+        }
+      },
+      {
+        "tile_size": 16,
+        "stats": {
+          "cycles": 3594632,
+          "l1_lookups": 672768,
+          "l1_fills": 11472,
+          "l1_evicts": 11216,
+          "l2_lookups": 12592,
+          "l2_fills": 2634,
+          "l2_evicts": 1610,
+          "dram_traffic": 271616,
+          "l1_hit_rate": 0.9829480593607306,
+          "l2_hit_rate": 0.7908195679796697
+        }
+      },
+      {
+        "tile_size": 24,
+        "stats": {
+          "cycles": 3367148,
+          "l1_lookups": 599040,
+          "l1_fills": 9824,
+          "l1_evicts": 9568,
+          "l2_lookups": 12664,
+          "l2_fills": 2995,
+          "l2_evicts": 1971,
+          "dram_traffic": 317824,
+          "l1_hit_rate": 0.9836004273504273,
+          "l2_hit_rate": 0.7635028427037271
+        }
+      },
+      {
+        "tile_size": 32,
+        "stats": {
+          "cycles": 3244064,
+          "l1_lookups": 562176,
+          "l1_fills": 9240,
+          "l1_evicts": 8984,
+          "l2_lookups": 12592,
+          "l2_fills": 3168,
+          "l2_evicts": 2144,
+          "dram_traffic": 339968,
+          "l1_hit_rate": 0.9835638661202186,
+          "l2_hit_rate": 0.7484116899618806
+        }
+      },
+      {
+        "tile_size": 48,
+        "stats": {
+          "cycles": 3270500,
+          "l1_lookups": 525312,
+          "l1_fills": 8818,
+          "l1_evicts": 8562,
+          "l2_lookups": 11050,
+          "l2_fills": 4156,
+          "l2_evicts": 3132,
+          "dram_traffic": 466432,
+          "l1_hit_rate": 0.983213785331384,
+          "l2_hit_rate": 0.6238914027149322
+        }
+      }
+    ],
+    "B-stationary": [
+      {
+        "tile_size": 8,
+        "stats": {
+          "cycles": 9780596,
+          "l1_lookups": 1004544,
+          "l1_fills": 27936,
+          "l1_evicts": 27680,
+          "l2_lookups": 41542,
+          "l2_fills": 15264,
+          "l2_evicts": 14240,
+          "dram_traffic": 1888256,
+          "l1_hit_rate": 0.9721903669724771,
+          "l2_hit_rate": 0.6325646333830821
+        }
+      },
+      {
+        "tile_size": 12,
+        "stats": {
+          "cycles": 7632744,
+          "l1_lookups": 893952,
+          "l1_fills": 24864,
+          "l1_evicts": 24608,
+          "l2_lookups": 36966,
+          "l2_fills": 10656,
+          "l2_evicts": 9632,
+          "dram_traffic": 1298432,
+          "l1_hit_rate": 0.9721864261168385,
+          "l2_hit_rate": 0.7117351079370232
+        }
+      },
+      {
+        "tile_size": 16,
+        "stats": {
+          "cycles": 6366436,
+          "l1_lookups": 838656,
+          "l1_fills": 14652,
+          "l1_evicts": 14396,
+          "l2_lookups": 21380,
+          "l2_fills": 8352,
+          "l2_evicts": 7328,
+          "dram_traffic": 1003520,
+          "l1_hit_rate": 0.9825291895604396,
+          "l2_hit_rate": 0.609354536950421
+        }
+      },
+      {
+        "tile_size": 24,
+        "stats": {
+          "cycles": 5259012,
+          "l1_lookups": 783360,
+          "l1_fills": 10424,
+          "l1_evicts": 10168,
+          "l2_lookups": 14880,
+          "l2_fills": 6116,
+          "l2_evicts": 5092,
+          "dram_traffic": 717312,
+          "l1_hit_rate": 0.9866932189542483,
+          "l2_hit_rate": 0.5889784946236559
+        }
+      },
+      {
+        "tile_size": 32,
+        "stats": {
+          "cycles": 4815584,
+          "l1_lookups": 755712,
+          "l1_fills": 14040,
+          "l1_evicts": 13784,
+          "l2_lookups": 20176,
+          "l2_fills": 4896,
+          "l2_evicts": 3872,
+          "dram_traffic": 561152,
+          "l1_hit_rate": 0.981421493902439,
+          "l2_hit_rate": 0.7573354480570975
+        }
+      },
+      {
+        "tile_size": 48,
+        "stats": {
+          "cycles": 5347194,
+          "l1_lookups": 728064,
+          "l1_fills": 51235,
+          "l1_evicts": 50979,
+          "l2_lookups": 80229,
+          "l2_fills": 4908,
+          "l2_evicts": 3884,
+          "dram_traffic": 562688,
+          "l1_hit_rate": 0.9296284392580872,
+          "l2_hit_rate": 0.938825113113712
+        }
+      }
+    ]
+  },
+  "Symmetric Single": {
+    "C-stationary": [
+      {
+        "tile_size": 8,
+        "stats": {
+          "cycles": 4214868,
+          "l1_lookups": 893952,
+          "l1_fills": 10704,
+          "l1_evicts": 10448,
+          "l2_lookups": 11262,
+          "l2_fills": 1728,
+          "l2_evicts": 704,
+          "dram_traffic": 155648,
+          "l1_hit_rate": 0.9880262027491409,
+          "l2_hit_rate": 0.8465636654235482
+        }
+      },
+      {
+        "tile_size": 12,
+        "stats": {
+          "cycles": 3627192,
+          "l1_lookups": 746496,
+          "l1_fills": 10362,
+          "l1_evicts": 10106,
+          "l2_lookups": 10914,
+          "l2_fills": 1763,
+          "l2_evicts": 739,
+          "dram_traffic": 160128,
+          "l1_hit_rate": 0.9861191486625515,
+          "l2_hit_rate": 0.8384643577056992
+        }
+      },
+      {
+        "tile_size": 16,
+        "stats": {
+          "cycles": 3286148,
+          "l1_lookups": 672768,
+          "l1_fills": 5352,
+          "l1_evicts": 5096,
+          "l2_lookups": 5896,
+          "l2_fills": 1897,
+          "l2_evicts": 873,
+          "dram_traffic": 177280,
+          "l1_hit_rate": 0.992044805936073,
+          "l2_hit_rate": 0.6782564450474898
+        }
+      },
+      {
+        "tile_size": 24,
+        "stats": {
+          "cycles": 3071464,
+          "l1_lookups": 599040,
+          "l1_fills": 5984,
+          "l1_evicts": 5728,
+          "l2_lookups": 6548,
+          "l2_fills": 2263,
+          "l2_evicts": 1239,
+          "dram_traffic": 224128,
+          "l1_hit_rate": 0.9900106837606838,
+          "l2_hit_rate": 0.6543982895540623
+        }
+      },
+      {
+        "tile_size": 32,
+        "stats": {
+          "cycles": 2962864,
+          "l1_lookups": 562176,
+          "l1_fills": 4866,
+          "l1_evicts": 4610,
+          "l2_lookups": 6212,
+          "l2_fills": 2536,
+          "l2_evicts": 1512,
+          "dram_traffic": 259072,
+          "l1_hit_rate": 0.9913443476775956,
+          "l2_hit_rate": 0.5917578879587895
+        }
+      },
+      {
+        "tile_size": 48,
+        "stats": {
+          "cycles": 2767836,
+          "l1_lookups": 525312,
+          "l1_fills": 5220,
+          "l1_evicts": 4964,
+          "l2_lookups": 6324,
+          "l2_fills": 2299,
+          "l2_evicts": 1275,
+          "dram_traffic": 228736,
+          "l1_hit_rate": 0.9900630482456141,
+          "l2_hit_rate": 0.6364642631246047
+        }
+      }
+    ],
+    "B-stationary": [
+      {
+        "tile_size": 8,
+        "stats": {
+          "cycles": 4850414,
+          "l1_lookups": 1004544,
+          "l1_fills": 19140,
+          "l1_evicts": 18884,
+          "l2_lookups": 29329,
+          "l2_fills": 1728,
+          "l2_evicts": 704,
+          "dram_traffic": 155648,
+          "l1_hit_rate": 0.9809465787461774,
+          "l2_hit_rate": 0.9410822053257868
+        }
+      },
+      {
+        "tile_size": 12,
+        "stats": {
+          "cycles": 4379826,
+          "l1_lookups": 893952,
+          "l1_fills": 16571,
+          "l1_evicts": 16315,
+          "l2_lookups": 24459,
+          "l2_fills": 1839,
+          "l2_evicts": 815,
+          "dram_traffic": 169856,
+          "l1_hit_rate": 0.9814632105526919,
+          "l2_hit_rate": 0.9248129522875015
+        }
+      },
+      {
+        "tile_size": 16,
+        "stats": {
+          "cycles": 3924794,
+          "l1_lookups": 838656,
+          "l1_fills": 6687,
+          "l1_evicts": 6431,
+          "l2_lookups": 9967,
+          "l2_fills": 1753,
+          "l2_evicts": 729,
+          "dram_traffic": 158848,
+          "l1_hit_rate": 0.9920265281593407,
+          "l2_hit_rate": 0.8241195946623858
+        }
+      },
+      {
+        "tile_size": 24,
+        "stats": {
+          "cycles": 3820192,
+          "l1_lookups": 783360,
+          "l1_fills": 6720,
+          "l1_evicts": 6464,
+          "l2_lookups": 9680,
+          "l2_fills": 2088,
+          "l2_evicts": 1064,
+          "dram_traffic": 201728,
+          "l1_hit_rate": 0.991421568627451,
+          "l2_hit_rate": 0.784297520661157
+        }
+      },
+      {
+        "tile_size": 32,
+        "stats": {
+          "cycles": 3763888,
+          "l1_lookups": 755712,
+          "l1_fills": 4896,
+          "l1_evicts": 4640,
+          "l2_lookups": 6512,
+          "l2_fills": 2362,
+          "l2_evicts": 1338,
+          "dram_traffic": 236800,
+          "l1_hit_rate": 0.9935213414634146,
+          "l2_hit_rate": 0.6372850122850122
+        }
+      },
+      {
+        "tile_size": 48,
+        "stats": {
+          "cycles": 3769292,
+          "l1_lookups": 728064,
+          "l1_fills": 9512,
+          "l1_evicts": 9256,
+          "l2_lookups": 15016,
+          "l2_fills": 2344,
+          "l2_evicts": 1320,
+          "dram_traffic": 234496,
+          "l1_hit_rate": 0.9869352144866386,
+          "l2_hit_rate": 0.8438998401704848
+        }
+      }
+    ]
+  }
+}
