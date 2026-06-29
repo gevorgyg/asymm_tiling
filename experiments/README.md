@@ -1,29 +1,4 @@
-# Experiments
-
-This directory holds the experiment-running infrastructure (the **harness**)
-and individual sweep definitions (under `v45-results/<name>/experiment.py`).
-
-```
-experiments/
-├── harness/                       # Python package: invoke ./asymm, parse, cache
-│   ├── runner.py                  # Flags dataclass, run() -> Metrics
-│   ├── parse.py                   # markdown-table → Metrics dataclass
-│   ├── config.py                  # render config from base + overrides
-│   ├── sweep.py                   # Cartesian-grid runner with on-disk cache
-│   ├── report.py                  # generic markdown table helpers
-│   └── _workspace.py              # locate project root (no `../../..`)
-├── run.py                         # discovery + dispatcher
-└── v45-results/<name>/experiment.py   # one file per sweep
-```
-
-The harness owns infrastructure (subprocess invocation, output parsing,
-result caching, report formatting). Each `experiment.py` owns the
-specifics of one sweep: hardware overrides, sweep axes, what to plot,
-what report to write.
-
----
-
-## Running experiments
+# Running experiments
 
 ```
 python -m experiments.run --list                 # list discovered experiments
@@ -43,7 +18,7 @@ config + flags hash matches an existing entry are skipped. See
 
 ---
 
-## Writing a new experiment
+# Writing a new experiment
 
 The whole template is ~50 lines. Copy any existing
 `v45-results/*/experiment.py` and edit the four declarations at the top.
@@ -108,43 +83,43 @@ invokes it.
 
 ---
 
-## Harness API
+# Harness API
 
-### `Flags(b_source, stationary, three_d_reg, mulac_norecord, trace_level, trace_file, assembler_input)`
+## `Flags(b_source, stationary, three_d_reg, mulac_norecord, trace_level, trace_file, assembler_input)`
 
 Mirrors the C++ CLI surface (see the top-level `README.md` for option
 semantics). Any new flag added there must grow a `Flags` field here too;
 this is the only place Python code knows the CLI vocabulary.
 
-### `run(config_path, flags=Flags()) -> Metrics`
+## `run(config_path, flags=Flags()) -> Metrics`
 
 Runs `./asymm --config <path> <flags>` once and returns parsed metrics.
 Raises `RuntimeError` on non-zero exit.
 
-### `run_grid(*, experiment_dir, base_config_text, base_overrides, sweep_axes, flags, cache_path=None) -> list[Result]`
+## `run_grid(*, experiment_dir, base_config_text, base_overrides, sweep_axes, flags, cache_path=None) -> list[Result]`
 
 Runs one simulation per Cartesian-product cell of `sweep_axes`. Returns a
 list of `Result(overrides=dict, metrics=Metrics)`. Cells already in the
 cache are skipped.
 
-### `render_config(base_text, overrides) -> str`
+## `render_config(base_text, overrides) -> str`
 
 Returns a config-file string with `overrides` substituted into a base
 template. Comments and unspecified keys are preserved; keys not present
 in the base are appended at the end.
 
-### `top_bottom_table(title, results, *, axis_keys, sort_by=..., top_n=5, bottom_n=3) -> str`
+## `top_bottom_table(title, results, *, axis_keys, sort_by=..., top_n=5, bottom_n=3) -> str`
 
 Returns a markdown block with a `## title` heading and top-N / bottom-N
 tables sorted by `sort_by` (default: cycles ascending). `axis_keys` are the
 override keys to pull into the first columns of the table. Caller can
 provide a custom `columns` callable for non-default metric columns.
 
-### `write_report(out_path, title, blocks)`
+## `write_report(out_path, title, blocks)`
 
 Writes `# title` plus the concatenation of markdown blocks to `out_path`.
 
-### `Metrics`
+## `Metrics`
 
 ```python
 @dataclass
@@ -159,7 +134,7 @@ class Metrics:
 
 ---
 
-## Caching
+# Caching
 
 `run_grid` persists every cell to `<experiment_dir>/results.json`. The
 cache key is `sha256(canonical_config + flags_json)` where
@@ -175,7 +150,7 @@ To force a clean run, delete `results.json` in the experiment directory.
 
 ---
 
-## Reusing the harness from ad-hoc scripts
+# Reusing the harness from ad-hoc scripts
 
 ```python
 from pathlib import Path
