@@ -82,12 +82,12 @@ Below is a direct comparison of the optimal shapes found under C-stationary and 
 
 | Precision Config | Ordering | Optimal Shape ($T_M \times T_N \times T_K$) | Ratio ($T_N/T_M$) | Footprint (KB) | Total Cycles | Slowdown (vs C-stat) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Symmetric Double** | C-stationary | N/A | 0.000 | 0.0 KB | 0 | - |
-| | B-stationary | 16x48x48 | 3.000 | 30.0 KB | 4,773,564 | N/A |
-| **Asymmetric** | C-stationary | N/A | 0.000 | 0.0 KB | 0 | - |
-| | B-stationary | 16x48x48 | 3.000 | 16.5 KB | 4,494,624 | N/A |
-| **Symmetric Single** | C-stationary | N/A | 0.000 | 0.0 KB | 0 | - |
-| | B-stationary | 48x32x16 | 0.667 | 11.0 KB | 3,659,600 | N/A |
+| **Symmetric Double** | C-stationary | 32x32x32 | 1.000 | 24.0 KB | 3,806,800 | - |
+| | B-stationary | 16x48x48 | 3.000 | 30.0 KB | 4,773,564 | 1.25x |
+| **Asymmetric** | C-stationary | 32x48x48 | 1.500 | 28.5 KB | 3,107,514 | - |
+| | B-stationary | 16x48x48 | 3.000 | 16.5 KB | 4,494,624 | 1.45x |
+| **Symmetric Single** | C-stationary | 48x48x48 | 1.000 | 27.0 KB | 2,767,836 | - |
+| | B-stationary | 48x32x16 | 0.667 | 11.0 KB | 3,659,600 | 1.32x |
 
 ## 3. Physical Analysis of the Shifts
 
