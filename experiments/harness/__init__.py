@@ -17,6 +17,16 @@ from .parse import (
     PrngStats,
     parse_stdout,
 )
+from .plots import (
+    PALETTE_POLICY,
+    PALETTE_PRECISION,
+    PALETTE_REGION,
+    PALETTE_RHO,
+    grid_plot,
+    lineplot,
+    stacked_bars,
+    summarize_config,
+)
 from .report import top_bottom_table, write_report
 from .runner import Flags, run
 from .sweep import Result, run_grid
@@ -34,12 +44,18 @@ __all__ = [
     "CacheStats",
     "Flags",
     "Metrics",
+    "PALETTE_POLICY",
+    "PALETTE_PRECISION",
+    "PALETTE_REGION",
+    "PALETTE_RHO",
     "PrngFifoStats",
     "PrngStats",
     "Region",
     "RegionStats",
     "Result",
     "TraceStats",
+    "grid_plot",
+    "lineplot",
     "matrix_regions",
     "num_l1_sets",
     "parse_stdout",
@@ -48,6 +64,8 @@ __all__ = [
     "run",
     "run_grid",
     "run_with_trace",
+    "stacked_bars",
+    "summarize_config",
     "top_bottom_table",
     "workspace_root",
     "write_report",
