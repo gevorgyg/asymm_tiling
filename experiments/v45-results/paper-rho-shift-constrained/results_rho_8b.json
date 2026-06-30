@@ -1,0 +1,2991 @@
+{
+  "ce7d5a1db1d13376fa3c3a05755372137776f59209fb8c09b627e962bbe4850b": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 4,
+      "TILE_N": 4
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.869,
+        "tag_lookups": 138674176,
+        "line_fills": 18216960,
+        "evicts": 18216704
+      },
+      "l2": {
+        "hit_rate": 0.037,
+        "tag_lookups": 18741244,
+        "line_fills": 18050560,
+        "evicts": 18049536
+      },
+      "cycles": 4177277896,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "689d05a1596f31bcb4f1469388179dce64f9664b52c3978a7b2d1be14de860ad": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 4,
+      "TILE_N": 8
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.888,
+        "tag_lookups": 121896960,
+        "line_fills": 13694976,
+        "evicts": 13694720
+      },
+      "l2": {
+        "hit_rate": 0.046,
+        "tag_lookups": 14219260,
+        "line_fills": 13561344,
+        "evicts": 13560320
+      },
+      "cycles": 3238802376,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "c0f563b917586833219d2c081c3ed6064a162a1ee463383f49bf5bd87d8886fc": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 4,
+      "TILE_N": 16
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.879,
+        "tag_lookups": 113508352,
+        "line_fills": 13754880,
+        "evicts": 13754624
+      },
+      "l2": {
+        "hit_rate": 0.048,
+        "tag_lookups": 14279160,
+        "line_fills": 13587968,
+        "evicts": 13586944
+      },
+      "cycles": 3210878864,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "a6142f0d604859486be07dd7ce795a76958aa9859760946361b4e899121c3f74": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 4,
+      "TILE_N": 32
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.874,
+        "tag_lookups": 109314048,
+        "line_fills": 13782528,
+        "evicts": 13782272
+      },
+      "l2": {
+        "hit_rate": 0.049,
+        "tag_lookups": 14306800,
+        "line_fills": 13603328,
+        "evicts": 13602304
+      },
+      "cycles": 3197253408,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "6efbf8377581df6f7089066108edb07a61a62605f571021303d5e97e91f9963f": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 4,
+      "TILE_N": 64
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.871,
+        "tag_lookups": 107216896,
+        "line_fills": 13791744,
+        "evicts": 13791488
+      },
+      "l2": {
+        "hit_rate": 0.049,
+        "tag_lookups": 14316000,
+        "line_fills": 13611008,
+        "evicts": 13609984
+      },
+      "cycles": 3190376000,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "d503c29e97a49ade090cb0c0cd16f1345034c79f0d9ad62c6f0cb4580a7bac8d": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 4,
+      "TILE_N": 128
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.87,
+        "tag_lookups": 106168320,
+        "line_fills": 13779456,
+        "evicts": 13779200
+      },
+      "l2": {
+        "hit_rate": 0.049,
+        "tag_lookups": 14303680,
+        "line_fills": 13602816,
+        "evicts": 13601792
+      },
+      "cycles": 3184534656,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "83f3ad7685b33a6f9ee63a81047dcf1ff4f9c10547b9e452b3f756bef50d90c8": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 4,
+      "TILE_N": 256
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.87,
+        "tag_lookups": 105644032,
+        "line_fills": 13719552,
+        "evicts": 13719296
+      },
+      "l2": {
+        "hit_rate": 0.046,
+        "tag_lookups": 14243712,
+        "line_fills": 13586432,
+        "evicts": 13585408
+      },
+      "cycles": 3178648832,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "a10a9d48127210858e36d734504a5dc5337a8fc7d9cf732846de8a785bd595a5": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 8,
+      "TILE_N": 4
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.852,
+        "tag_lookups": 121896960,
+        "line_fills": 18006016,
+        "evicts": 18005760
+      },
+      "l2": {
+        "hit_rate": 0.251,
+        "tag_lookups": 18530300,
+        "line_fills": 13872640,
+        "evicts": 13871616
+      },
+      "cycles": 3355190216,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "170141f26990f716ca55eef6c3bbcad852e5ae461584efbfaa91a01b078309ac": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 8,
+      "TILE_N": 8
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.871,
+        "tag_lookups": 105119744,
+        "line_fills": 13533184,
+        "evicts": 13532928
+      },
+      "l2": {
+        "hit_rate": 0.184,
+        "tag_lookups": 14057468,
+        "line_fills": 11464192,
+        "evicts": 11463168
+      },
+      "cycles": 2791941064,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "8947913435fa593dbb83815199db46f04dc48197ec1f6fcfd5b27a554fd4d2fc": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 8,
+      "TILE_N": 16
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.87,
+        "tag_lookups": 96731136,
+        "line_fills": 12550144,
+        "evicts": 12549888
+      },
+      "l2": {
+        "hit_rate": 0.121,
+        "tag_lookups": 13074424,
+        "line_fills": 11493632,
+        "evicts": 11492608
+      },
+      "cycles": 2749923216,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "841ce2e9f18792181f656845405fc4f9c903194c4f3e05013558ef71fd7902e2": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 8,
+      "TILE_N": 32
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.87,
+        "tag_lookups": 92536832,
+        "line_fills": 12058624,
+        "evicts": 12058368
+      },
+      "l2": {
+        "hit_rate": 0.085,
+        "tag_lookups": 12582896,
+        "line_fills": 11508992,
+        "evicts": 11507968
+      },
+      "cycles": 2729029408,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "1049fdf55f023e3a4316b2007529544ef80877dd031890bba9ffa359f48df8c4": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 8,
+      "TILE_N": 64
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.869,
+        "tag_lookups": 90439680,
+        "line_fills": 11812864,
+        "evicts": 11812608
+      },
+      "l2": {
+        "hit_rate": 0.067,
+        "tag_lookups": 12337120,
+        "line_fills": 11515904,
+        "evicts": 11514880
+      },
+      "cycles": 2718444096,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "31d26a820b98ae8dfefb73f25c3f31db15185a4fb402ba090929fe3d56bd943b": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 8,
+      "TILE_N": 128
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.869,
+        "tag_lookups": 89391104,
+        "line_fills": 11685888,
+        "evicts": 11685632
+      },
+      "l2": {
+        "hit_rate": 0.058,
+        "tag_lookups": 12210112,
+        "line_fills": 11507712,
+        "evicts": 11506688
+      },
+      "cycles": 2710997120,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "811bd8f04cd5049af5c40d2f8a7cb5769a09ab42e20c81ff630ba288e0a48cd8": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 8,
+      "TILE_N": 256
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.869,
+        "tag_lookups": 88866816,
+        "line_fills": 11622400,
+        "evicts": 11622144
+      },
+      "l2": {
+        "hit_rate": 0.054,
+        "tag_lookups": 12146560,
+        "line_fills": 11491328,
+        "evicts": 11490304
+      },
+      "cycles": 2705061120,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "add979f88036c344ac37d0bfd040c1aca99938672b16fb56e5e8a5f072e759a6": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 16,
+      "TILE_N": 4
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.824,
+        "tag_lookups": 113508352,
+        "line_fills": 19988480,
+        "evicts": 19988224
+      },
+      "l2": {
+        "hit_rate": 0.425,
+        "tag_lookups": 20512764,
+        "line_fills": 11795456,
+        "evicts": 11794432
+      },
+      "cycles": 2975542520,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "be165d6bbf01182dd9e29c653b4055226d874afdd89e9f73ee4fe5dd2974388b": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 16,
+      "TILE_N": 8
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.85,
+        "tag_lookups": 96731136,
+        "line_fills": 14516224,
+        "evicts": 14515968
+      },
+      "l2": {
+        "hit_rate": 0.307,
+        "tag_lookups": 15040508,
+        "line_fills": 10427392,
+        "evicts": 10426368
+      },
+      "cycles": 2585570552,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "aee74bc123d37a4259af1664d761168039eac1a4f21bfb4f2699362a7d1995ae": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 16,
+      "TILE_N": 16
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.859,
+        "tag_lookups": 88342528,
+        "line_fills": 12484608,
+        "evicts": 12484352
+      },
+      "l2": {
+        "hit_rate": 0.196,
+        "tag_lookups": 13008888,
+        "line_fills": 10457600,
+        "evicts": 10456576
+      },
+      "cycles": 2529010160,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "a371d999ef16b98b4f572724d363abf3dd3c326e9e4eb2a46888bc027a37a816": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 16,
+      "TILE_N": 32
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.864,
+        "tag_lookups": 84148224,
+        "line_fills": 11468800,
+        "evicts": 11468544
+      },
+      "l2": {
+        "hit_rate": 0.127,
+        "tag_lookups": 11993072,
+        "line_fills": 10471680,
+        "evicts": 10470656
+      },
+      "cycles": 2500544480,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "7e5a2148bc5563ff9d65f61839965ca93999a47a314d87ebafe726c9fe06e9f9": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 16,
+      "TILE_N": 64
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.866,
+        "tag_lookups": 82051072,
+        "line_fills": 10960896,
+        "evicts": 10960640
+      },
+      "l2": {
+        "hit_rate": 0.088,
+        "tag_lookups": 11485152,
+        "line_fills": 10475648,
+        "evicts": 10474624
+      },
+      "cycles": 2485756352,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "65adcd6066864c7daa92e3a1ebaebca96393d2a156c023deefdc3b2b0ec9358d": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 16,
+      "TILE_N": 128
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.868,
+        "tag_lookups": 81002496,
+        "line_fills": 10702848,
+        "evicts": 10702592
+      },
+      "l2": {
+        "hit_rate": 0.068,
+        "tag_lookups": 11227072,
+        "line_fills": 10467456,
+        "evicts": 10466432
+      },
+      "cycles": 2476468608,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "7b6014d5d254890494ad3f16deeb91cc5d6801dc3ab51ca8501bc8cf0d4ba012": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 16,
+      "TILE_N": 256
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.869,
+        "tag_lookups": 80478208,
+        "line_fills": 10573824,
+        "evicts": 10573568
+      },
+      "l2": {
+        "hit_rate": 0.059,
+        "tag_lookups": 11097984,
+        "line_fills": 10443776,
+        "evicts": 10442752
+      },
+      "cycles": 2468290304,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "2730f3478c31cc01e9de6eaffabd0e116b6dc1eeb3af4df1708a47b2b684f258": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 32,
+      "TILE_N": 4
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.827,
+        "tag_lookups": 109314048,
+        "line_fills": 18939904,
+        "evicts": 18939648
+      },
+      "l2": {
+        "hit_rate": 0.027,
+        "tag_lookups": 19464188,
+        "line_fills": 18939904,
+        "evicts": 18938880
+      },
+      "cycles": 4230085880,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "5ba5ed1d144d5338d7bcc7c235aa954a8f260e4be8a79a7e4882f8720212b731": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 32,
+      "TILE_N": 8
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.849,
+        "tag_lookups": 92536832,
+        "line_fills": 13991936,
+        "evicts": 13991680
+      },
+      "l2": {
+        "hit_rate": 0.038,
+        "tag_lookups": 14516220,
+        "line_fills": 13959168,
+        "evicts": 13958144
+      },
+      "cycles": 3197172984,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "91dd9bea1341387b69adf4f11957b851a39740de2922ace2d99ff3595a9bf11b": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 32,
+      "TILE_N": 16
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.858,
+        "tag_lookups": 84148224,
+        "line_fills": 11960320,
+        "evicts": 11960064
+      },
+      "l2": {
+        "hit_rate": 0.047,
+        "tag_lookups": 12484600,
+        "line_fills": 11894272,
+        "evicts": 11893248
+      },
+      "cycles": 2763493872,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "dca09abd01b4523adcd48ebde46257b7c14c0f897448f937e606c1cf9603d505": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 32,
+      "TILE_N": 32
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.863,
+        "tag_lookups": 79953920,
+        "line_fills": 10944512,
+        "evicts": 10944256
+      },
+      "l2": {
+        "hit_rate": 0.053,
+        "tag_lookups": 11468784,
+        "line_fills": 10862080,
+        "evicts": 10861056
+      },
+      "cycles": 2546699232,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "a964b1db49aa26f433a07920a6018f1e99a62b8ccc1b35dd815f555b41868585": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 32,
+      "TILE_N": 64
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.866,
+        "tag_lookups": 77856768,
+        "line_fills": 10436608,
+        "evicts": 10436352
+      },
+      "l2": {
+        "hit_rate": 0.056,
+        "tag_lookups": 10960864,
+        "line_fills": 10345984,
+        "evicts": 10344960
+      },
+      "cycles": 2438299584,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "0349fcc9962e5fa4b920d32278e84201bb39431edbc381e61a51039e35573102": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 32,
+      "TILE_N": 128
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.867,
+        "tag_lookups": 76808192,
+        "line_fills": 10178560,
+        "evicts": 10178304
+      },
+      "l2": {
+        "hit_rate": 0.058,
+        "tag_lookups": 10702784,
+        "line_fills": 10083840,
+        "evicts": 10082816
+      },
+      "cycles": 2383300480,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "2e54e9405011d93d0819ac9743fdf0951496190095e0b0037168d35d955ee3f9": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 32,
+      "TILE_N": 256
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.868,
+        "tag_lookups": 76283904,
+        "line_fills": 10049536,
+        "evicts": 10049280
+      },
+      "l2": {
+        "hit_rate": 0.059,
+        "tag_lookups": 10573696,
+        "line_fills": 9952768,
+        "evicts": 9951744
+      },
+      "cycles": 2355791616,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "0e38aa580e11e61e8e86febde4c63188368605d492505ac445776f729bde079b": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 64,
+      "TILE_N": 4
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.828,
+        "tag_lookups": 107216896,
+        "line_fills": 18415616,
+        "evicts": 18415360
+      },
+      "l2": {
+        "hit_rate": 0.028,
+        "tag_lookups": 18939900,
+        "line_fills": 18415616,
+        "evicts": 18414592
+      },
+      "cycles": 4119985400,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "4b4784c4c460a37146586080fd0780be00cda595d73d7a27bd5b3da5a0514cea": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 64,
+      "TILE_N": 8
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.848,
+        "tag_lookups": 90439680,
+        "line_fills": 13729792,
+        "evicts": 13729536
+      },
+      "l2": {
+        "hit_rate": 0.039,
+        "tag_lookups": 14254076,
+        "line_fills": 13697024,
+        "evicts": 13696000
+      },
+      "cycles": 3137928440,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "531d7f535fd136b70a560834a4ac3f3c13c8202b15917ed79b7c565304a653bf": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 64,
+      "TILE_N": 16
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.857,
+        "tag_lookups": 82051072,
+        "line_fills": 11698176,
+        "evicts": 11697920
+      },
+      "l2": {
+        "hit_rate": 0.048,
+        "tag_lookups": 12222456,
+        "line_fills": 11632384,
+        "evicts": 11631360
+      },
+      "cycles": 2704295408,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "e3c9424a69abab95c51989c85e25269200d0804ee2424fd0732fa2068c1db644": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 64,
+      "TILE_N": 32
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.863,
+        "tag_lookups": 77856768,
+        "line_fills": 10682368,
+        "evicts": 10682112
+      },
+      "l2": {
+        "hit_rate": 0.054,
+        "tag_lookups": 11206640,
+        "line_fills": 10600192,
+        "evicts": 10599168
+      },
+      "cycles": 2487500768,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "9d396dfad1845bf3334a7d842db66621beed79bdd0eb869b74af6b62580b5697": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 64,
+      "TILE_N": 64
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.866,
+        "tag_lookups": 75759616,
+        "line_fills": 10174464,
+        "evicts": 10174208
+      },
+      "l2": {
+        "hit_rate": 0.057,
+        "tag_lookups": 10698720,
+        "line_fills": 10084096,
+        "evicts": 10083072
+      },
+      "cycles": 2379101120,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "b586c571d65b5af3f49408f7f3ac29d8c1a33177039775e2fcaf4446ec58db02": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 64,
+      "TILE_N": 128
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.867,
+        "tag_lookups": 74711040,
+        "line_fills": 9916416,
+        "evicts": 9916160
+      },
+      "l2": {
+        "hit_rate": 0.059,
+        "tag_lookups": 10440640,
+        "line_fills": 9821952,
+        "evicts": 9820928
+      },
+      "cycles": 2324102016,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "a058bc207ac45bb04c0fb95165bccee9104f073c0b09f4fa3eeb06c9f91b0b77": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 64,
+      "TILE_N": 256
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.868,
+        "tag_lookups": 74186752,
+        "line_fills": 9787392,
+        "evicts": 9787136
+      },
+      "l2": {
+        "hit_rate": 0.06,
+        "tag_lookups": 10311552,
+        "line_fills": 9690880,
+        "evicts": 9689856
+      },
+      "cycles": 2296593152,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "86209e99e67a3287176b23aa7282854ad34bfa5f2192fec936d205879073d9b3": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 128,
+      "TILE_N": 4
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.829,
+        "tag_lookups": 106168320,
+        "line_fills": 18153472,
+        "evicts": 18153216
+      },
+      "l2": {
+        "hit_rate": 0.028,
+        "tag_lookups": 18677756,
+        "line_fills": 18153472,
+        "evicts": 18152448
+      },
+      "cycles": 4064935160,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "205f31fde5d758a58597b8cdb55796842506f60e91ad2258012461d433b1c89c": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 128,
+      "TILE_N": 8
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.848,
+        "tag_lookups": 89391104,
+        "line_fills": 13598720,
+        "evicts": 13598464
+      },
+      "l2": {
+        "hit_rate": 0.039,
+        "tag_lookups": 14123004,
+        "line_fills": 13565952,
+        "evicts": 13564928
+      },
+      "cycles": 3108306168,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "3bc5a66ab78dfc5fdafbffe0d9eb348bc898dafd416fcefaf9ffd936f0062be5": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 128,
+      "TILE_N": 16
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.857,
+        "tag_lookups": 81002496,
+        "line_fills": 11567104,
+        "evicts": 11566848
+      },
+      "l2": {
+        "hit_rate": 0.049,
+        "tag_lookups": 12091384,
+        "line_fills": 11501440,
+        "evicts": 11500416
+      },
+      "cycles": 2674696176,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "a521bcee5cbbaea44d1a5a78ec8dd6e3abe970d79508b86eb897fa3965c32bd9": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 128,
+      "TILE_N": 32
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.863,
+        "tag_lookups": 76808192,
+        "line_fills": 10551296,
+        "evicts": 10551040
+      },
+      "l2": {
+        "hit_rate": 0.055,
+        "tag_lookups": 11075568,
+        "line_fills": 10469248,
+        "evicts": 10468224
+      },
+      "cycles": 2457901536,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "8f849fd2410fdbaf5ef7646853ae2633bd2c48cd2a8cb2219a0e9255445861bc": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 128,
+      "TILE_N": 64
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.866,
+        "tag_lookups": 74711040,
+        "line_fills": 10043392,
+        "evicts": 10043136
+      },
+      "l2": {
+        "hit_rate": 0.058,
+        "tag_lookups": 10567648,
+        "line_fills": 9953152,
+        "evicts": 9952128
+      },
+      "cycles": 2349501888,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "ab6639a79b879c330229ab011fbcce9a4efebd00d6360e0683e6e39f28447287": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 128,
+      "TILE_N": 128
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.867,
+        "tag_lookups": 73662464,
+        "line_fills": 9785344,
+        "evicts": 9785088
+      },
+      "l2": {
+        "hit_rate": 0.06,
+        "tag_lookups": 10309568,
+        "line_fills": 9691008,
+        "evicts": 9689984
+      },
+      "cycles": 2294502784,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "95df8480e51141bef925be27945c767810766f1ae418a0f8611e4e2f5d51094a": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 128,
+      "TILE_N": 256
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.868,
+        "tag_lookups": 73138176,
+        "line_fills": 9656320,
+        "evicts": 9656064
+      },
+      "l2": {
+        "hit_rate": 0.061,
+        "tag_lookups": 10180480,
+        "line_fills": 9559936,
+        "evicts": 9558912
+      },
+      "cycles": 2266993920,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "9e10740c76c930720fb0bdd19741fe9dcac0f280b2c06ac031ea565ad3769d93": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 256,
+      "TILE_N": 4
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.829,
+        "tag_lookups": 105644032,
+        "line_fills": 18022400,
+        "evicts": 18022144
+      },
+      "l2": {
+        "hit_rate": 0.028,
+        "tag_lookups": 18546684,
+        "line_fills": 18022400,
+        "evicts": 18021376
+      },
+      "cycles": 4037410040,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "c4ecc29b8178b900ed9b1c4983d75de3cb456459c656fba93bf57696c841103a": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 256,
+      "TILE_N": 8
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.848,
+        "tag_lookups": 88866816,
+        "line_fills": 13533184,
+        "evicts": 13532928
+      },
+      "l2": {
+        "hit_rate": 0.04,
+        "tag_lookups": 14057468,
+        "line_fills": 13500416,
+        "evicts": 13499392
+      },
+      "cycles": 3093495032,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "5482b8643a7c351af1cab757f16ed5dcfe704f664cc81984957c3b15a66046de": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 256,
+      "TILE_N": 16
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.857,
+        "tag_lookups": 80478208,
+        "line_fills": 11501568,
+        "evicts": 11501312
+      },
+      "l2": {
+        "hit_rate": 0.049,
+        "tag_lookups": 12025848,
+        "line_fills": 11435968,
+        "evicts": 11434944
+      },
+      "cycles": 2659896560,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "ce82d961f2ab0f6d2c2869e4b7df0c3c3f3bf0f38ad4500b5cc04fc764579fbf": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 256,
+      "TILE_N": 32
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.863,
+        "tag_lookups": 76283904,
+        "line_fills": 10485760,
+        "evicts": 10485504
+      },
+      "l2": {
+        "hit_rate": 0.055,
+        "tag_lookups": 11010032,
+        "line_fills": 10403776,
+        "evicts": 10402752
+      },
+      "cycles": 2443101920,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "3380cb0b79251b9719428fe4fe0693c652353e47bea9d963ee2fd93ea97ea18a": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 256,
+      "TILE_N": 64
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.866,
+        "tag_lookups": 74186752,
+        "line_fills": 9977856,
+        "evicts": 9977600
+      },
+      "l2": {
+        "hit_rate": 0.059,
+        "tag_lookups": 10502112,
+        "line_fills": 9887680,
+        "evicts": 9886656
+      },
+      "cycles": 2334702272,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "7f62d2a43c59ff61d57b71fd8682c16fafbeef641fdea05593e28772d8d70ca1": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 256,
+      "TILE_N": 128
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.867,
+        "tag_lookups": 73138176,
+        "line_fills": 9719808,
+        "evicts": 9719552
+      },
+      "l2": {
+        "hit_rate": 0.06,
+        "tag_lookups": 10244032,
+        "line_fills": 9625536,
+        "evicts": 9624512
+      },
+      "cycles": 2279703168,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  },
+  "ab973ba8619485123a47ab2e4e6139ee3b7cc30e1b1ee4714d6500b815e88c2b": {
+    "overrides": {
+      "A_HEIGHT_DIM": 512,
+      "A_WIDTH_DIM": 512,
+      "B_WIDTH_DIM": 512,
+      "A_PRECISION_BYTES": 8,
+      "L1_SIZE_BYTES": 16384,
+      "L1_LINE_SIZE_BYTES": 64,
+      "L1_ASSOC": 8,
+      "L1_ACCESS_CYCLES": 4,
+      "L1_REPLACEMENT_POLICY": "LRU",
+      "L1_WRITE_POLICY": "WRITE_BACK",
+      "L2_SIZE_BYTES": 65536,
+      "L2_LINE_SIZE_BYTES": 64,
+      "L2_ASSOC": 8,
+      "L2_ACCESS_CYCLES": 14,
+      "L2_REPLACEMENT_POLICY": "LRU",
+      "L2_WRITE_POLICY": "WRITE_BACK",
+      "MEM_ACCESS_CYCLES": 180,
+      "TILE_K": 64,
+      "REG_M": 4,
+      "REG_N": 4,
+      "REG_K": 4,
+      "MULAC_CYCLES": 8,
+      "B_PRECISION_BYTES": 8,
+      "TILE_M": 256,
+      "TILE_N": 256
+    },
+    "flags": {
+      "b_source": "mem",
+      "stationary": "C",
+      "three_d_reg": true,
+      "mulac_norecord": false,
+      "trace_level": 0,
+      "trace_file": null,
+      "assembler_input": null
+    },
+    "metrics": {
+      "l1": {
+        "hit_rate": 0.868,
+        "tag_lookups": 72613888,
+        "line_fills": 9590784,
+        "evicts": 9590528
+      },
+      "l2": {
+        "hit_rate": 0.061,
+        "tag_lookups": 10114944,
+        "line_fills": 9494464,
+        "evicts": 9493440
+      },
+      "cycles": 2252194304,
+      "prng": null,
+      "prng_fifo": null,
+      "unused_options": [
+        "PRNG_ACCESS_CYCLES",
+        "PRNG_GEN_COST_PER_LINE",
+        "PRNG_FIFO_CAPACITY",
+        "PRNG_FIFO_GEN_COST"
+      ]
+    }
+  }
+}

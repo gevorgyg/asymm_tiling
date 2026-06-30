@@ -1,0 +1,226 @@
+{
+  "L1=256K|rho=1.0|kind=predicted_opt|pair=4x4": {
+    "regime": "L1=256K",
+    "rho": 1.0,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      4
+    ],
+    "total_dram_kb": 533616.0,
+    "per_matrix_dram": {
+      "A": 7454720,
+      "B": 536870912,
+      "C": 4177920
+    },
+    "cycles": 2315424768
+  },
+  "L1=256K|rho=0.5|kind=predicted_opt|pair=4x8": {
+    "regime": "L1=256K",
+    "rho": 0.5,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      8
+    ],
+    "total_dram_kb": 270591.75,
+    "per_matrix_dram": {
+      "A": 6488064,
+      "B": 268435456,
+      "C": 4251392
+    },
+    "cycles": 1350778928
+  },
+  "L1=256K|rho=0.5|kind=square|pair=4x4": {
+    "regime": "L1=256K",
+    "rho": 0.5,
+    "kind": "square",
+    "pair": [
+      4,
+      4
+    ],
+    "total_dram_kb": 536831.75,
+    "per_matrix_dram": {
+      "A": 10682368,
+      "B": 536870912,
+      "C": 4251392
+    },
+    "cycles": 2244296752
+  },
+  "L1=256K|rho=0.25|kind=predicted_opt|pair=4x16": {
+    "regime": "L1=256K",
+    "rho": 0.25,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      16
+    ],
+    "total_dram_kb": 57921.25,
+    "per_matrix_dram": {
+      "A": 4456448,
+      "B": 52627200,
+      "C": 4316160
+    },
+    "cycles": 675135344
+  },
+  "L1=256K|rho=0.25|kind=square|pair=8x8": {
+    "regime": "L1=256K",
+    "rho": 0.25,
+    "kind": "square",
+    "pair": [
+      8,
+      8
+    ],
+    "total_dram_kb": 93926.25,
+    "per_matrix_dram": {
+      "A": 8650752,
+      "B": 85302016,
+      "C": 4308480
+    },
+    "cycles": 746194624
+  },
+  "L1=256K|rho=0.125|kind=predicted_opt|pair=4x32": {
+    "regime": "L1=256K",
+    "rho": 0.125,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      32
+    ],
+    "total_dram_kb": 4352.0,
+    "per_matrix_dram": {
+      "A": 2097152,
+      "B": 262144,
+      "C": 4063232
+    },
+    "cycles": 484369770
+  },
+  "L1=256K|rho=0.125|kind=square|pair=8x8": {
+    "regime": "L1=256K",
+    "rho": 0.125,
+    "kind": "square",
+    "pair": [
+      8,
+      8
+    ],
+    "total_dram_kb": 4352.0,
+    "per_matrix_dram": {
+      "A": 2097152,
+      "B": 262144,
+      "C": 4063232
+    },
+    "cycles": 488922576
+  },
+  "L1=16K|rho=1.0|kind=predicted_opt|pair=4x4": {
+    "regime": "L1=16K",
+    "rho": 1.0,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      4
+    ],
+    "total_dram_kb": 1128160.0,
+    "per_matrix_dram": {
+      "A": 12288000,
+      "B": 1073741824,
+      "C": 102744064
+    },
+    "cycles": 4177277896
+  },
+  "L1=16K|rho=0.5|kind=predicted_opt|pair=4x8": {
+    "regime": "L1=16K",
+    "rho": 0.5,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      8
+    ],
+    "total_dram_kb": 805984.0,
+    "per_matrix_dram": {
+      "A": 16351232,
+      "B": 805306368,
+      "C": 6742016
+    },
+    "cycles": 3017223624
+  },
+  "L1=16K|rho=0.5|kind=square|pair=4x4": {
+    "regime": "L1=16K",
+    "rho": 0.5,
+    "kind": "square",
+    "pair": [
+      4,
+      4
+    ],
+    "total_dram_kb": 1072736.0,
+    "per_matrix_dram": {
+      "A": 20545536,
+      "B": 1073741824,
+      "C": 7266304
+    },
+    "cycles": 3913219528
+  },
+  "L1=16K|rho=0.25|kind=predicted_opt|pair=4x16": {
+    "regime": "L1=16K",
+    "rho": 0.25,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      16
+    ],
+    "total_dram_kb": 227864.0,
+    "per_matrix_dram": {
+      "A": 24510464,
+      "B": 204128256,
+      "C": 8200448
+    },
+    "cycles": 1292738656
+  },
+  "L1=16K|rho=0.25|kind=square|pair=8x8": {
+    "regime": "L1=16K",
+    "rho": 0.25,
+    "kind": "square",
+    "pair": [
+      8,
+      8
+    ],
+    "total_dram_kb": 229496.0,
+    "per_matrix_dram": {
+      "A": 28819456,
+      "B": 201490432,
+      "C": 8192768
+    },
+    "cycles": 1293136952
+  },
+  "L1=16K|rho=0.125|kind=predicted_opt|pair=4x32": {
+    "regime": "L1=16K",
+    "rho": 0.125,
+    "kind": "predicted_opt",
+    "pair": [
+      4,
+      32
+    ],
+    "total_dram_kb": 75856.0,
+    "per_matrix_dram": {
+      "A": 7094272,
+      "B": 67108864,
+      "C": 6938624
+    },
+    "cycles": 827883808
+  },
+  "L1=16K|rho=0.125|kind=square|pair=8x8": {
+    "regime": "L1=16K",
+    "rho": 0.125,
+    "kind": "square",
+    "pair": [
+      8,
+      8
+    ],
+    "total_dram_kb": 154204.0,
+    "per_matrix_dram": {
+      "A": 20078592,
+      "B": 134533120,
+      "C": 6407936
+    },
+    "cycles": 1079789176
+  }
+}

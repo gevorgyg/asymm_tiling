@@ -1,0 +1,142 @@
+{
+  "16x16|N=1": {
+    "tile_m": 16,
+    "tile_n": 16,
+    "n": 1,
+    "l1_hit_rate": 0.969,
+    "cycles": 3322112
+  },
+  "16x16|N=2": {
+    "tile_m": 16,
+    "tile_n": 16,
+    "n": 2,
+    "l1_hit_rate": 0.969,
+    "cycles": 6659444
+  },
+  "16x16|N=4": {
+    "tile_m": 16,
+    "tile_n": 16,
+    "n": 4,
+    "l1_hit_rate": 0.969,
+    "cycles": 13334108
+  },
+  "16x16|N=8": {
+    "tile_m": 16,
+    "tile_n": 16,
+    "n": 8,
+    "l1_hit_rate": 0.969,
+    "cycles": 26683436
+  },
+  "16x16|N=16": {
+    "tile_m": 16,
+    "tile_n": 16,
+    "n": 16,
+    "l1_hit_rate": 0.969,
+    "cycles": 53382092
+  },
+  "8x32|N=1": {
+    "tile_m": 8,
+    "tile_n": 32,
+    "n": 1,
+    "l1_hit_rate": 0.991,
+    "cycles": 3244500
+  },
+  "8x32|N=2": {
+    "tile_m": 8,
+    "tile_n": 32,
+    "n": 2,
+    "l1_hit_rate": 0.991,
+    "cycles": 6506964
+  },
+  "8x32|N=4": {
+    "tile_m": 8,
+    "tile_n": 32,
+    "n": 4,
+    "l1_hit_rate": 0.991,
+    "cycles": 13031892
+  },
+  "8x32|N=8": {
+    "tile_m": 8,
+    "tile_n": 32,
+    "n": 8,
+    "l1_hit_rate": 0.991,
+    "cycles": 26081748
+  },
+  "8x32|N=16": {
+    "tile_m": 8,
+    "tile_n": 32,
+    "n": 16,
+    "l1_hit_rate": 0.991,
+    "cycles": 52181460
+  },
+  "48x12|N=1": {
+    "tile_m": 48,
+    "tile_n": 12,
+    "n": 1,
+    "l1_hit_rate": 0.95,
+    "cycles": 3510340
+  },
+  "48x12|N=2": {
+    "tile_m": 48,
+    "tile_n": 12,
+    "n": 2,
+    "l1_hit_rate": 0.95,
+    "cycles": 7068300
+  },
+  "48x12|N=4": {
+    "tile_m": 48,
+    "tile_n": 12,
+    "n": 4,
+    "l1_hit_rate": 0.95,
+    "cycles": 14184220
+  },
+  "48x12|N=8": {
+    "tile_m": 48,
+    "tile_n": 12,
+    "n": 8,
+    "l1_hit_rate": 0.95,
+    "cycles": 28416060
+  },
+  "48x12|N=16": {
+    "tile_m": 48,
+    "tile_n": 12,
+    "n": 16,
+    "l1_hit_rate": 0.95,
+    "cycles": 56879740
+  },
+  "96x96|N=1": {
+    "tile_m": 96,
+    "tile_n": 96,
+    "n": 1,
+    "l1_hit_rate": 0.976,
+    "cycles": 3263580
+  },
+  "96x96|N=2": {
+    "tile_m": 96,
+    "tile_n": 96,
+    "n": 2,
+    "l1_hit_rate": 0.976,
+    "cycles": 6594318
+  },
+  "96x96|N=4": {
+    "tile_m": 96,
+    "tile_n": 96,
+    "n": 4,
+    "l1_hit_rate": 0.976,
+    "cycles": 13255794
+  },
+  "96x96|N=8": {
+    "tile_m": 96,
+    "tile_n": 96,
+    "n": 8,
+    "l1_hit_rate": 0.976,
+    "cycles": 26578746
+  },
+  "96x96|N=16": {
+    "tile_m": 96,
+    "tile_n": 96,
+    "n": 16,
+    "l1_hit_rate": 0.976,
+    "cycles": 53224650
+  }
+}
