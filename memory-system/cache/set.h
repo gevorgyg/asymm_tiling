@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <list>
 #include <random>
+#include <vector>
 
 
 class CacheLine
@@ -16,6 +17,7 @@ class CacheLine
     Addr lineAddr() const { return line_addr_; }
     bool dirty()    const { return dirty_; }
     void markDirty()      { dirty_ = true; }
+    void clearDirty()     { dirty_ = false; }
 
   private:
     Addr line_addr_;
@@ -34,6 +36,9 @@ class Set
     void       insert(Addr line_addr);
     void       remove(Addr line_addr);
     CacheLine* pickVictim();
+
+    // Clear dirty bits, returning the line addrs that were dirty.
+    std::vector<Addr> collectDirty();
 
   private:
     size_t               assoc_;

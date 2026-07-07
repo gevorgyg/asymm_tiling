@@ -87,7 +87,7 @@ test_cases = [
             "l1_tag_lookup": 3,
             "l1_line_fill": 3,
             "l1_evict": 1,
-            "l2_tag_lookup": 4
+            "l2_tag_lookup": 5  # +1: end-of-run flush writes the dirty resident line
         }
     },
     {
@@ -113,8 +113,8 @@ test_cases = [
         "expected": {
             "l1_hit_rate": 0.948,
             "l1_tag_lookup": 96,
-            "l2_tag_lookup": 5,
-            "l2_hit_rate": 0.000
+            "l2_tag_lookup": 7,      # +2 flush writebacks of dirty C lines
+            "l2_hit_rate": 0.286     # flush writes hit lines L2 already holds
         }
     }
 ]

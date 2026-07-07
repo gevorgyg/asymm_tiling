@@ -33,6 +33,18 @@ void Set::remove(Addr line_addr)
     lines_.erase(it);
 }
 
+std::vector<Addr> Set::collectDirty()
+{
+    std::vector<Addr> dirty;
+    for (CacheLine& l : lines_) {
+        if (l.dirty()) {
+            dirty.push_back(l.lineAddr());
+            l.clearDirty();
+        }
+    }
+    return dirty;
+}
+
 CacheLine* Set::pickVictim()
 {
     assert(!lines_.empty());

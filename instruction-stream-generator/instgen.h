@@ -54,16 +54,23 @@ public:
 
   explicit InstGenerator(Params p);
 
-  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false) const;
+  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false,
+                bool outer_products = false) const;
 
 private:
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo) const;
+                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo,
+                 bool outer_products) const;
 
   void emitTraceMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                       TileShape tile, std::ostream &os, bool b_fifo) const;
   void emitTraceMultiLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                       TileShape tile, std::ostream &os, bool b_fifo) const;
+  // Rank-1-update ordering from the asymmetric-cost paper: k outermost inside
+  // a C tile, so only one A subcolumn / B subrow is live at a time.
+  void emitTraceMultiLevelCStationaryOuterProducts(const GhostMat &A, const GhostMat &B,
+                                                   const GhostMat &C, TileShape tile,
+                                                   std::ostream &os) const;
   void emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                        TileShape tile, std::ostream &os, bool b_fifo) const;
   void emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,

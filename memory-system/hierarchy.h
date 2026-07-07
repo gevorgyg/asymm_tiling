@@ -53,6 +53,10 @@ class MemoryHierarchy
     // {PrngDev | L2 -> MainMemory}.
     void access(Addr addr, size_t size, bool is_write, Trace& trace);
 
+    // Drain dirty lines L1 -> L2 -> DRAM. Traffic is counted in the stats;
+    // the actions it generates are discarded, so cycles are unaffected.
+    void flushCaches();
+
     const Cache&       l1()        const { return l1_; }
     const Cache&       l2()        const { return l2_; }
     const PrngDev&     prng()      const { return prng_; }

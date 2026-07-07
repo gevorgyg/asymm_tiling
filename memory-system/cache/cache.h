@@ -35,6 +35,9 @@ class Cache : public MemoryObject
         uint64_t tag_lookups = 0;
         uint64_t line_fills  = 0;
         uint64_t evicts      = 0;
+        uint64_t writebacks  = 0;   // dirty evictions written to the next level
+        uint64_t bytes_in    = 0;   // bytes filled into this level from below
+        uint64_t bytes_out   = 0;   // bytes pushed down (writebacks + write-through)
         size_t   hits        = 0;
         size_t   misses      = 0;
     };
@@ -44,6 +47,10 @@ class Cache : public MemoryObject
 
     void read(Addr addr, size_t size, Trace& trace)  override;
     void write(Addr addr, size_t size, Trace& trace) override;
+
+    // Write back every dirty line (lines stay resident, now clean). Lets the
+    // end-of-run traffic ledger include data still sitting in the cache.
+    void flush(Trace& trace);
 
     const char*  name()  const { return name_; }
     const Stats& stats() const { return stats_; }

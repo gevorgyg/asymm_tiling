@@ -46,7 +46,7 @@ Stationary parseStationary(const std::string& str)
 }
 
 void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
-                          uint reg_m, uint reg_n, uint reg_k)
+                          bool outer_products, uint reg_m, uint reg_n, uint reg_k)
 {
     InstGenerator gen{InstGenerator::Params{
         .a_height    = c.a_height,
@@ -66,7 +66,7 @@ void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
     }
 
     InstGenerator::TileShape tile{c.tile_m, c.tile_n, c.tile_k};
-    gen.generate(tile, ofs, b_stationary, b_fifo);
+    gen.generate(tile, ofs, b_stationary, b_fifo, outer_products);
 }
 
 
@@ -104,16 +104,34 @@ void printCacheTable(const Cache& l1, const Cache& l2)
     const double hr_a = (a.hits + a.misses) ? (double)a.hits / (a.hits + a.misses) : 0.0;
     const double hr_b = (b.hits + b.misses) ? (double)b.hits / (b.hits + b.misses) : 0.0;
 
-    printf("| Cache | Hit rate | TagLookup | LineFill | Evict |\n");
-    printf("|---|---|---|---|---|\n");
-    printf("| %s | %.03f | %llu | %llu | %llu |\n", l1.name(), hr_a,
+    printf("| Cache | Hit rate | TagLookup | LineFill | Evict | Writeback | BytesIn | BytesOut |\n");
+    printf("|---|---|---|---|---|---|---|---|\n");
+    printf("| %s | %.03f | %llu | %llu | %llu | %llu | %llu | %llu |\n", l1.name(), hr_a,
            (unsigned long long)a.tag_lookups,
            (unsigned long long)a.line_fills,
-           (unsigned long long)a.evicts);
-    printf("| %s | %.03f | %llu | %llu | %llu |\n", l2.name(), hr_b,
+           (unsigned long long)a.evicts,
+           (unsigned long long)a.writebacks,
+           (unsigned long long)a.bytes_in,
+           (unsigned long long)a.bytes_out);
+    printf("| %s | %.03f | %llu | %llu | %llu | %llu | %llu | %llu |\n", l2.name(), hr_b,
            (unsigned long long)b.tag_lookups,
            (unsigned long long)b.line_fills,
-           (unsigned long long)b.evicts);
+           (unsigned long long)b.evicts,
+           (unsigned long long)b.writebacks,
+           (unsigned long long)b.bytes_in,
+           (unsigned long long)b.bytes_out);
+}
+
+// L2 is the only client of main memory, so DRAM traffic is L2's boundary
+// traffic seen from the other side: reads = L2 fills, writes = L2 pushes.
+void printDramTable(const Cache& l2)
+{
+    const auto& s = l2.stats();
+    printf("\n| DRAM | BytesRead | BytesWritten |\n");
+    printf("|---|---|---|\n");
+    printf("| DRAM | %llu | %llu |\n",
+           (unsigned long long)s.bytes_in,
+           (unsigned long long)s.bytes_out);
 }
 
 void printPrngTable(const PrngDev::Stats& s)
@@ -156,6 +174,7 @@ int main(int argc, char* argv[])
     int         trace_level      = Interpreter::trace_instructions;
     bool        use_3dregisters  = false;
     bool        mulac_norecord   = false;
+    bool        outer_products   = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -174,6 +193,7 @@ int main(int argc, char* argv[])
         else if (arg == "--assembler_input") assembler_input = need_arg("--assembler_input");
         else if (arg == "--3dregisters")     use_3dregisters = true;
         else if (arg == "--mulac_norecord")  mulac_norecord  = true;
+        else if (arg == "--outer_products")  outer_products  = true;
         else if (arg == "--trace_level") {
             trace_level = std::atoi(need_arg("--trace_level").c_str());
             if (trace_level < Interpreter::trace_instructions ||
@@ -213,6 +233,12 @@ int main(int argc, char* argv[])
     const bool b_generated  = (b_source == BSource::PrngMem);
     const bool b_fifo       = (b_source == BSource::PrngFifo);
     const bool b_stationary = (stationary == Stationary::B);
+
+    if (outer_products && (b_stationary || b_fifo || !use_3dregisters)) {
+        std::cerr << "error: --outer_products requires --stationary C, --3dregisters, "
+                     "and --Bsource mem|prng_mem\n";
+        exit(1);
+    }
 
     const uint a_bytes = cfg.a_height * cfg.a_width  * cfg.a_precision;
     const uint b_bytes = cfg.a_width  * cfg.b_width  * cfg.b_precision;
@@ -259,7 +285,7 @@ int main(int argc, char* argv[])
     if (!assembler_input.empty()) {
         run_path = assembler_input;
     } else {
-        generateInstructions(cfg, b_stationary, b_fifo, reg_m, reg_n, reg_k);
+        generateInstructions(cfg, b_stationary, b_fifo, outer_products, reg_m, reg_n, reg_k);
     }
 
     Interpreter::Options opts{
@@ -274,6 +300,10 @@ int main(int argc, char* argv[])
 
     inter.run();
 
+    // Traffic ledger must include data still resident at exit: every dirty
+    // line is written back (stats only, no cycle cost).
+    mem.flushCaches();
+
     // Header: which config blocks were ignored by this run.
     printf("--- UNUSED OPTIONS ---\n");
     for (const char* k : unusedConfigKeys(b_source, use_3dregisters, record_mulac)) {
@@ -282,6 +312,7 @@ int main(int argc, char* argv[])
     printf("--- END ---\n\n");
 
     printCacheTable(mem.l1(), mem.l2());
+    printDramTable(mem.l2());
     if (b_generated) printPrngTable(mem.prng().stats());
     if (b_fifo)      printPrngFifoTable(mem.prng_fifo().stats());
     printSystemTable(cpu_cycles);

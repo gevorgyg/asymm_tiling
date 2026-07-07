@@ -28,8 +28,15 @@ void checkTileDivides(const InstGenerator::GhostMat &A,
   }
 }
 
-void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, bool b_fifo) const {
+void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, bool b_fifo,
+                             bool outer_products) const {
   checkTileDivides(A_, B_, ts);
+
+  if (outer_products && (b_stationary || b_fifo || reg_m_ == 0)) {
+    std::cerr << "outer-product ordering requires C-stationary, non-fifo B, and register tiles"
+              << std::endl;
+    exit(1);
+  }
 
   if (reg_m_ > 0) {
     if (ts.m % reg_m_ != 0 || ts.n % reg_n_ != 0 || ts.k % reg_k_ != 0) {
@@ -44,14 +51,17 @@ void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, 
 
   const GhostMat C{B_.width, A_.height, c_ew, c_addr};
 
-  emitTrace(A_, B_, C, ts, os, b_stationary, b_fifo);
+  emitTrace(A_, B_, C, ts, os, b_stationary, b_fifo, outer_products);
 }
 
 void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
                               const GhostMat &C, TileShape tile,
-                              std::ostream &os, bool b_stationary, bool b_fifo) const {
+                              std::ostream &os, bool b_stationary, bool b_fifo,
+                              bool outer_products) const {
   if (reg_m_ > 0) {
-    if (b_stationary) {
+    if (outer_products) {
+      emitTraceMultiLevelCStationaryOuterProducts(A, B, C, tile, os);
+    } else if (b_stationary) {
       emitTraceMultiLevelBStationary(A, B, C, tile, os, b_fifo);
     } else {
       emitTraceMultiLevelCStationary(A, B, C, tile, os, b_fifo);
@@ -173,6 +183,42 @@ void InstGenerator::emitTraceMultiLevelCStationary(const GhostMat &A, const Ghos
 
         if (b_fifo) {
           emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
+        }
+      }
+    }
+  }
+}
+
+void InstGenerator::emitTraceMultiLevelCStationaryOuterProducts(const GhostMat &A, const GhostMat &B,
+                                                                const GhostMat &C, TileShape tile,
+                                                                std::ostream &os) const {
+  constexpr char a_id[] = "%ra";
+  constexpr char b_id[] = "%rb";
+  constexpr char c_id[] = "%rc";
+
+  const uint M_tiles = A.height / tile.m;
+  const uint N_tiles = B.width / tile.n;
+  const uint K_tiles = A.width / tile.k;
+
+  for (uint ti = 0; ti < M_tiles; ++ti) {
+    for (uint tj = 0; tj < N_tiles; ++tj) {
+      // The C block is the only tile-sized resident; A and B stream through.
+      emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
+
+      for (uint tk = 0; tk < K_tiles; ++tk) {
+        for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
+          for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+            load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
+
+            for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
+              load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
+              load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+
+              os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+
+              store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+            }
+          }
         }
       }
     }

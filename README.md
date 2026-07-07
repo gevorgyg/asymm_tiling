@@ -10,7 +10,7 @@ make
 in the root directory of the project.
 ## Usage
 ```
-./asymm [--Bsource <prng_fifo|prng_mem|mem>] [--stationary <B|C>] [--config <file:default.config>] [--trace_file <file:trace.log>] [--trace_level <0|1|2:0>] [--assembler_input <file>] --3dregisters --mulacc_norecord
+./asymm [--Bsource <prng_fifo|prng_mem|mem>] [--stationary <B|C>] [--config <file:default.config>] [--trace_file <file:trace.log>] [--trace_level <0|1|2:0>] [--assembler_input <file>] --3dregisters --mulacc_norecord --outer_products
 ```
 
 ### Flags:
@@ -34,6 +34,14 @@ in the root directory of the project.
   the depth dimension is the common dimension between A and B)
 - `--mulac_norecord` - do not log `MulAcc` action into the trace and do not
   count cycles performed by it towards total cycle count
+- `--outer_products` - C-stationary rank-1-update ordering (k outermost inside a
+  C tile), matching the streaming algorithm of the asymmetric-access-cost paper:
+  the C tile is the only tile-sized cache resident, A subcolumns / B subrows
+  stream through. Requires `--stationary C`, `--3dregisters` and a non-fifo B
+
+After the run all dirty cache lines are written back, so the traffic counters
+(`BytesIn`/`BytesOut`, DRAM table) include data still resident at exit; this
+final flush does not affect cycle counts.
 
 ---
 

@@ -59,6 +59,8 @@ void Cache::fillLine(Addr addr, Trace& trace)
         const bool dirty     = victim->dirty();
         if (dirty) {
             next_level_->write(victim_la * line_size_, line_size_, trace);
+            ++stats_.writebacks;
+            stats_.bytes_out += line_size_;
         }
         set.remove(victim_la);
         ++stats_.evicts;
@@ -66,6 +68,7 @@ void Cache::fillLine(Addr addr, Trace& trace)
     }
     set.insert(lineAddr(addr));
     ++stats_.line_fills;
+    stats_.bytes_in += line_size_;
     trace.push_back(std::make_unique<LineFill>(name_, addr));
 }
 
@@ -75,6 +78,17 @@ void Cache::markDirty(Addr addr)
     CacheLine* line = set.lookup(lineAddr(addr));
     assert(line != nullptr);
     line->markDirty();
+}
+
+void Cache::flush(Trace& trace)
+{
+    for (Set& set : sets_) {
+        for (Addr line_addr : set.collectDirty()) {
+            next_level_->write(line_addr * line_size_, line_size_, trace);
+            ++stats_.writebacks;
+            stats_.bytes_out += line_size_;
+        }
+    }
 }
 
 void Cache::read(Addr addr, size_t size, Trace& trace)
@@ -96,6 +110,7 @@ void Cache::write(Addr addr, size_t size, Trace& trace)
     if (write_policy_ == WritePolicy::WRITE_THROUGH) {
         // No-allocate: forward the write straight through.
         next_level_->write(addr, size, trace);
+        stats_.bytes_out += size;
         return;
     }
 

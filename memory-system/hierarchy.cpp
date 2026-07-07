@@ -29,6 +29,13 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
 {
 }
 
+void MemoryHierarchy::flushCaches()
+{
+    Trace discard;
+    l1_.flush(discard);
+    l2_.flush(discard);
+}
+
 void MemoryHierarchy::access(Addr addr, size_t size, bool is_write, Trace& trace)
 {
     // FIFO MMIO is the only path that bypasses L1. Caches don't see these
