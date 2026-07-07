@@ -8,6 +8,49 @@ python -m experiments.run --all                  # run every discovered experime
 
 `run.py` will build `./asymm` on first invocation if it is missing.
 
+# The experiments (v45-results)
+
+Every experiment emits six views of its sweep — `cycles` (mulacc recorded),
+`cycles_nomulacc`, `l1_traffic`, `l2_traffic`, `dram_traffic`,
+`total_traffic` — plus its own analysis plots and a `README.md` report.
+Plot captions list only config values that differ from `default.config`.
+
+**empirical-tile-sweeps** — 96³ matmul, C-stationary; sweeps the full
+`TILE_M × TILE_N × TILE_K` grid over three precision configs and plots each
+metric against the C-tile aspect ratio (best value per ratio).
+
+**empirical-tile-sweeps-96** — the same sweep with tile dims including 96,
+so matrix-spanning strips (degenerate tiles) compete too.
+
+**empirical-l1-size-sweeps** — best tile shape per L1 size (4K–64K):
+how much cache the workload actually needs, per precision.
+
+**empirical-assoc-sweeps** — best tile per associativity (1–16-way, L1=L2):
+capacity misses vs conflict misses at fixed size.
+
+**empirical-line-size-sweeps** — best tile per cache-line size (16–128 B):
+spatial-locality payoff vs false-sharing of narrow tile rows.
+
+**empirical-l1-size-sweeps-bstationary / empirical-assoc-sweeps-bstationary /
+empirical-line-size-sweeps-bstationary** — the same three hardware sweeps
+under B-stationary loop ordering.
+
+**paper-traffic-model** — tests the read/write traffic formula of
+`../Multiplication_by_a_Random_Matrix.pdf` at the L1 boundary: measured L1
+bytes in/out vs the closed-form prediction across constant-area tile
+families, ρ ∈ {1…1/8}, ideal (fully-assoc) vs realistic (8-way) caches,
+with the paper's streaming order (`--outer_products`). Checks minimum
+location `T_N/T_M = 1/ρ` and the savings-vs-square-tile ratios.
+
+**paper-per-matrix-balance** — the mechanism behind the paper's optimum:
+region-tagged traces decompose L1 traffic per matrix; the two input terms
+must balance (A bytes = B bytes) exactly at the predicted optimum, and
+writes must be C-only.
+
+**paper-model-validity** — where the paper's "C block occupies fast memory"
+idealization breaks on a real cache: traffic excess vs C-tile budget as a
+fraction of L1, across sizes and associativities.
+
 Each experiment writes:
 - `<experiment-dir>/results.json` — on-disk cache, one entry per sweep cell
 - `<experiment-dir>/README.md` — the markdown report
@@ -85,7 +128,7 @@ invokes it.
 
 # Harness API
 
-## `Flags(b_source, stationary, three_d_reg, mulac_norecord, trace_level, trace_file, assembler_input)`
+## `Flags(b_source, stationary, three_d_reg, mulac_norecord, outer_products, trace_level, trace_file, assembler_input)`
 
 Mirrors the C++ CLI surface (see the top-level `README.md` for option
 semantics). Any new flag added there must grow a `Flags` field here too;
@@ -124,13 +167,34 @@ Writes `# title` plus the concatenation of markdown blocks to `out_path`.
 ```python
 @dataclass
 class Metrics:
-    l1: CacheStats          # hit_rate, tag_lookups, line_fills, evicts
-    l2: CacheStats
+    l1: CacheStats          # hit_rate, tag_lookups, line_fills, evicts,
+    l2: CacheStats          #   writebacks, bytes_in, bytes_out
+    dram: DramStats         # bytes_read, bytes_written
     cycles: int
     prng: Optional[PrngStats]            # populated when --Bsource prng_mem
     prng_fifo: Optional[PrngFifoStats]   # populated when --Bsource prng_fifo
     unused_options: list[str]            # config keys ignored under current flags
 ```
+
+## `run_grid_dual(...) -> list[DualResult]`
+
+`run_grid` twice per cell — once with `--mulac_norecord` (the `traffic`
+metrics) and once with mulacc recorded (the `cycles` metrics).
+
+## `plot_metric_family(cells, *, out_dir, base_name, title, caption, xlabel) -> list[Path]`
+
+Writes `<base_name>_<metric>.png` for the six standard metric views from a
+list of `Cell(x, series, traffic, cycles)`.
+
+## `describe_changes(overrides, default_text, *, extras={}) -> str`
+
+Caption line listing only the config keys whose values differ from
+`default.config`.
+
+## `paper_model`
+
+Closed-form traffic predictions from `Multiplication_by_a_Random_Matrix.pdf`
+(word-granular and line-aware reads/writes, optimal ratio, savings).
 
 ---
 

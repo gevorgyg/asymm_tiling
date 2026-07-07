@@ -1,16 +1,16 @@
 """Render one figure per y-metric: cycles and per-level traffic.
 
-Every experiment publishes the same five views of its sweep:
+Every experiment publishes the same six views of its sweep:
 
-    cycles         -- from the mulacc-recorded run
-    l1_traffic     -- L1 bytes in + out   (fast-memory boundary)
-    l2_traffic     -- L2 bytes in + out
-    dram_traffic   -- DRAM bytes read + written
-    total_traffic  -- sum of the three levels
+    cycles           -- from the mulacc-recorded run (compute included)
+    cycles_nomulacc  -- from the --mulac_norecord run (memory system only)
+    l1_traffic       -- L1 bytes in + out   (fast-memory boundary)
+    l2_traffic       -- L2 bytes in + out
+    dram_traffic     -- DRAM bytes read + written
+    total_traffic    -- sum of the three levels
 
-Traffic numbers come from `--mulac_norecord` runs; only the cycles view uses
-the run with mulacc recorded (the numbers are identical for traffic, but the
-convention keeps compute accounting out of memory-traffic experiments).
+All views except `cycles` come from `--mulac_norecord` runs, keeping compute
+accounting out of the memory-side numbers.
 """
 
 from dataclasses import dataclass
@@ -35,7 +35,8 @@ def _dram(m: Metrics) -> float:
 
 # metric key -> (axis label, extractor)
 METRICS: dict[str, tuple[str, Callable[[Metrics], float]]] = {
-    "cycles":        ("cycles",                       lambda m: m.cycles),
+    "cycles":          ("cycles (mulacc recorded)",   lambda m: m.cycles),
+    "cycles_nomulacc": ("cycles (no mulacc)",         lambda m: m.cycles),
     "l1_traffic":    ("L1 traffic (bytes in+out)",    _l1),
     "l2_traffic":    ("L2 traffic (bytes in+out)",    _l2),
     "dram_traffic":  ("DRAM traffic (bytes)",         _dram),

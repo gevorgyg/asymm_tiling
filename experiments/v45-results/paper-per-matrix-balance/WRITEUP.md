@@ -1,82 +1,40 @@
 # paper-per-matrix-balance — Writeup
 
-## Hypothesis (H3)
+Tests the *mechanism* behind the optimum in
+`Multiplication_by_a_Random_Matrix.pdf`: the per-C-block reads decompose as
+`ρzk` (cheap input) `+ k·M/z` (expensive input) `+ M` (the C block), and the
+AM-GM step of the derivation makes the two *input* terms equal exactly at the
+optimal shape. §3's intuition — "as ρ gets lower, z gets higher, so we
+perform more loads of the cheaper matrix in comparison to the expensive one"
+— is this balance restated.
 
-The paper's analysis minimizes `T_M + ρ·T_N` subject to `T_M·T_N = M`. By
-AM–GM the minimum occurs when **both terms are equal**:
+## Claims under test (bytes, our convention: B is cheap)
 
-```
-   T_M  =  ρ · T_N      ⇒      T_M = √(M·ρ),  T_N = √(M/ρ).
-```
+1. `A_in = blocks·T_M·lines(k·A_p)` — falls as tiles widen (∝ 1/T_N).
+2. `B_in = blocks·k·lines(T_N·B_p)` — falls as tiles grow tall (∝ 1/T_M).
+3. `C_in ≈ mn·C_p` — flat.
+4. **Balance:** `B_in/A_in = ρ·(T_N/T_M)` (word model), crossing **1** at the
+   predicted optimum `T_N/T_M = 1/ρ`.
+5. **Writes are C-only:** dirty L1 evictions belong to the C region almost
+   exclusively; A and B are read-only.
 
-In DRAM-traffic terms, this is the statement that the cheap-matrix traffic
-`ρ · k · T_N` and the expensive-matrix traffic `k · T_M` are equal at the
-optimum. So if we decompose the total DRAM bytes into per-matrix bytes,
-
-```
-   dram_A ≈ dram_B           (at the predicted optimum T_N/T_M = 1/ρ)
-   dram_A > dram_B           (at square tiles T_M = T_N — the expensive
-                              matrix dominates; cheap one underused)
-```
-
-This is the *mechanism* by which the paper's tiling beats square tiling — it
-re-balances the read budget so the cheap matrix soaks up the extra traffic
-that the expensive matrix would have paid for. The first
-[`paper-rho-continuum-unconstrained`](../paper-rho-continuum-unconstrained/)
-experiment validates *that* the optimum is at `1/ρ`; this one validates *why*
-by going one level deeper.
-
-Companion experiments are in the same directory family.
+Measured via region-tagged level-2 traces (per-matrix L1 line fills and
+dirty evictions). Note the end-of-run flush is not part of the trace, so
+per-matrix write bytes undercount by the dirty lines still resident at exit
+(≤ L1 size ≪ mn·C_p).
 
 ## Setup
 
-Same workload as the H1/H2 experiments (`m = n = k = 512`, `T_K = 64`,
-C-stationary, `--3dregisters`, B source `mem`). Two cache regimes —
-unconstrained (L1 = 256 KB) and constrained (L1 = 16 KB) — so we can also
-see the H2 shift *through the trace lens*.
+m = n = k = 128, TILE_K = k, fully-associative 16 K L1 (the model regime),
+`--outer_products`, ρ ∈ {1, 1/2, 1/4, 1/8} via B precision {8, 4, 2, 1} B,
+two constant-area tile families (512/1024 words). The earlier version of
+this experiment measured per-matrix *DRAM* bytes under the cache-tiled
+instruction order and found B ≫ A everywhere; measuring at the paper's own
+boundary (L1) under the paper's own loop order is the honest test of the
+AM-GM claim.
 
-For each `(regime, ρ)` we run **two targeted cells**:
+## Expected result
 
-- The **predicted optimum** tile, i.e. the (T_M, T_N) pair from the 96 grid
-  whose ratio is closest to `1/ρ`, with the smallest area among such pairs
-  (so the constrained-regime cell fits).
-- The **square** baseline, `T_M = T_N`, at the closest matching area.
-
-Each cell runs at `--trace_level 2`. The level-2 trace is post-processed by
-`harness.trace_analysis.parse_trace` to count `MemoryAccess` events per
-matrix region (`A`, `B`, `C` regions are computed from the byte layout via
-`harness.trace_analysis.matrix_regions`).
-
-## What we plot
-
-`per_matrix_dram.png`: a 2×4 grid of stacked-bar plots (rows = regime, cols
-= `ρ`). For each cell, two bars: predicted optimum and square. Each bar
-shows `A_bytes`, `B_bytes`, `C_bytes` stacked.
-
-`balance_table.md`: numerical view —
-
-| regime | ρ | tile | A bytes | B bytes | C bytes | A : B |
-
-## Pass / fail criteria
-
-- **H3 pass (unconstrained).** At the predicted optimum the ratio
-  `A_bytes / B_bytes` is within ±15 % of 1. At square tiles `A_bytes` is
-  meaningfully larger than `B_bytes` (cheap matrix coasts).
-- **H3 pass (constrained).** At the predicted *paper* optimum, `B_bytes`
-  visibly dominates `A_bytes` — the reload-amplified contribution from B
-  swamps the analysis. This is the *mechanism* behind H2: the optimum
-  shifts left because B traffic is what we're really paying for at small
-  caches.
-- **Fail interpretation.** If the balance is off in both regimes, the
-  generator's loop ordering doesn't actually make `A` the outer-load matrix
-  (sanity check on the simulator). If the balance is right but H1 still
-  fails, the paper's assumption of `k → ∞` is more violated than we
-  thought.
-
-## Reproduction
-
-```sh
-# from project root
-python3 -c "from experiments.v45_results.paper_per_matrix_balance \
-            import experiment; experiment.run()"
-```
+Log-scale per-matrix curves matching the three analytic terms; the B/A curve
+a straight line of slope ρ (in log-log) crossing 1 at `log₂(1/ρ)`; the
+writes bar chart ~100 % C at every ρ.
