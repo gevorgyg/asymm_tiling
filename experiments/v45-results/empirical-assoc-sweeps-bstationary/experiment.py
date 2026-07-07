@@ -59,7 +59,7 @@ def run() -> None:
         title=TITLE, caption=caption, xlabel="log₂(ways)",
     )
 
-    lines = [f"Non-default config: {caption}\n",
+    lines = [f"Non-default config: {caption or '(all defaults)'}\n",
              "Each x point takes the best (minimum) value over all tile shapes.\n"]
     lines += [f"![{k}]({BASE_NAME}_{k}.png)\n" for k in METRICS]
     lines.append("\n## Best cell per metric\n")

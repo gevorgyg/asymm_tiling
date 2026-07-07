@@ -46,21 +46,44 @@ def summarize_config(overrides: Mapping[str, object], *,
     return ", ".join(parts)
 
 
+# pretty caption labels for config keys; unknown keys fall back to KEY=value
+_KEY_LABELS = {
+    "A_HEIGHT_DIM": "m", "B_WIDTH_DIM": "n", "A_WIDTH_DIM": "k",
+    "A_PRECISION_BYTES": "A_prec", "B_PRECISION_BYTES": "B_prec",
+    "TILE_M": "T_M", "TILE_N": "T_N", "TILE_K": "T_K",
+    "L1_SIZE_BYTES": "L1", "L1_LINE_SIZE_BYTES": "L1 line",
+    "L1_ASSOC": "L1 ways", "L1_ACCESS_CYCLES": "L1 lat",
+    "L1_REPLACEMENT_POLICY": "L1 policy", "L1_WRITE_POLICY": "L1 write",
+    "L2_SIZE_BYTES": "L2", "L2_LINE_SIZE_BYTES": "L2 line",
+    "L2_ASSOC": "L2 ways", "L2_ACCESS_CYCLES": "L2 lat",
+    "L2_REPLACEMENT_POLICY": "L2 policy", "L2_WRITE_POLICY": "L2 write",
+    "MEM_ACCESS_CYCLES": "DRAM lat",
+    "MULAC_CYCLES": "mulacc",
+}
+_DIM_KEYS = ("A_HEIGHT_DIM", "B_WIDTH_DIM", "A_WIDTH_DIM")
+
+
 def describe_changes(overrides: Mapping[str, object], default_text: str, *,
                      extras: Mapping[str, object] = {}) -> str:
     """Caption line listing only what differs from default.config.
 
-    Byte-valued keys are humanized (16384 -> 16K). Wraps at ~100 chars so it
-    stays readable as a plot subtitle.
+    Known keys get short labels, matrix dims merge into m×n×k, byte values
+    are humanized (16384 -> 16K). Wraps at ~100 chars so it stays readable
+    as a plot subtitle.
     """
     from .config import changed_from_default
     changed = changed_from_default(overrides, default_text)
+
     parts = []
+    if all(k in changed for k in _DIM_KEYS):
+        parts.append("m×n×k=" + "×".join(str(changed.pop(k)) for k in _DIM_KEYS))
     for k in sorted(changed):
         v = changed[k]
-        if k.endswith("_BYTES") and str(v).isdigit():
+        if k.endswith("_BYTES") and "PRECISION" not in k and str(v).isdigit():
             v = _bytes(int(v))
-        parts.append(f"{k}={v}")
+        if "PRECISION" in k:
+            v = f"{v}B"
+        parts.append(f"{_KEY_LABELS.get(k, k)}={v}")
     parts.extend(f"{k}={v}" for k, v in extras.items())
 
     lines: list[str] = [""]

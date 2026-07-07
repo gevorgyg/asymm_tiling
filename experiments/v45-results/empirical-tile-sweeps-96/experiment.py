@@ -60,7 +60,7 @@ def run() -> None:
         title=TITLE, caption=caption, xlabel="log₂(TILE_N / TILE_M)",
     )
 
-    lines = [f"Non-default config: {caption}\n",
+    lines = [f"Non-default config: {caption or '(all defaults)'}\n",
              "Points sharing an aspect ratio take the best (minimum) value.\n"]
     lines += [f"![{k}]({BASE_NAME}_{k}.png)\n" for k in METRICS]
     lines.append("\n## Best tile per metric\n")

@@ -45,11 +45,43 @@ register tile 4³, `--outer_products`. Two constant-area families (512- and
 power-of-two matrix strides the row stride aliases entire tile columns into
 one set, a pathology the paper's model cannot see.
 
+## Pilot validation: the model regime is exact
+
+One pilot cell, worked end to end. Config: m = n = k = 256, A/C at 8 B,
+B at 2 B (ρ = 1/4), tile 32×32, TILE_K = 256, `--outer_products`,
+fully-associative 16 K L1.
+
+Reads formula, term by term (mnk = 256³ = 16,777,216):
+
+```
+A:  mnk · A_p/T_N  =  16,777,216 · 8/32  =  4,194,304 B
+B:  mnk · B_p/T_M  =  16,777,216 · 2/32  =  1,048,576 B
+C:  mn  · C_p      =  65,536 · 8         =    524,288 B
+                                   total =  5,767,168 B
+```
+
+Measured L1 BytesIn: **5,767,168 — equal to the byte.** Measured L1
+BytesOut: **524,288 = mn·C_p, also exact** (the end-of-run flush makes the
+last C tile's writeback visible). Exactness is possible because every row
+segment at this tile is whole lines: A rows 2048 B = 32 lines, B rows
+64 B = 1 line, C rows 256 B = 4 lines, so the line-aware and word models
+coincide.
+
+The same cell with a realistic 8-way L1 moves **43,523,072 B in (7.5×) and
+33,554,432 B out (64×)**. The mechanism is stride aliasing: 16 K / 64 B /
+8-way gives 32 sets, so the set span is 32·64 = 2048 B — exactly the A/C
+row stride of 256·8 B. Every row of a C-tile column-of-lines therefore maps
+to the *same* set: 32 lines fighting over 8 ways. The C tile can never stay
+resident, so each of its 8192 lines is re-fetched and written back on every
+one of the k/REG_K = 64 rank-1 steps: 8192 · 64 = 524,288 writebacks =
+33,554,432 B — matching the measurement exactly. (B fares little better:
+stride 512 B advances the set index by 8 per row, so B cycles through only
+4 of the 32 sets.)
+
 ## Expected result
 
-In the ideal regime the measured points should sit *on* the line-aware curve
-(pilot runs matched the word model to the byte at line-aligned tiles), the
-argmin should sit at `1/ρ` up to grid discreteness, and writes should be flat
-at `mn·C_p`. The 8-way regime should sit far above the model with the gap
-widening at large C tiles — quantifying how much of the paper's promise a
-real set-associative cache actually delivers.
+In the ideal regime the measured points sit *on* the line-aware curve, the
+argmin sits at `1/ρ` up to grid discreteness, and writes are flat at
+`mn·C_p`. The 8-way regime sits far above the model with the gap widening
+at large C tiles — quantifying how much of the paper's promise a real
+set-associative cache actually delivers at power-of-two strides.
