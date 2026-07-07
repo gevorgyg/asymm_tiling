@@ -38,3 +38,25 @@ def render_config(base_text: str, overrides: Mapping[str, object]) -> str:
 
 def load_base(path: Path) -> str:
     return path.read_text()
+
+
+def parse_config(text: str) -> dict[str, str]:
+    """Parse `KEY=value` lines into a dict (comments/blanks skipped)."""
+    out: dict[str, str] = {}
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s or s.startswith("#") or "=" not in s:
+            continue
+        key, val = s.split("=", 1)
+        out[key.strip()] = val.strip()
+    return out
+
+
+def changed_from_default(overrides: Mapping[str, object],
+                         default_text: str) -> dict[str, object]:
+    """Subset of `overrides` whose values differ from the defaults.
+
+    Plot captions must only mention what an experiment actually changed.
+    """
+    defaults = parse_config(default_text)
+    return {k: v for k, v in overrides.items() if str(v) != defaults.get(k)}

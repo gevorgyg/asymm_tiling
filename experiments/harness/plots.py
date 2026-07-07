@@ -46,6 +46,33 @@ def summarize_config(overrides: Mapping[str, object], *,
     return ", ".join(parts)
 
 
+def describe_changes(overrides: Mapping[str, object], default_text: str, *,
+                     extras: Mapping[str, object] = {}) -> str:
+    """Caption line listing only what differs from default.config.
+
+    Byte-valued keys are humanized (16384 -> 16K). Wraps at ~100 chars so it
+    stays readable as a plot subtitle.
+    """
+    from .config import changed_from_default
+    changed = changed_from_default(overrides, default_text)
+    parts = []
+    for k in sorted(changed):
+        v = changed[k]
+        if k.endswith("_BYTES") and str(v).isdigit():
+            v = _bytes(int(v))
+        parts.append(f"{k}={v}")
+    parts.extend(f"{k}={v}" for k, v in extras.items())
+
+    lines: list[str] = [""]
+    for p in parts:
+        cand = p if not lines[-1] else f"{lines[-1]}, {p}"
+        if len(cand) > 100 and lines[-1]:
+            lines.append(p)
+        else:
+            lines[-1] = cand
+    return "\n".join(lines)
+
+
 # Palettes consistent across experiments; experiments can pass their own colors arg too.
 PALETTE_RHO = {
     1.0:   "#636EFA",

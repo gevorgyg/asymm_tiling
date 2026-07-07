@@ -9,7 +9,7 @@ import hashlib
 import itertools
 import json
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -137,3 +137,40 @@ def run_grid(
     if progress:
         print(f"  done: {len(combos) - misses} cached, {misses} ran")
     return results
+
+
+@dataclass
+class DualResult:
+    overrides: dict
+    traffic: parse.Metrics   # --mulac_norecord run: feeds all traffic views
+    cycles: parse.Metrics    # mulacc-recorded run: feeds the cycles view
+
+
+def run_grid_dual(
+    *,
+    experiment_dir: Path,
+    base_config_text: str,
+    base_overrides: Mapping[str, object] = {},
+    sweep_axes: Mapping[str, Sequence[object]] = {},
+    flags: runner.Flags = runner.Flags(),
+    cache_path: Path | None = None,
+    progress: bool = True,
+) -> list[DualResult]:
+    """run_grid twice per cell: once without mulacc, once with (cycles only)."""
+    def _go(f: runner.Flags) -> list[Result]:
+        return run_grid(
+            experiment_dir=experiment_dir,
+            base_config_text=base_config_text,
+            base_overrides=base_overrides,
+            sweep_axes=sweep_axes,
+            flags=f,
+            cache_path=cache_path,
+            progress=progress,
+        )
+
+    traffic = _go(replace(flags, mulac_norecord=True))
+    cycles = _go(replace(flags, mulac_norecord=False))
+    return [
+        DualResult(overrides=t.overrides, traffic=t.metrics, cycles=c.metrics)
+        for t, c in zip(traffic, cycles)
+    ]

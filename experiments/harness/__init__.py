@@ -9,8 +9,9 @@ Public surface:
 """
 
 from ._workspace import workspace_root
-from .config import render_config
+from .config import changed_from_default, parse_config, render_config
 from . import paper_model
+from .metric_views import METRICS, Cell, plot_metric_family
 from .parse import (
     CacheStats,
     DramStats,
@@ -24,6 +25,7 @@ from .plots import (
     PALETTE_PRECISION,
     PALETTE_REGION,
     PALETTE_RHO,
+    describe_changes,
     grid_plot,
     lineplot,
     stacked_bars,
@@ -31,7 +33,7 @@ from .plots import (
 )
 from .report import top_bottom_table, write_report
 from .runner import Flags, run
-from .sweep import Result, run_grid
+from .sweep import DualResult, Result, run_grid, run_grid_dual
 from .trace_analysis import (
     Region,
     RegionStats,
@@ -44,10 +46,18 @@ from .trace_analysis import (
 
 __all__ = [
     "CacheStats",
+    "Cell",
     "DramStats",
+    "DualResult",
     "Flags",
+    "METRICS",
     "Metrics",
+    "changed_from_default",
+    "describe_changes",
     "paper_model",
+    "parse_config",
+    "plot_metric_family",
+    "run_grid_dual",
     "PALETTE_POLICY",
     "PALETTE_PRECISION",
     "PALETTE_REGION",
