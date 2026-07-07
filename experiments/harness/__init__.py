@@ -10,8 +10,10 @@ Public surface:
 
 from ._workspace import workspace_root
 from .config import render_config
+from . import paper_model
 from .parse import (
     CacheStats,
+    DramStats,
     Metrics,
     PrngFifoStats,
     PrngStats,
@@ -42,8 +44,10 @@ from .trace_analysis import (
 
 __all__ = [
     "CacheStats",
+    "DramStats",
     "Flags",
     "Metrics",
+    "paper_model",
     "PALETTE_POLICY",
     "PALETTE_PRECISION",
     "PALETTE_REGION",

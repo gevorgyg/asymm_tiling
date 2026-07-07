@@ -20,6 +20,7 @@ class Flags:
     stationary: str = "C"          # "B" | "C"
     three_d_reg: bool = False
     mulac_norecord: bool = False
+    outer_products: bool = False   # paper's rank-1 streaming order (C-stationary)
     trace_level: int = 0
     trace_file: Optional[str] = None
     assembler_input: Optional[str] = None
@@ -34,6 +35,8 @@ class Flags:
             argv.append("--3dregisters")
         if self.mulac_norecord:
             argv.append("--mulac_norecord")
+        if self.outer_products:
+            argv.append("--outer_products")
         if self.trace_file is not None:
             argv += ["--trace_file", self.trace_file]
         if self.assembler_input is not None:
