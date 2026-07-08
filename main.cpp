@@ -234,9 +234,8 @@ int main(int argc, char* argv[])
     const bool b_fifo       = (b_source == BSource::PrngFifo);
     const bool b_stationary = (stationary == Stationary::B);
 
-    if (outer_products && (b_stationary || b_fifo || !use_3dregisters)) {
-        std::cerr << "error: --outer_products requires --stationary C, --3dregisters, "
-                     "and --Bsource mem|prng_mem\n";
+    if (outer_products && (b_stationary || !use_3dregisters)) {
+        std::cerr << "error: --outer_products requires --stationary C and --3dregisters\n";
         exit(1);
     }
 

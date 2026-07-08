@@ -32,8 +32,8 @@ void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, 
                              bool outer_products) const {
   checkTileDivides(A_, B_, ts);
 
-  if (outer_products && (b_stationary || b_fifo || reg_m_ == 0)) {
-    std::cerr << "outer-product ordering requires C-stationary, non-fifo B, and register tiles"
+  if (outer_products && (b_stationary || reg_m_ == 0)) {
+    std::cerr << "outer-product ordering requires C-stationary and register tiles"
               << std::endl;
     exit(1);
   }
@@ -60,7 +60,7 @@ void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
                               bool outer_products) const {
   if (reg_m_ > 0) {
     if (outer_products) {
-      emitTraceMultiLevelCStationaryOuterProducts(A, B, C, tile, os);
+      emitTraceMultiLevelCStationaryOuterProducts(A, B, C, tile, os, b_fifo);
     } else if (b_stationary) {
       emitTraceMultiLevelBStationary(A, B, C, tile, os, b_fifo);
     } else {
@@ -191,10 +191,15 @@ void InstGenerator::emitTraceMultiLevelCStationary(const GhostMat &A, const Ghos
 
 void InstGenerator::emitTraceMultiLevelCStationaryOuterProducts(const GhostMat &A, const GhostMat &B,
                                                                 const GhostMat &C, TileShape tile,
-                                                                std::ostream &os) const {
+                                                                std::ostream &os, bool b_fifo) const {
   constexpr char a_id[] = "%ra";
   constexpr char b_id[] = "%rb";
   constexpr char c_id[] = "%rc";
+
+  constexpr Addr START_REG = 0xFF000000;
+  constexpr Addr SEED_REG  = 0xFF000004;
+  constexpr Addr DATA_REG  = 0xFF000008;
+  constexpr Addr STOP_REG  = 0xFF00000C;
 
   const uint M_tiles = A.height / tile.m;
   const uint N_tiles = B.width / tile.n;
@@ -206,19 +211,51 @@ void InstGenerator::emitTraceMultiLevelCStationaryOuterProducts(const GhostMat &
       emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
 
       for (uint tk = 0; tk < K_tiles; ++tk) {
+        if (b_fifo) {
+          // One FIFO session per (tj, tk) block: seed selects the PRNG state
+          // for this (K-slice, N-tile) pair, matching the scheme used by the
+          // other C-stationary emitters so results are comparable.
+          Addr seed_mem_addr = B.addr + (tk * N_tiles + tj) * 8;
+          emit(os, "ltea", seed_mem_addr, 1, 1, 1, 8, b_id);
+          emit(os, "tmov", SEED_REG, 1, 1, 1, 8, b_id);
+          emit(os, "tmov", START_REG, 1, 1, 1, 8, b_id);
+        }
+
         for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
-          for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
-            load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
+          if (!b_fifo) {
+            // Mem path: A outer, B inner (original order).
+            // B[rtk,rtj] is a cache hit on repeated rti loads.
+            for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+              load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
 
+              for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
+                load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
+                load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+                os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+                store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+              }
+            }
+          } else {
+            // FIFO path: B outer, A inner.
+            // Each FIFO element is consumed exactly once (loaded into %rb); %rb
+            // stays live across the rti loop.  Repeated A sub-column loads
+            // (one per rtj iteration) are L1 hits since the line is already
+            // resident from the previous rtj step.
             for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
-              load(os, B, tk * tile.k + rtk * reg_k_, tj * tile.n + rtj * reg_n_, reg_n_, reg_k_, b_id);
-              load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+              emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
 
-              os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
-
-              store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+              for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+                load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
+                load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+                os << "tmulac " << a_id << ", " << b_id << ", " << c_id << std::endl;
+                store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+              }
             }
           }
+        }
+
+        if (b_fifo) {
+          emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
         }
       }
     }

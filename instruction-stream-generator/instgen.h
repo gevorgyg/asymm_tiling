@@ -68,9 +68,13 @@ private:
                                       TileShape tile, std::ostream &os, bool b_fifo) const;
   // Rank-1-update ordering from the asymmetric-cost paper: k outermost inside
   // a C tile, so only one A subcolumn / B subrow is live at a time.
+  // With b_fifo=true the B subrow is consumed from the PRNG FIFO (one element
+  // per cycle) instead of loaded from cache.  The inner rtj/rti loop order is
+  // swapped so each FIFO element is consumed exactly once while %rb stays live
+  // across the rti dimension; repeated A sub-column loads are L1 hits.
   void emitTraceMultiLevelCStationaryOuterProducts(const GhostMat &A, const GhostMat &B,
                                                    const GhostMat &C, TileShape tile,
-                                                   std::ostream &os) const;
+                                                   std::ostream &os, bool b_fifo) const;
   void emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                        TileShape tile, std::ostream &os, bool b_fifo) const;
   void emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
