@@ -26,7 +26,7 @@ per-matrix write bytes undercount by the dirty lines still resident at exit
 ## Setup
 
 m = n = k = 128, TILE_K = k, fully-associative 16 K L1 (the model regime),
-`--outer_products`, ρ ∈ {1, 1/2, 1/4, 1/8} via B precision {8, 4, 2, 1} B,
+C-stationary, ρ ∈ {1, 1/2, 1/4, 1/8} via B precision {8, 4, 2, 1} B,
 two constant-area tile families (512/1024 words). The earlier version of
 this experiment measured per-matrix *DRAM* bytes under the cache-tiled
 instruction order and found B ≫ A everywhere; measuring at the paper's own

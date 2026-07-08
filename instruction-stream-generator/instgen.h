@@ -50,31 +50,38 @@ public:
     uint reg_m = 0;
     uint reg_n = 0;
     uint reg_k = 0;
+    uint seed_bytes = 8;   // bytes of PRNG-FIFO seed stored per B tile
   };
 
   explicit InstGenerator(Params p);
 
-  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false,
-                bool outer_products = false) const;
+  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false) const;
 
 private:
-  void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo,
-                 bool outer_products) const;
+  // MMIO ports of the PRNG-FIFO device (must match main.cpp's wiring).
+  static constexpr Addr START_REG = 0xFF000000;
+  static constexpr Addr SEED_REG  = 0xFF000004;
+  static constexpr Addr DATA_REG  = 0xFF000008;
+  static constexpr Addr STOP_REG  = 0xFF00000C;
 
-  void emitTraceMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                      TileShape tile, std::ostream &os, bool b_fifo) const;
+  void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo) const;
+
+  // C-stationary: prefetch the C tile, stream A subcolumns x B subrows as
+  // rank-1 updates (M outermost). B-stationary mirrors it: hold one B tile,
+  // stream A over M while C accumulates (N outermost). Both register-tiled.
   void emitTraceMultiLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                       TileShape tile, std::ostream &os, bool b_fifo) const;
-  // Rank-1-update ordering from the asymmetric-cost paper: k outermost inside
-  // a C tile, so only one A subcolumn / B subrow is live at a time.
-  void emitTraceMultiLevelCStationaryOuterProducts(const GhostMat &A, const GhostMat &B,
-                                                   const GhostMat &C, TileShape tile,
-                                                   std::ostream &os) const;
+  void emitTraceMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                      TileShape tile, std::ostream &os, bool b_fifo) const;
   void emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                        TileShape tile, std::ostream &os, bool b_fifo) const;
   void emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                        TileShape tile, std::ostream &os, bool b_fifo) const;
+
+  // PRNG-FIFO helpers: seed the device for B tile (tk,tj) and start it; stop it.
+  void emitFifoStart(std::ostream &os, uint tk, uint tj, uint n_tiles, const char *reg) const;
+  void emitFifoStop(std::ostream &os, const char *reg) const;
 
   // Byte address of element (row, col) inside matrix M.
   Addr tileAddr(const GhostMat &M, uint row, uint col) const;
@@ -100,6 +107,7 @@ private:
   uint reg_m_;
   uint reg_n_;
   uint reg_k_;
+  uint seed_bytes_;
 };
 
 #endif

@@ -9,8 +9,7 @@ resident in fast memory (see WRITEUP.md):
 
 Sweeps constant-area tile families (the paper fixes M = T_M*T_N) x rho x two
 cache regimes: fully associative (the paper's fast-memory model) and 8-way
-associative. Uses --outer_products so the instruction stream matches the
-paper's streaming algorithm.
+associative. C-stationary is the paper's rank-1 streaming order.
 """
 
 import math
@@ -50,8 +49,7 @@ FAMILIES = {
 }
 FAMILY_MARKERS = {1024: "o", 512: "s"}
 
-FLAGS = Flags(b_source="mem", stationary="C", three_d_reg=True,
-              outer_products=True)
+FLAGS = Flags(b_source="mem", stationary="C", three_d_reg=True)
 
 
 def _sweep() -> list[dict]:
@@ -145,7 +143,7 @@ def _model_plots(records: list[dict], caption: str) -> None:
 
 
 def _argmin_savings_report(records: list[dict], caption: str) -> None:
-    lines = [f"Non-default config: {caption}, flags: --outer_products\n",
+    lines = [f"Non-default config: {caption}\n",
              "Reads = L1 BytesIn, writes = L1 BytesOut (the paper's fast-memory "
              "boundary). See WRITEUP.md for the claims under test.\n",
              "![reads](l1_reads_vs_model.png)\n",
@@ -201,7 +199,7 @@ def run() -> None:
     records = _sweep()
     caption = describe_changes(
         {k: v for k, v in BASE_OVERRIDES.items() if k != "TILE_K"}, base,
-        extras={"TILE_K": K, "order": "outer products"},
+        extras={"TILE_K": K},
     )
     _model_plots(records, caption)
 

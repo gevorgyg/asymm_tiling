@@ -51,9 +51,10 @@ void writeDefaultConfig(const std::string& path)
         << "PRNG_ACCESS_CYCLES=2\n"
         << "PRNG_GEN_COST_PER_LINE=64\n\n"
         << "# Used by: --Bsource prng_fifo\n"
-        << "# PRNG FIFO device\n"
+        << "# PRNG FIFO device (SEED_BYTES = bytes of seed stored per B tile)\n"
         << "PRNG_FIFO_CAPACITY=64\n"
-        << "PRNG_FIFO_GEN_COST=10\n\n"
+        << "PRNG_FIFO_GEN_COST=10\n"
+        << "PRNG_FIFO_SEED_BYTES=8\n\n"
         << "# Used by: --3dreg\n"
         << "# Hardware register tile dimensions\n"
         << "REG_M=4\n"
@@ -133,6 +134,12 @@ uint optionalUint(const RawConfig& c, const char* key)
     return it == c.nums.end() ? 0u : it->second;
 }
 
+uint optionalUintOr(const RawConfig& c, const char* key, uint fallback)
+{
+    auto it = c.nums.find(key);
+    return it == c.nums.end() ? fallback : it->second;
+}
+
 std::string requireStr(const RawConfig& c, const char* key)
 {
     auto it = c.strs.find(key);
@@ -183,8 +190,9 @@ Config loadConfig(const std::string& path)
         .prng_access_cycles     = requireUint(raw, "PRNG_ACCESS_CYCLES"),
         .prng_gen_cost_per_line = requireUint(raw, "PRNG_GEN_COST_PER_LINE"),
 
-        .prng_fifo_capacity = requireUint(raw, "PRNG_FIFO_CAPACITY"),
-        .prng_fifo_gen_cost = requireUint(raw, "PRNG_FIFO_GEN_COST"),
+        .prng_fifo_capacity   = requireUint(raw, "PRNG_FIFO_CAPACITY"),
+        .prng_fifo_gen_cost   = requireUint(raw, "PRNG_FIFO_GEN_COST"),
+        .prng_fifo_seed_bytes = optionalUintOr(raw, "PRNG_FIFO_SEED_BYTES", 8),
 
         .reg_m = optionalUint(raw, "REG_M"),
         .reg_n = optionalUint(raw, "REG_N"),
