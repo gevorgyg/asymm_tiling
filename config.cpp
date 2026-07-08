@@ -134,12 +134,6 @@ uint optionalUint(const RawConfig& c, const char* key)
     return it == c.nums.end() ? 0u : it->second;
 }
 
-uint optionalUintOr(const RawConfig& c, const char* key, uint fallback)
-{
-    auto it = c.nums.find(key);
-    return it == c.nums.end() ? fallback : it->second;
-}
-
 std::string requireStr(const RawConfig& c, const char* key)
 {
     auto it = c.strs.find(key);
@@ -192,7 +186,7 @@ Config loadConfig(const std::string& path)
 
         .prng_fifo_capacity   = requireUint(raw, "PRNG_FIFO_CAPACITY"),
         .prng_fifo_gen_cost   = requireUint(raw, "PRNG_FIFO_GEN_COST"),
-        .prng_fifo_seed_bytes = optionalUintOr(raw, "PRNG_FIFO_SEED_BYTES", 8),
+        .prng_fifo_seed_bytes = requireUint(raw, "PRNG_FIFO_SEED_BYTES"),
 
         .reg_m = optionalUint(raw, "REG_M"),
         .reg_n = optionalUint(raw, "REG_N"),

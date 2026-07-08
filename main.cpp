@@ -85,6 +85,7 @@ std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
     if (source != BSource::PrngFifo) {
         u.push_back("PRNG_FIFO_CAPACITY");
         u.push_back("PRNG_FIFO_GEN_COST");
+        u.push_back("PRNG_FIFO_SEED_BYTES");
     }
     if (!use_3dregisters) {
         u.push_back("REG_M");
