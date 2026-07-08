@@ -8,9 +8,9 @@ resident in fast memory (see WRITEUP.md):
     optimum at T_N/T_M = 1/rho,  rho = B_p/A_p
 
 Sweeps constant-area tile families (the paper fixes M = T_M*T_N) x rho x two
-cache regimes: "ideal" (fully associative, the paper's fast-memory model) and
-"realistic 8-way". Uses --outer_products so the instruction stream matches
-the paper's streaming algorithm.
+cache regimes: fully associative (the paper's fast-memory model) and 8-way
+associative. Uses --outer_products so the instruction stream matches the
+paper's streaming algorithm.
 """
 
 import math
@@ -38,8 +38,8 @@ BASE_OVERRIDES: dict[str, object] = {
 }
 
 REGIMES = [
-    ("ideal fully-assoc", {"L1_ASSOC": 16384 // LINE, "L2_ASSOC": 65536 // LINE}),
-    ("realistic 8-way",   {"L1_ASSOC": 8, "L2_ASSOC": 8}),
+    ("fully-assoc (paper model)", {"L1_ASSOC": 16384 // LINE, "L2_ASSOC": 65536 // LINE}),
+    ("8-way assoc",               {"L1_ASSOC": 8, "L2_ASSOC": 8}),
 ]
 RHOS = [(1.0, 8), (0.5, 4), (0.25, 2), (0.125, 1)]   # (rho, B_PRECISION_BYTES)
 
@@ -212,8 +212,9 @@ def run() -> None:
     ]
     plot_metric_family(
         cells, out_dir=EXPERIMENT_DIR, base_name="traffic_model",
-        title="Paper traffic model sweep, ideal cache (best of both families)",
+        title="Paper traffic model sweep, fully-assoc cache (best of both families)",
         caption=caption, xlabel="log₂(T_N / T_M)",
         colors={f"ρ={r:g}": c for r, c in PALETTE_RHO.items()},
+        vlines={f"ρ={rho:g}": math.log2(1 / rho) for rho, _ in RHOS},
     )
     _argmin_savings_report(records, caption)

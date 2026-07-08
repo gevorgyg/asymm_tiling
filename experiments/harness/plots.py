@@ -129,6 +129,8 @@ def lineplot(
     *,
     out_path: Path,
     vlines: Optional[Mapping[str, float]] = None,
+    hlines: Optional[Mapping[str, float]] = None,
+    ref_vlines: Optional[Mapping[str, float]] = None,
     colors: Optional[Mapping[str, str]] = None,
     xlabel: str = "",
     ylabel: str = "",
@@ -136,7 +138,12 @@ def lineplot(
     figsize: tuple[float, float] = (10, 6),
     marker: str = "o",
 ) -> Optional[Path]:
-    """Line plot, one curve per series; optional dashed vertical per series key."""
+    """Line plot, one curve per series, with optional theory markers.
+
+    vlines     -- {series label: x}: dashed vertical in that series' colour.
+    hlines     -- {label: y}: grey reference horizontal, labelled in the legend.
+    ref_vlines -- {label: x}: grey reference vertical, labelled in the legend.
+    """
     _, plt = _mpl()
     if plt is None:
         return None
@@ -149,6 +156,10 @@ def lineplot(
         ax.plot(xs, ys, marker=marker, color=c, label=str(label))
         if vlines and label in vlines:
             ax.axvline(vlines[label], color=c, linestyle="--", alpha=0.4)
+    for label, y in (hlines or {}).items():
+        ax.axhline(y, color="#555555", linestyle="--", lw=1.3, label=str(label))
+    for label, x in (ref_vlines or {}).items():
+        ax.axvline(x, color="#555555", linestyle="-.", lw=1.3, label=str(label))
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)

@@ -64,12 +64,14 @@ def plot_metric_family(
     xlabel: str = "",
     colors: Optional[Mapping[str, str]] = None,
     vlines: Optional[Mapping[str, float]] = None,
+    ref_vlines: Optional[Mapping[str, float]] = None,
     agg=min,
 ) -> list[Path]:
     """Write `<base_name>_<metric>.png` for each metric in METRICS.
 
     Cells sharing (series, x) are reduced with `agg` (default min: the best
-    achievable value at that x, e.g. best tile shape).
+    achievable value at that x, e.g. best tile shape). `vlines` marks a
+    per-series theoretical optimum; `ref_vlines` marks a shared threshold.
     """
     written: list[Path] = []
     for key, (ylabel, extract) in METRICS.items():
@@ -85,7 +87,7 @@ def plot_metric_family(
         out = lineplot(
             series, out_path=out_dir / f"{base_name}_{key}.png",
             xlabel=xlabel, ylabel=ylabel, title=full_title,
-            colors=colors, vlines=vlines,
+            colors=colors, vlines=vlines, ref_vlines=ref_vlines,
         )
         if out is not None:
             written.append(out)

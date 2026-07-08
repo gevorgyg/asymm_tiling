@@ -1,0 +1,618 @@
+{
+  "rho=1|128x8": {
+    "A": {
+      "bytes_in": 4194304,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 4198400,
+      "bytes_out_dirty_evicts": 4186112
+    }
+  },
+  "rho=1|64x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=1|32x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=1|16x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=1|8x128": {
+    "A": {
+      "bytes_in": 196608,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 2097152,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 512000,
+      "bytes_out_dirty_evicts": 503808
+    }
+  },
+  "rho=1|128x4": {
+    "A": {
+      "bytes_in": 8388608,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 8265728,
+      "bytes_out_dirty_evicts": 8253440
+    }
+  },
+  "rho=1|64x8": {
+    "A": {
+      "bytes_in": 2097152,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=1|32x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=1|16x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=1|8x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 2097152,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=1|4x128": {
+    "A": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 4194304,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.5|128x8": {
+    "A": {
+      "bytes_in": 4194304,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 4198400,
+      "bytes_out_dirty_evicts": 4186112
+    }
+  },
+  "rho=0.5|64x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.5|32x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.5|16x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.5|8x128": {
+    "A": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.5|128x4": {
+    "A": {
+      "bytes_in": 8388608,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 8265728,
+      "bytes_out_dirty_evicts": 8253440
+    }
+  },
+  "rho=0.5|64x8": {
+    "A": {
+      "bytes_in": 2097152,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.5|32x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.5|16x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.5|8x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.5|4x128": {
+    "A": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 2097152,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.25|128x8": {
+    "A": {
+      "bytes_in": 4194304,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 4198400,
+      "bytes_out_dirty_evicts": 4186112
+    }
+  },
+  "rho=0.25|64x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.25|32x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.25|16x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.25|8x128": {
+    "A": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.25|128x4": {
+    "A": {
+      "bytes_in": 8388608,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 8265728,
+      "bytes_out_dirty_evicts": 8253440
+    }
+  },
+  "rho=0.25|64x8": {
+    "A": {
+      "bytes_in": 2097152,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.25|32x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.25|16x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.25|8x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.25|4x128": {
+    "A": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.125|128x8": {
+    "A": {
+      "bytes_in": 4194304,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 4198400,
+      "bytes_out_dirty_evicts": 4186112
+    }
+  },
+  "rho=0.125|64x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.125|32x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.125|16x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.125|8x128": {
+    "A": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 122880
+    }
+  },
+  "rho=0.125|128x4": {
+    "A": {
+      "bytes_in": 8388608,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 8265728,
+      "bytes_out_dirty_evicts": 8253440
+    }
+  },
+  "rho=0.125|64x8": {
+    "A": {
+      "bytes_in": 2097152,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.125|32x16": {
+    "A": {
+      "bytes_in": 1048576,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.125|16x32": {
+    "A": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.125|8x64": {
+    "A": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 262144,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  },
+  "rho=0.125|4x128": {
+    "A": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 0
+    },
+    "B": {
+      "bytes_in": 524288,
+      "bytes_out_dirty_evicts": 0
+    },
+    "C": {
+      "bytes_in": 131072,
+      "bytes_out_dirty_evicts": 126976
+    }
+  }
+}

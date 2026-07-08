@@ -7,13 +7,26 @@ is neither fully associative nor scheduled; streams evict resident data. This
 experiment measures how much of L1 the C tile can actually claim before the
 paper's traffic prediction stops holding.
 
+## The two axes, defined
+
+- **budget fraction** (x-axis) = `C-tile bytes / L1 bytes` = how much of L1 the
+  resident C block demands. At budget = 1 the tile alone would fill L1, so the
+  paper's "C block sits in fast memory *and* inputs stream past it" assumption
+  cannot hold beyond there — that is the **predicted breakdown** vertical.
+- **excess** (y-axis) = `measured L1 BytesIn / predicted L1 BytesIn`, the
+  prediction being the line-aware paper formula. **excess = 1** means the
+  simulator moved exactly the traffic the paper predicts — the model holds.
+  **excess > 1** means the cache re-fetched lines the paper assumed stayed
+  resident — the model has broken. This reference sits on the plot as a grey
+  horizontal at 1.
+
 ## Claim under test
 
-With the aspect fixed at the predicted optimum (`T_N/T_M = 1/ρ = 4`), the
-measured L1 BytesIn should equal the line-aware paper formula (excess = 1)
-while the C tile + stream slices fit in L1, and peel away as the C-tile
-budget approaches the L1 size. The paper implicitly claims validity up to
-budget ≈ 1; the interesting output is the *actual* usable fraction.
+With the aspect fixed at the predicted optimum (`T_N/T_M = 1/ρ = 4`), excess
+should stay pinned at 1 while the C tile fits, then climb away from 1 as the
+budget fraction approaches (and passes) the predicted-breakdown vertical. The
+headline output is *where* excess leaves 1 — the true usable fraction of L1,
+which is below the paper's implicit budget ≈ 1.
 
 ## Setup
 

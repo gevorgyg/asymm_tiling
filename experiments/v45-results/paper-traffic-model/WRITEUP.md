@@ -40,10 +40,10 @@ extreme aspects are expected and quantified by the line-aware curve instead.
 
 m = n = k = 256, A/C at 8 B, B ∈ {8, 4, 2, 1} B (ρ = 1 … 1/8), TILE_K = k,
 register tile 4³, `--outer_products`. Two constant-area families (512- and
-1024-word C tiles = 4 K/8 K of a 16 K L1). Two regimes: **ideal**
-(fully-associative L1/L2, the paper's model) and **realistic 8-way** — at
-power-of-two matrix strides the row stride aliases entire tile columns into
-one set, a pathology the paper's model cannot see.
+1024-word C tiles = 4 K/8 K of a 16 K L1). Two regimes: **fully-associative**
+L1/L2 (the paper's model) and **8-way associative** — at power-of-two matrix
+strides the row stride aliases entire tile columns into one set, a pathology
+the paper's model cannot see.
 
 ## Pilot validation: the model regime is exact
 
@@ -67,7 +67,7 @@ segment at this tile is whole lines: A rows 2048 B = 32 lines, B rows
 64 B = 1 line, C rows 256 B = 4 lines, so the line-aware and word models
 coincide.
 
-The same cell with a realistic 8-way L1 moves **43,523,072 B in (7.5×) and
+The same cell with an 8-way L1 moves **43,523,072 B in (7.5×) and
 33,554,432 B out (64×)**. The mechanism is stride aliasing: 16 K / 64 B /
 8-way gives 32 sets, so the set span is 32·64 = 2048 B — exactly the A/C
 row stride of 256·8 B. Every row of a C-tile column-of-lines therefore maps

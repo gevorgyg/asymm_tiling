@@ -221,6 +221,7 @@ def run() -> None:
         title="Per-matrix balance sweep (best of both families)",
         caption=caption, xlabel="log₂(T_N / T_M)",
         colors={f"ρ={r:g}": c for r, c in PALETTE_RHO.items()},
+        vlines={f"ρ={rho:g}": math.log2(1 / rho) for rho, _ in RHOS},
     )
 
     lines = [f"Non-default config: {caption}, flags: --outer_products\n",

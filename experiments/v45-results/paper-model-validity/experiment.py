@@ -87,6 +87,8 @@ def run() -> None:
     lineplot(
         dict(sorted(series.items())),
         out_path=EXPERIMENT_DIR / "excess_vs_budget.png",
+        hlines={"paper model exact (excess = 1)": 1.0},
+        ref_vlines={"C tile = L1 (predicted breakdown)": 0.0},
         xlabel="log₂(C-tile bytes / L1 bytes)",
         ylabel="measured / predicted L1 BytesIn",
         title="Fast-memory model validity: traffic excess vs C-tile budget\n" + caption,
@@ -99,6 +101,7 @@ def run() -> None:
         cells, out_dir=EXPERIMENT_DIR, base_name="model_validity",
         title="Model-validity sweep (aspect fixed at predicted optimum)",
         caption=caption, xlabel="log₂(C-tile bytes / L1 bytes)",
+        ref_vlines={"C tile = L1 (predicted breakdown)": 0.0},
     )
 
     lines = [f"Non-default config: {caption}, flags: --outer_products\n",
