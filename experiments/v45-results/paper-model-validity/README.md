@@ -1,6 +1,6 @@
 # paper-model-validity
 
-Non-default config: m×n×k=256×256×256, TILE_K=256, aspect=T_N/T_M = 4 (predicted optimum), order=outer products, flags: --outer_products
+Non-default config: m×n×k=256×1024×128, TILE_K=128, aspect=T_N/T_M = 4 (predicted optimum)
 
 Prediction = line-aware paper formula; excess of 1.0 means the two-level model holds exactly.
 
@@ -9,12 +9,12 @@ Prediction = line-aware paper formula; excess of 1.0 means the two-level model h
 
 ## Traffic excess (measured / predicted L1 BytesIn)
 
-| regime | 4×16 (512B C tile) | 8×32 (2K C tile) | 16×64 (8K C tile) | 32×128 (32K C tile) | 64×256 (128K C tile) |
-|---|---|---|---|---|---|
-| 8-way, L1=16K | 0.76 | 1.48 | 8.56 | 14.24 | 22.81 |
-| 8-way, L1=64K | 0.73 | 0.66 | 0.83 | 4.70 | 22.67 |
-| fully-assoc, L1=16K | 1.00 | 1.00 | 1.00 | 14.20 | 22.67 |
-| fully-assoc, L1=64K | 0.37 | 0.59 | 1.00 | 1.00 | 22.67 |
+| regime | 4×16 (512B C tile) | 8×32 (2K C tile) | 16×64 (8K C tile) | 32×128 (32K C tile) | 64×256 (128K C tile) | 128×512 (512K C tile) | 256×1024 (2048K C tile) |
+|---|---|---|---|---|---|---|---|
+| 8-way, L1=16K | 0.72 | 1.14 | 7.37 | 12.06 | 17.46 | 27.21 | 33.00 |
+| 8-way, L1=64K | 0.70 | 0.95 | 7.13 | 11.54 | 17.06 | 22.50 | 26.70 |
+| fully-assoc, L1=16K | 0.36 | 1.00 | 1.00 | 12.00 | 17.25 | 27.67 | 33.00 |
+| fully-assoc, L1=64K | 0.36 | 0.57 | 0.62 | 1.00 | 17.25 | 22.50 | 26.70 |
 
 ![cycles](model_validity_cycles.png)
 

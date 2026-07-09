@@ -21,21 +21,21 @@ Each x point takes the best (minimum) value over all tile shapes.
 
 | metric | precision | L1 | tile (M×N×K) | value |
 |---|---|---|---|---|
-| cycles | Symmetric Double | L1=64K | 32×32×96 | 3,577,752 |
-| cycles | Asymmetric | L1=64K | 24×96×96 | 2,886,564 |
-| cycles | Symmetric Single | L1=64K | 32×96×96 | 2,537,386 |
-| cycles_nomulacc | Symmetric Double | L1=64K | 32×32×96 | 3,467,160 |
-| cycles_nomulacc | Asymmetric | L1=64K | 24×96×96 | 2,775,972 |
-| cycles_nomulacc | Symmetric Single | L1=64K | 32×96×96 | 2,426,794 |
-| l1_traffic | Symmetric Double | L1=64K | 32×8×8 | 442,368 |
+| cycles | Symmetric Double | L1=64K | 48×96×8 | 3,947,904 |
+| cycles | Asymmetric | L1=32K | 8×96×8 | 3,520,052 |
+| cycles | Symmetric Single | L1=64K | 96×96×8 | 3,173,760 |
+| cycles_nomulacc | Symmetric Double | L1=64K | 48×96×8 | 3,837,312 |
+| cycles_nomulacc | Asymmetric | L1=32K | 8×96×8 | 3,409,460 |
+| cycles_nomulacc | Symmetric Single | L1=64K | 96×96×8 | 3,063,168 |
+| l1_traffic | Symmetric Double | L1=64K | 48×96×8 | 368,640 |
 | l1_traffic | Asymmetric | L1=64K | 8×8×8 | 239,616 |
 | l1_traffic | Symmetric Single | L1=64K | 8×8×8 | 147,456 |
-| l2_traffic | Symmetric Double | L1=16K | 48×96×8 | 369,024 |
+| l2_traffic | Symmetric Double | L1=4K | 48×96×8 | 368,640 |
 | l2_traffic | Asymmetric | L1=4K | 8×8×8 | 239,616 |
 | l2_traffic | Symmetric Single | L1=4K | 8×8×8 | 147,456 |
-| dram_traffic | Symmetric Double | L1=16K | 48×96×8 | 369,024 |
+| dram_traffic | Symmetric Double | L1=4K | 48×96×8 | 368,640 |
 | dram_traffic | Asymmetric | L1=4K | 8×8×8 | 239,616 |
 | dram_traffic | Symmetric Single | L1=4K | 8×8×8 | 147,456 |
-| total_traffic | Symmetric Double | L1=64K | 32×8×96 | 1,359,872 |
-| total_traffic | Asymmetric | L1=64K | 16×8×48 | 731,392 |
+| total_traffic | Symmetric Double | L1=64K | 48×96×8 | 1,253,376 |
+| total_traffic | Asymmetric | L1=64K | 16×8×8 | 734,848 |
 | total_traffic | Symmetric Single | L1=64K | 8×8×8 | 443,392 |

@@ -18,7 +18,9 @@ from experiments.harness import (
 
 EXPERIMENT_DIR = Path(__file__).resolve().parent
 
-M = N = K = 256
+# Wide N so the largest aspect-4 C tile (256×1024 = 2 MB) still fits the matrix
+# and reaches log2(C-tile / 16K L1) = 7.
+M, N, K = 256, 1024, 128
 A_P, B_P = 8, 2          # rho = 1/4, predicted optimal aspect = 4
 LINE = 64
 
@@ -30,11 +32,11 @@ BASE_OVERRIDES: dict[str, object] = {
     "TILE_K": K,
 }
 
-TILES = [(4, 16), (8, 32), (16, 64), (32, 128), (64, 256)]   # aspect 4 each
+# aspect 4 throughout; C-tile bytes = T_M*T_N*8 → log2(bytes/16K) runs -5..7
+TILES = [(4, 16), (8, 32), (16, 64), (32, 128), (64, 256), (128, 512), (256, 1024)]
 L1_SIZES = [16384, 65536]                                     # L2 = 4×L1
 
-FLAGS = Flags(b_source="mem", stationary="C", three_d_reg=True,
-              outer_products=True)
+FLAGS = Flags(b_source="mem", stationary="C", three_d_reg=True)
 
 
 def _regimes(l1: int) -> list[tuple[str, dict]]:
@@ -75,8 +77,7 @@ def run() -> None:
 
     caption = describe_changes(
         {k: v for k, v in BASE_OVERRIDES.items() if k != "TILE_K"}, base,
-        extras={"TILE_K": K, "aspect": "T_N/T_M = 4 (predicted optimum)",
-                "order": "outer products"},
+        extras={"TILE_K": K, "aspect": "T_N/T_M = 4 (predicted optimum)"},
     )
 
     series = {
@@ -104,7 +105,7 @@ def run() -> None:
         ref_vlines={"C tile = L1 (predicted breakdown)": 0.0},
     )
 
-    lines = [f"Non-default config: {caption}, flags: --outer_products\n",
+    lines = [f"Non-default config: {caption}\n",
              "Prediction = line-aware paper formula; excess of 1.0 means the "
              "two-level model holds exactly.\n",
              "![excess](excess_vs_budget.png)\n"]

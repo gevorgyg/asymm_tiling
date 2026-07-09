@@ -19,7 +19,7 @@ the stretched tile dimension is the *column* one:
 | writes | L1 BytesOut (with mandatory end-of-run flush) |
 | `z × M/z` C block | `TILE_M × TILE_N`, `M = TILE_M·TILE_N` C words |
 | ρ | `B_PRECISION / A_PRECISION` |
-| streaming subrows/subcols | `--outer_products` instruction order |
+| streaming subrows/subcols | C-stationary (rank-1 streaming) order |
 
 ## Claims under test
 
@@ -39,7 +39,7 @@ extreme aspects are expected and quantified by the line-aware curve instead.
 ## Setup
 
 m = n = k = 256, A/C at 8 B, B ∈ {8, 4, 2, 1} B (ρ = 1 … 1/8), TILE_K = k,
-register tile 4³, `--outer_products`. Two constant-area families (512- and
+register tile 4³, C-stationary. Two constant-area families (512- and
 1024-word C tiles = 4 K/8 K of a 16 K L1). Two regimes: **fully-associative**
 L1/L2 (the paper's model) and **8-way associative** — at power-of-two matrix
 strides the row stride aliases entire tile columns into one set, a pathology
@@ -48,7 +48,7 @@ the paper's model cannot see.
 ## Pilot validation: the model regime is exact
 
 One pilot cell, worked end to end. Config: m = n = k = 256, A/C at 8 B,
-B at 2 B (ρ = 1/4), tile 32×32, TILE_K = 256, `--outer_products`,
+B at 2 B (ρ = 1/4), tile 32×32, TILE_K = 256, C-stationary,
 fully-associative 16 K L1.
 
 Reads formula, term by term (mnk = 256³ = 16,777,216):
