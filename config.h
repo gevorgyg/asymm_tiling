@@ -44,6 +44,7 @@ struct Config {
     // PRNG FIFO (cycle-accurate MMIO generator) -- used only with --Bsource prng_fifo
     uint prng_fifo_capacity;
     uint prng_fifo_gen_cost;
+    uint prng_fifo_seed_bytes;   // bytes of seed stored per B tile
 
     // Hardware register tile -- used only with --3dreg.
     uint reg_m = 0;

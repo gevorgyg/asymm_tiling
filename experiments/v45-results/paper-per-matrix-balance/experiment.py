@@ -48,7 +48,7 @@ FAMILIES = {
 OPT_TILE = {1.0: (32, 32), 0.5: (16, 32), 0.25: (16, 64), 0.125: (8, 64)}
 
 FLAGS = Flags(b_source="mem", stationary="C", three_d_reg=True,
-              outer_products=True, mulac_norecord=True)
+              mulac_norecord=True)
 
 
 def _lines(seg_bytes: int) -> int:
@@ -112,7 +112,7 @@ def _sweep(base: str) -> list[dict]:
                     base_config_text=base,
                     base_overrides=overrides,
                     flags=Flags(b_source="mem", stationary="C",
-                                three_d_reg=True, outer_products=True),
+                                three_d_reg=True),
                 )
                 records.append({
                     "rho": rho, "b_p": b_p, "area": area, "tm": tm, "tn": tn,
@@ -206,7 +206,7 @@ def run() -> None:
     records = _sweep(base)
     caption = describe_changes(
         {k: v for k, v in BASE_OVERRIDES.items() if k != "TILE_K"}, base,
-        extras={"TILE_K": K_DIM, "order": "outer products"},
+        extras={"TILE_K": K_DIM},
     )
 
     _plot_per_matrix(records, caption)
@@ -224,7 +224,7 @@ def run() -> None:
         vlines={f"ρ={rho:g}": math.log2(1 / rho) for rho, _ in RHOS},
     )
 
-    lines = [f"Non-default config: {caption}, flags: --outer_products\n",
+    lines = [f"Non-default config: {caption}\n",
              "![per-matrix reads](per_matrix_reads_vs_model.png)\n",
              "![balance](balance_B_over_A.png)\n",
              "![writes](per_matrix_writes.png)\n"]

@@ -51,6 +51,22 @@ writes must be C-only.
 idealization breaks on a real cache: traffic excess vs C-tile budget as a
 fraction of L1, across sizes and associativities.
 
+**paper-model-validity-fifo** — the dense-times-random reading: B is
+recomputed by the PRNG-FIFO device from a per-tile seed instead of fetched.
+A's per-element DRAM cost and B's per-element generation cost are tuned equal
+(20 cycles), A and B share precision. Sweeps the C-tile budget C-stationary
+and reports the six metric views, an associativity excess (8-way / fully-assoc
+L1 traffic), and the FIFO generation load.
+
+**paper-model-validity-fifo-bstat** — the same FIFO experiment B-stationary:
+each B subtile is generated once and reused across the M stream (far fewer
+generations) at the cost of streaming C through L1. Run alongside the
+C-stationary version to see the recompute-vs-C-traffic tradeoff.
+
+**prng-exploration** — sweeps the PRNG-FIFO knobs one at a time from a parity
+baseline (A DRAM cost, B generation cost, seed size, FIFO depth), C- vs
+B-stationary, plotting cycles/traffic per knob plus FIFO stalls vs depth.
+
 Each experiment writes:
 - `<experiment-dir>/results.json` — on-disk cache, one entry per sweep cell
 - `<experiment-dir>/README.md` — the markdown report

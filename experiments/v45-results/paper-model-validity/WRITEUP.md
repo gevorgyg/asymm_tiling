@@ -30,12 +30,14 @@ which is below the paper's implicit budget ≈ 1.
 
 ## Setup
 
-m = n = k = 256, ρ = 1/4 (A/C 8 B, B 2 B), TILE_K = k, `--outer_products`.
-Tiles (4×16 … 64×256) grow the C tile from 512 B to 128 K at constant
-aspect 4; L1 ∈ {16 K, 64 K} (L2 = 4×L1) × {fully-assoc, 8-way}. Plot
-`measured/predicted` vs `log₂(C-tile bytes / L1 bytes)`: curves for the two
-L1 sizes should collapse onto one universal curve per associativity if the
-budget fraction is the controlling variable.
+m = 256, n = 1024, k = 128 (wide n so the largest tile still fits),
+ρ = 1/4 (A/C 8 B, B 2 B), TILE_K = k, C-stationary. Tiles (4×16 … 256×1024)
+grow the C tile from 512 B to 2 MB at constant aspect 4, so
+`log₂(C-tile / 16 K L1)` runs from -5 to 7; L1 ∈ {16 K, 64 K} (L2 = 4×L1) ×
+{fully-assoc, 8-way}. Plot `measured/predicted` vs
+`log₂(C-tile bytes / L1 bytes)`: curves for the two L1 sizes should collapse
+onto one universal curve per associativity if the budget fraction is the
+controlling variable.
 
 ## Expected result
 

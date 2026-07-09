@@ -47,7 +47,7 @@ Stationary parseStationary(const std::string& str)
 }
 
 void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
-                          bool outer_products, uint reg_m, uint reg_n, uint reg_k,
+                          uint reg_m, uint reg_n, uint reg_k, uint seed_bytes,
                           bool b_fifo_pipelined = false)
 {
     InstGenerator gen{InstGenerator::Params{
@@ -59,6 +59,7 @@ void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
         .reg_m       = reg_m,
         .reg_n       = reg_n,
         .reg_k       = reg_k,
+        .seed_bytes  = seed_bytes,
     }};
 
     std::ofstream ofs(instruction_path);
@@ -68,7 +69,7 @@ void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
     }
 
     InstGenerator::TileShape tile{c.tile_m, c.tile_n, c.tile_k};
-    gen.generate(tile, ofs, b_stationary, b_fifo, outer_products, b_fifo_pipelined);
+    gen.generate(tile, ofs, b_stationary, b_fifo, b_fifo_pipelined);
 }
 
 
@@ -86,6 +87,7 @@ std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
     if (source != BSource::PrngFifo && source != BSource::PrngFifoPipelined) {
         u.push_back("PRNG_FIFO_CAPACITY");
         u.push_back("PRNG_FIFO_GEN_COST");
+        u.push_back("PRNG_FIFO_SEED_BYTES");
     }
     if (!use_3dregisters) {
         u.push_back("REG_M");
@@ -191,7 +193,6 @@ int main(int argc, char* argv[])
     int         trace_level      = Interpreter::trace_instructions;
     bool        use_3dregisters  = false;
     bool        mulac_norecord   = false;
-    bool        outer_products   = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -210,7 +211,6 @@ int main(int argc, char* argv[])
         else if (arg == "--assembler_input") assembler_input = need_arg("--assembler_input");
         else if (arg == "--3dregisters")     use_3dregisters = true;
         else if (arg == "--mulac_norecord")  mulac_norecord  = true;
-        else if (arg == "--outer_products")  outer_products  = true;
         else if (arg == "--trace_level") {
             trace_level = std::atoi(need_arg("--trace_level").c_str());
             if (trace_level < Interpreter::trace_instructions ||
@@ -252,14 +252,11 @@ int main(int argc, char* argv[])
     const bool b_fifo_pipelined   = (b_source == BSource::PrngFifoPipelined);
     const bool b_stationary       = (stationary == Stationary::B);
 
-    if (outer_products && (b_stationary || !use_3dregisters)) {
-        std::cerr << "error: --outer_products requires --stationary C and --3dregisters\n";
+    if (b_fifo_pipelined && (!use_3dregisters || b_stationary)) {
+        std::cerr << "error: --Bsource prng_fifo_pipelined requires --stationary C and --3dregisters\n";
         exit(1);
     }
-    if (b_fifo_pipelined && (!outer_products || !use_3dregisters)) {
-        std::cerr << "error: --Bsource prng_fifo_pipelined requires --outer_products and --3dregisters\n";
-        exit(1);
-    }
+
 
     const uint a_bytes = cfg.a_height * cfg.a_width  * cfg.a_precision;
     const uint b_bytes = cfg.a_width  * cfg.b_width  * cfg.b_precision;
@@ -316,8 +313,8 @@ int main(int argc, char* argv[])
     if (!assembler_input.empty()) {
         run_path = assembler_input;
     } else {
-        generateInstructions(cfg, b_stationary, b_fifo, outer_products, reg_m, reg_n, reg_k,
-                             b_fifo_pipelined);
+        generateInstructions(cfg, b_stationary, b_fifo, reg_m, reg_n, reg_k,
+                             cfg.prng_fifo_seed_bytes, b_fifo_pipelined);
     }
 
     Interpreter::Options opts{
