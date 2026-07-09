@@ -55,7 +55,7 @@ public:
   explicit InstGenerator(Params p);
 
   void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false,
-                bool outer_products = false) const;
+                bool outer_products = false, bool b_fifo_pipelined = false) const;
 
 private:
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
@@ -75,6 +75,11 @@ private:
   void emitTraceMultiLevelCStationaryOuterProducts(const GhostMat &A, const GhostMat &B,
                                                    const GhostMat &C, TileShape tile,
                                                    std::ostream &os, bool b_fifo) const;
+  // Pipelined prefill variant: pre-generates next session while computing
+  // current session, overlapping generation latency with computation.
+  void emitTraceMultiLevelCStationaryOuterProductsPipelined(const GhostMat &A, const GhostMat &B,
+                                                             const GhostMat &C, TileShape tile,
+                                                             std::ostream &os) const;
   void emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                        TileShape tile, std::ostream &os, bool b_fifo) const;
   void emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,

@@ -29,7 +29,7 @@ void checkTileDivides(const InstGenerator::GhostMat &A,
 }
 
 void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, bool b_fifo,
-                             bool outer_products) const {
+                             bool outer_products, bool b_fifo_pipelined) const {
   checkTileDivides(A_, B_, ts);
 
   if (outer_products && (b_stationary || reg_m_ == 0)) {
@@ -51,7 +51,11 @@ void InstGenerator::generate(TileShape ts, std::ostream &os, bool b_stationary, 
 
   const GhostMat C{B_.width, A_.height, c_ew, c_addr};
 
-  emitTrace(A_, B_, C, ts, os, b_stationary, b_fifo, outer_products);
+  if (b_fifo_pipelined) {
+    emitTraceMultiLevelCStationaryOuterProductsPipelined(A_, B_, C, ts, os);
+  } else {
+    emitTrace(A_, B_, C, ts, os, b_stationary, b_fifo, outer_products);
+  }
 }
 
 void InstGenerator::emitTrace(const GhostMat &A, const GhostMat &B,
@@ -359,6 +363,83 @@ void InstGenerator::emitTraceSingleLevelCStationary(const GhostMat &A, const Gho
       store(os, C, ti * tile.m, tj * tile.n, ctw, cth, c_id);
     }
   }
+}
+
+void InstGenerator::emitTraceMultiLevelCStationaryOuterProductsPipelined(
+    const GhostMat &A, const GhostMat &B, const GhostMat &C,
+    TileShape tile, std::ostream &os) const
+{
+  constexpr char a_id[] = "%ra";
+  constexpr char b_id[] = "%rb";
+  constexpr char c_id[] = "%rc";
+
+  // Pipelined FIFO device MMIO addresses (separate from the non-pipelined FIFO).
+  constexpr Addr PREF_SEED_REG  = 0xFF200000;
+  constexpr Addr PREF_START_REG = 0xFF200004;
+  constexpr Addr SWAP_REG       = 0xFF200008;
+  constexpr Addr STOP_REG       = 0xFF20000C;
+  constexpr Addr DATA_REG       = 0xFF200010;
+
+  const uint M_tiles = A.height / tile.m;
+  const uint N_tiles = B.width  / tile.n;
+  const uint K_tiles = A.width  / tile.k;
+
+  // Helper: seed address for tile (ti, tj, tk) — same scheme as other emitters.
+  auto seedAddr = [&](uint ti, uint tj, uint tk) -> Addr {
+    (void)ti;   // ti is not part of the PRNG session index in this scheme
+    return B.addr + (tk * N_tiles + tj) * 8;
+  };
+
+  // Bootstrap: start pre-generating tile (0,0,0) before the loop.
+  // The window between PREF_START and the first SWAP is small (just the
+  // seed-load instructions), but every subsequent tile gets a full previous-
+  // session worth of prefill time.
+  {
+    emit(os, "ltea", seedAddr(0, 0, 0), 1, 1, 1, 8, b_id);
+    emit(os, "tmov", PREF_SEED_REG, 1, 1, 1, 8, b_id);
+    emit(os, "tmov", PREF_START_REG, 1, 1, 1, 8, b_id);
+  }
+
+  for (uint ti = 0; ti < M_tiles; ++ti) {
+    for (uint tj = 0; tj < N_tiles; ++tj) {
+      for (uint tk = 0; tk < K_tiles; ++tk) {
+        // SWAP: make the pre-generated elements for this session available.
+        emit(os, "tmov", SWAP_REG, 1, 1, 1, 8, b_id);
+
+        // Immediately start pre-generating the NEXT session so it runs
+        // concurrently with this session's computation.
+        bool is_last = (ti == M_tiles - 1 && tj == N_tiles - 1 && tk == K_tiles - 1);
+        if (!is_last) {
+          uint nti = ti, ntj = tj, ntk = tk + 1;
+          if (ntk == K_tiles) { ntk = 0; ++ntj; }
+          if (ntj == N_tiles) { ntj = 0; ++nti; }
+          emit(os, "ltea", seedAddr(nti, ntj, ntk), 1, 1, 1, 8, b_id);
+          emit(os, "tmov", PREF_SEED_REG, 1, 1, 1, 8, b_id);
+          emit(os, "tmov", PREF_START_REG, 1, 1, 1, 8, b_id);
+        }
+
+        // C-tile prefetch: its cycles add to the prefill window for this
+        // session's data (the prefill is already running after PREF_START above).
+        emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
+
+        // Inner computation: B elements from the pipelined DATA_REG.
+        for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
+          for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {
+            emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
+
+            for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+              load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_, reg_k_, reg_m_, a_id);
+              load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+              os << "tmulac " << a_id << ", " << b_id << ", " << c_id << "\n";
+              store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_, reg_n_, reg_m_, c_id);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
 }
 
 Addr InstGenerator::tileAddr(const GhostMat &M, uint row,

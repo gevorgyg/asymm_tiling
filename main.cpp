@@ -15,7 +15,7 @@
 constexpr char instruction_path[] = "./matmul.matv";
 
 
-enum class BSource    { Memory, PrngMem, PrngFifo };
+enum class BSource    { Memory, PrngMem, PrngFifo, PrngFifoPipelined };
 enum class Stationary { C, B };
 
 
@@ -29,10 +29,11 @@ WritePolicy parseWritePolicy(const std::string& str)
 
 BSource parseBSource(const std::string& str)
 {
-    if (str == "mem")       return BSource::Memory;
-    if (str == "prng_mem")  return BSource::PrngMem;
-    if (str == "prng_fifo") return BSource::PrngFifo;
-    std::cerr << "error: --Bsource must be one of {prng_fifo, prng_mem, mem}; got '"
+    if (str == "mem")                   return BSource::Memory;
+    if (str == "prng_mem")              return BSource::PrngMem;
+    if (str == "prng_fifo")             return BSource::PrngFifo;
+    if (str == "prng_fifo_pipelined")   return BSource::PrngFifoPipelined;
+    std::cerr << "error: --Bsource must be one of {mem, prng_mem, prng_fifo, prng_fifo_pipelined}; got '"
               << str << "'\n";
     exit(1);
 }
@@ -46,7 +47,8 @@ Stationary parseStationary(const std::string& str)
 }
 
 void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
-                          bool outer_products, uint reg_m, uint reg_n, uint reg_k)
+                          bool outer_products, uint reg_m, uint reg_n, uint reg_k,
+                          bool b_fifo_pipelined = false)
 {
     InstGenerator gen{InstGenerator::Params{
         .a_height    = c.a_height,
@@ -66,7 +68,7 @@ void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
     }
 
     InstGenerator::TileShape tile{c.tile_m, c.tile_n, c.tile_k};
-    gen.generate(tile, ofs, b_stationary, b_fifo, outer_products);
+    gen.generate(tile, ofs, b_stationary, b_fifo, outer_products, b_fifo_pipelined);
 }
 
 
@@ -81,7 +83,7 @@ std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
         u.push_back("PRNG_ACCESS_CYCLES");
         u.push_back("PRNG_GEN_COST_PER_LINE");
     }
-    if (source != BSource::PrngFifo) {
+    if (source != BSource::PrngFifo && source != BSource::PrngFifoPipelined) {
         u.push_back("PRNG_FIFO_CAPACITY");
         u.push_back("PRNG_FIFO_GEN_COST");
     }
@@ -154,6 +156,21 @@ void printPrngFifoTable(const PrngFifoDev::Stats& s)
            (unsigned long long)s.stalls,
            (unsigned long long)s.stall_cycles,
            (unsigned long long)s.generates);
+}
+
+void printPrngFifoPipelinedTable(const PrngFifoPipelinedDev::Stats& s)
+{
+    printf("\n| PRNG FIFO Pipelined | Starts | Stops | Swaps | Reads | Stalls | StallCycles | Generates | PrefillGenerates |\n");
+    printf("|---|---|---|---|---|---|---|---|---|\n");
+    printf("| PRNG FIFO Pipelined | %llu | %llu | %llu | %llu | %llu | %llu | %llu | %llu |\n",
+           (unsigned long long)s.starts,
+           (unsigned long long)s.stops,
+           (unsigned long long)s.swaps,
+           (unsigned long long)s.reads,
+           (unsigned long long)s.stalls,
+           (unsigned long long)s.stall_cycles,
+           (unsigned long long)s.generates,
+           (unsigned long long)s.prefill_generates);
 }
 
 void printSystemTable(size_t cycles)
@@ -230,12 +247,17 @@ int main(int argc, char* argv[])
         mulac_cycles = cfg.mulac_cycles;
     }
 
-    const bool b_generated  = (b_source == BSource::PrngMem);
-    const bool b_fifo       = (b_source == BSource::PrngFifo);
-    const bool b_stationary = (stationary == Stationary::B);
+    const bool b_generated        = (b_source == BSource::PrngMem);
+    const bool b_fifo             = (b_source == BSource::PrngFifo);
+    const bool b_fifo_pipelined   = (b_source == BSource::PrngFifoPipelined);
+    const bool b_stationary       = (stationary == Stationary::B);
 
     if (outer_products && (b_stationary || !use_3dregisters)) {
         std::cerr << "error: --outer_products requires --stationary C and --3dregisters\n";
+        exit(1);
+    }
+    if (b_fifo_pipelined && (!outer_products || !use_3dregisters)) {
+        std::cerr << "error: --Bsource prng_fifo_pipelined requires --outer_products and --3dregisters\n";
         exit(1);
     }
 
@@ -267,7 +289,7 @@ int main(int argc, char* argv[])
                  .access_cycles     = cfg.prng_access_cycles,
                  .gen_cost_per_line = cfg.prng_gen_cost_per_line},
 
-        .prng_fifo = {.ctrl_start_addr = 0xFF000000, // MMIO addresses
+        .prng_fifo = {.ctrl_start_addr = 0xFF000000,
                       .ctrl_stop_addr  = 0xFF00000C,
                       .seed_addr       = 0xFF000004,
                       .data_start_addr = 0xFF000008,
@@ -275,6 +297,16 @@ int main(int argc, char* argv[])
                       .access_cycles   = cfg.prng_access_cycles,
                       .fifo_capacity   = b_fifo ? cfg.prng_fifo_capacity : 0,
                       .gen_cost        = b_fifo ? cfg.prng_fifo_gen_cost : 0},
+
+        .prng_fifo_pipelined = {.pref_seed_addr   = 0xFF200000,
+                                .pref_start_addr  = 0xFF200004,
+                                .swap_addr        = 0xFF200008,
+                                .stop_addr        = 0xFF20000C,
+                                .data_start_addr  = 0xFF200010,
+                                .data_end_addr    = 0xFF300010,
+                                .access_cycles    = cfg.prng_access_cycles,
+                                .fifo_capacity    = b_fifo_pipelined ? cfg.prng_fifo_capacity : 0,
+                                .gen_cost         = b_fifo_pipelined ? cfg.prng_fifo_gen_cost : 0},
     };
 
     size_t cpu_cycles = 0;
@@ -284,7 +316,8 @@ int main(int argc, char* argv[])
     if (!assembler_input.empty()) {
         run_path = assembler_input;
     } else {
-        generateInstructions(cfg, b_stationary, b_fifo, outer_products, reg_m, reg_n, reg_k);
+        generateInstructions(cfg, b_stationary, b_fifo, outer_products, reg_m, reg_n, reg_k,
+                             b_fifo_pipelined);
     }
 
     Interpreter::Options opts{
@@ -312,8 +345,9 @@ int main(int argc, char* argv[])
 
     printCacheTable(mem.l1(), mem.l2());
     printDramTable(mem.l2());
-    if (b_generated) printPrngTable(mem.prng().stats());
-    if (b_fifo)      printPrngFifoTable(mem.prng_fifo().stats());
+    if (b_generated)      printPrngTable(mem.prng().stats());
+    if (b_fifo)           printPrngFifoTable(mem.prng_fifo().stats());
+    if (b_fifo_pipelined) printPrngFifoPipelinedTable(mem.prng_fifo_pipelined().stats());
     printSystemTable(cpu_cycles);
 
     return 0;

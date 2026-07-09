@@ -24,7 +24,7 @@ def _unused_keys(flags: runner.Flags) -> set[str]:
     u: set[str] = set()
     if flags.b_source != "prng_mem":
         u.update({"PRNG_ACCESS_CYCLES", "PRNG_GEN_COST_PER_LINE"})
-    if flags.b_source != "prng_fifo":
+    if flags.b_source not in ("prng_fifo", "prng_fifo_pipelined"):
         u.update({"PRNG_FIFO_CAPACITY", "PRNG_FIFO_GEN_COST"})
     if not flags.three_d_reg:
         u.update({"REG_M", "REG_N", "REG_K"})

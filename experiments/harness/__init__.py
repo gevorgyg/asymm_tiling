@@ -17,6 +17,7 @@ from .parse import (
     DramStats,
     Metrics,
     PrngFifoStats,
+    PrngFifoPipelinedStats,
     PrngStats,
     parse_stdout,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "PALETTE_REGION",
     "PALETTE_RHO",
     "PrngFifoStats",
+    "PrngFifoPipelinedStats",
     "PrngStats",
     "Region",
     "RegionStats",

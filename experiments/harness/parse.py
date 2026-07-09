@@ -42,6 +42,18 @@ class PrngFifoStats:
 
 
 @dataclass
+class PrngFifoPipelinedStats:
+    starts: int = 0
+    stops: int = 0
+    swaps: int = 0
+    reads: int = 0
+    stalls: int = 0
+    stall_cycles: int = 0
+    generates: int = 0
+    prefill_generates: int = 0
+
+
+@dataclass
 class Metrics:
     l1: CacheStats = field(default_factory=CacheStats)
     l2: CacheStats = field(default_factory=CacheStats)
@@ -49,6 +61,7 @@ class Metrics:
     cycles: int = 0
     prng: Optional[PrngStats] = None
     prng_fifo: Optional[PrngFifoStats] = None
+    prng_fifo_pipelined: Optional[PrngFifoPipelinedStats] = None
     unused_options: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -65,6 +78,8 @@ class Metrics:
             cycles=d["cycles"],
             prng=PrngStats(**d["prng"]) if d.get("prng") else None,
             prng_fifo=PrngFifoStats(**d["prng_fifo"]) if d.get("prng_fifo") else None,
+            prng_fifo_pipelined=(PrngFifoPipelinedStats(**d["prng_fifo_pipelined"])
+                                  if d.get("prng_fifo_pipelined") else None),
             unused_options=list(d.get("unused_options", [])),
         )
 
@@ -149,6 +164,17 @@ def parse_stdout(stdout: str) -> Metrics:
                 stalls=int(rows[0][4]),
                 stall_cycles=int(rows[0][5]),
                 generates=int(rows[0][6]),
+            )
+        elif tag == "PRNG FIFO Pipelined":
+            m.prng_fifo_pipelined = PrngFifoPipelinedStats(
+                starts=int(rows[0][1]),
+                stops=int(rows[0][2]),
+                swaps=int(rows[0][3]),
+                reads=int(rows[0][4]),
+                stalls=int(rows[0][5]),
+                stall_cycles=int(rows[0][6]),
+                generates=int(rows[0][7]),
+                prefill_generates=int(rows[0][8]),
             )
         elif tag == "System":
             m.cycles = int(rows[0][1])

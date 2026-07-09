@@ -1,17 +1,19 @@
-GEN_DIR := instruction-stream-generator
-INT_DIR := interpreter
+GEN_DIR    := instruction-stream-generator
+INT_DIR    := interpreter
 MATMUL_DIR := $(INT_DIR)/matmul
-MEM_DIR := memory-system
-CACHE_DIR := $(MEM_DIR)/cache
-MAIN_DIR := $(MEM_DIR)/mainmem
-PRNG_DIR := $(MEM_DIR)/prng
-FIFO_DIR := $(MEM_DIR)/prng_fifo
+MEM_DIR    := memory-system
+CACHE_DIR  := $(MEM_DIR)/cache
+MAIN_DIR   := $(MEM_DIR)/mainmem
+PRNG_DIR   := $(MEM_DIR)/prng
+FIFO_DIR   := $(MEM_DIR)/prng_fifo
+PFILO_DIR  := $(MEM_DIR)/prng_fifo_pipelined
 
 MEM_SRCS := $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp \
             $(CACHE_DIR)/cache.cpp $(CACHE_DIR)/cache_actions.cpp \
             $(MAIN_DIR)/mainmem.cpp $(MAIN_DIR)/mainmem_actions.cpp \
             $(PRNG_DIR)/prng.cpp $(PRNG_DIR)/prng_actions.cpp \
             $(FIFO_DIR)/prng_fifo.cpp $(FIFO_DIR)/prng_fifo_actions.cpp \
+            $(PFILO_DIR)/prng_fifo_pipelined.cpp \
             $(MEM_DIR)/hierarchy.cpp
 
 INT_SRCS := $(INT_DIR)/interpreter.cpp $(INT_DIR)/instruction_actions.cpp \
@@ -29,6 +31,7 @@ DEPS := config.h \
         $(MAIN_DIR)/mainmem.h $(MAIN_DIR)/mainmem_actions.h \
         $(PRNG_DIR)/prng.h $(PRNG_DIR)/prng_actions.h \
         $(FIFO_DIR)/prng_fifo.h $(FIFO_DIR)/prng_fifo_actions.h \
+        $(PFILO_DIR)/prng_fifo_pipelined.h \
         utils.h
 
 TEST_SRCS := tests/unit_tests.cpp $(MEM_SRCS)
