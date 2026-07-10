@@ -20,9 +20,7 @@ PrngFifoDev::PrngFifoDev(InitParameters p, const size_t& cpu_cycles)
       paused_(false),
       last_update_cycle_(0)
 {
-    if (fifo_capacity_ > 0) {
-        assert(gen_cost_ > 0);
-    }
+    // gen_cost_ == 0 is valid: elements are generated instantly (no stalls ever).
 }
 
 bool PrngFifoDev::contains(Addr addr) const
@@ -37,6 +35,15 @@ bool PrngFifoDev::contains(Addr addr) const
 void PrngFifoDev::catchUp(size_t current_cycle)
 {
     if (!active_ || paused_) return;
+
+    if (gen_cost_ == 0) {
+        while (ready_cycles_.size() < fifo_capacity_) {
+            ready_cycles_.push(current_cycle);
+            ++stats_.generates;
+        }
+        paused_ = true;
+        return;
+    }
 
     while (last_update_cycle_ + gen_cost_ <= current_cycle) {
         last_update_cycle_ += gen_cost_;

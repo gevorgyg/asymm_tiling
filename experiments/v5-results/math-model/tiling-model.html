@@ -1,0 +1,1025 @@
+<title>Asymmetric Tiling Cost Model</title>
+<style>
+  /* ── Token layer ────────────────────────────── */
+  :root {
+    --ink:       #18181A;
+    --ink-muted: #6A6A70;
+    --ground:    #F5F5F2;
+    --surface:   #ECEAE6;
+    --rule:      #D2D2CA;
+    --accent:    #1A50B0;
+    --stress:    #B04000;
+    --theorem-bg: #EAF0FA;
+    --corollary-bg: #F0F8F0;
+    --def-bg:    #F5F5F0;
+    --assumption-bg: #FDF5E8;
+    --warning-bg: #FEF0EE;
+    --code-bg:   #EEECEA;
+    --result-bg: #EAF0FA;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink:       #E8E6E0;
+      --ink-muted: #8A8882;
+      --ground:    #0D0D0C;
+      --surface:   #161614;
+      --rule:      #2C2C28;
+      --accent:    #5880D8;
+      --stress:    #D06030;
+      --theorem-bg: #101828;
+      --corollary-bg: #0C1810;
+      --def-bg:    #181816;
+      --assumption-bg: #1C1608;
+      --warning-bg: #1C0A06;
+      --code-bg:   #181816;
+      --result-bg: #101828;
+    }
+  }
+  :root[data-theme="light"] {
+    --ink:       #18181A;
+    --ink-muted: #6A6A70;
+    --ground:    #F5F5F2;
+    --surface:   #ECEAE6;
+    --rule:      #D2D2CA;
+    --accent:    #1A50B0;
+    --stress:    #B04000;
+    --theorem-bg: #EAF0FA;
+    --corollary-bg: #F0F8F0;
+    --def-bg:    #F5F5F0;
+    --assumption-bg: #FDF5E8;
+    --warning-bg: #FEF0EE;
+    --code-bg:   #EEECEA;
+    --result-bg: #EAF0FA;
+  }
+  :root[data-theme="dark"] {
+    --ink:       #E8E6E0;
+    --ink-muted: #8A8882;
+    --ground:    #0D0D0C;
+    --surface:   #161614;
+    --rule:      #2C2C28;
+    --accent:    #5880D8;
+    --stress:    #D06030;
+    --theorem-bg: #101828;
+    --corollary-bg: #0C1810;
+    --def-bg:    #181816;
+    --assumption-bg: #1C1608;
+    --warning-bg: #1C0A06;
+    --code-bg:   #181816;
+    --result-bg: #101828;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  .page { max-width: 740px; margin: 0 auto; }
+
+  /* ── Header ────────────────────────────────── */
+  .doc-header {
+    border-bottom: 2px solid var(--rule);
+    padding-bottom: 1.75rem;
+    margin-bottom: 2.75rem;
+  }
+  .doc-eyebrow {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 0.6rem;
+  }
+  h1 {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin-bottom: 0.5rem;
+  }
+  .doc-sub {
+    color: var(--ink-muted);
+    font-size: 0.95rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-style: italic;
+  }
+  .doc-status {
+    display: inline-block;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--corollary-bg);
+    color: #2A8A2A;
+    border: 1px solid #2A8A2A;
+    padding: 0.2rem 0.55rem;
+    margin-top: 0.75rem;
+  }
+
+  /* ── Section headers ───────────────────────── */
+  h2 {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 3.25rem;
+    margin-bottom: 1.1rem;
+  }
+  h3 {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+    text-wrap: balance;
+  }
+
+  p { margin-bottom: 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  var {
+    font-family: 'Courier New', Courier, monospace;
+    font-style: italic;
+    font-size: 0.96em;
+  }
+
+  /* ── Formal boxes ──────────────────────────── */
+  .box {
+    border-left: 3px solid;
+    padding: 0.9rem 1.15rem;
+    margin: 1.5rem 0;
+  }
+  .box .box-label {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.67rem;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    margin-bottom: 0.45rem;
+  }
+  .box.definition { border-color: var(--ink-muted); background: var(--def-bg); }
+  .box.definition .box-label { color: var(--ink-muted); }
+  .box.theorem { border-color: var(--accent); background: var(--theorem-bg); }
+  .box.theorem .box-label { color: var(--accent); }
+  .box.corollary { border-color: #2A8A2A; background: var(--corollary-bg); }
+  .box.corollary .box-label { color: #2A8A2A; }
+  .box.assumption { border-color: var(--stress); background: var(--assumption-bg); }
+  .box.assumption .box-label { color: var(--stress); }
+  .box.warning { border-color: var(--stress); background: var(--warning-bg); }
+  .box.warning .box-label { color: var(--stress); }
+  .box.result { border-color: #2A8A2A; background: var(--corollary-bg); }
+  .box.result .box-label { color: #2A8A2A; }
+
+  /* ── Equations ─────────────────────────────── */
+  .eq {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.02rem;
+    margin: 1.1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.8rem 1.1rem;
+    background: var(--surface);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    overflow-x: auto;
+  }
+  .eq .line { white-space: nowrap; line-height: 1.55; }
+  .eq .line.indent { padding-left: 1.5em; }
+  .eq .line.indent2 { padding-left: 3em; }
+  .eq .comment {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 0.83rem;
+    color: var(--ink-muted);
+    white-space: normal;
+    margin-top: 0.2rem;
+  }
+  .eq .labeled {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .eq .eq-tag {
+    font-family: system-ui, sans-serif;
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+
+  /* Key result */
+  .key-result {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.25rem;
+    text-align: center;
+    padding: 1.1rem 1.5rem;
+    background: var(--theorem-bg);
+    border: 1.5px solid var(--accent);
+    margin: 1.5rem 0;
+    color: var(--accent);
+    letter-spacing: 0.01em;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* ── Notation table ────────────────────────── */
+  .notation { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1.5rem; margin: 1rem 0; }
+  .notation .sym { font-family: 'Courier New', Courier, monospace; font-style: italic; color: var(--accent); white-space: nowrap; font-size: 0.97rem; }
+  .notation .def { color: var(--ink); font-size: 0.95rem; line-height: 1.5; }
+  .notation .def small { color: var(--ink-muted); font-size: 0.87em; }
+
+  /* ── Proof block ───────────────────────────── */
+  .proof {
+    font-size: 0.93rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.75rem;
+    margin-top: 1rem;
+  }
+  .proof-label {
+    font-family: system-ui, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 0.4rem;
+  }
+
+  /* ── Table ─────────────────────────────────── */
+  .tbl-wrap { overflow-x: auto; margin: 1.25rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.91rem; font-variant-numeric: tabular-nums; }
+  th { font-family: system-ui, sans-serif; font-size: 0.67rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); text-align: left; padding: 0.45rem 0.8rem; border-bottom: 2px solid var(--rule); }
+  td { padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td.mono { font-family: 'Courier New', Courier, monospace; font-size: 0.88rem; }
+  td.prose { font-family: Georgia, serif; font-size: 0.91rem; }
+  tr:last-child td { border-bottom: none; }
+  .hi { color: var(--accent); font-weight: 600; }
+  .dim { color: var(--ink-muted); }
+  .ok { color: #2A8A2A; font-weight: 600; }
+
+  /* ── Piecewise braces ──────────────────────── */
+  .piecewise {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.97rem;
+    display: grid;
+    grid-template-columns: max-content auto max-content;
+    gap: 0.3rem 1rem;
+    margin: 0.5rem 0 0.5rem 1.5rem;
+    align-items: center;
+  }
+  .piecewise .brace { font-size: 2.5rem; line-height: 1; grid-row: 1 / span 3; align-self: center; color: var(--ink-muted); }
+  .piecewise .val { white-space: nowrap; }
+  .piecewise .cond { white-space: nowrap; font-size: 0.88rem; color: var(--ink-muted); font-style: italic; }
+
+  /* ── Section rule ──────────────────────────── */
+  hr.section { border: none; border-top: 1px solid var(--rule); margin: 2.75rem 0 0; }
+
+  /* ── Step list ─────────────────────────────── */
+  .steps { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; list-style: none; }
+  .steps li { display: grid; grid-template-columns: 1.6rem 1fr; gap: 0 0.6rem; align-items: start; font-size: 0.95rem; }
+  .steps li .n { font-family: system-ui, sans-serif; font-weight: 700; color: var(--accent); }
+</style>
+
+<div class="page">
+
+  <header class="doc-header">
+    <p class="doc-eyebrow">Asymmetric Tiling Project · Formal Model</p>
+    <h1>A Tile-Shape Cost Model for Asymmetric Matrix Multiply</h1>
+    <p class="doc-sub">
+      Revised model incorporating the A reuse factor — with experimental validation from E1b and E2.
+    </p>
+    <div class="doc-status">Experimentally confirmed · E1b + E2 · max error ≤ 3%</div>
+  </header>
+
+  <!-- ─── §1 Setup ─────────────────────────────── -->
+  <section>
+    <h2>§1 · Setup and Notation</h2>
+
+    <h3>The computation</h3>
+    <p>
+      We compute <strong>C = A × B</strong>: A has shape M×K, B has shape K×N,
+      C has shape M×N. The computation is tiled: for each C-tile output position
+      (<var>t<sub>i</sub></var>, <var>t<sub>j</sub></var>), we step through
+      K-slices and accumulate partial products into the C tile. This is called
+      one <strong>session</strong>.
+    </p>
+    <p>
+      Hardware uses 3D register tiles: a register tile has shape REG_M × REG_N × REG_K,
+      and the inner loop iterates over register-tile positions within the cache tile.
+    </p>
+
+    <h3>All symbols</h3>
+    <div class="notation">
+      <span class="sym">M, N, K</span>
+      <span class="def">Matrix dimensions (elements)</span>
+
+      <span class="sym">TM, TN, TK</span>
+      <span class="def">Cache-tile sizes (elements per axis). TK = K in our setup (one k-slice covers the full K dimension).</span>
+
+      <span class="sym">reg_n</span>
+      <span class="def">Register tile width in the N direction (REG_N = 4 in our hardware)</span>
+
+      <span class="sym">R</span>
+      <span class="def">A reuse factor per session: R = TN / reg_n. <small>How many times each A register tile is loaded within one session.</small></span>
+
+      <span class="sym">A<sub>P</sub>, B<sub>P</sub>, C<sub>P</sub></span>
+      <span class="def">Bytes per element (A: 4, B: 4, C: 4 in our setup)</span>
+
+      <span class="sym">C<sub>fill</sub>(TM)</span>
+      <span class="def">Cycles to load one A register tile from the memory hierarchy. Depends on TM (which determines whether A fits in L2 or spills to DRAM). <small>Measured: ≈ 13.5 cycles for TM ≤ 48 (L2 regime).</small></span>
+
+      <span class="sym">α(TM)</span>
+      <span class="def">Effective A cost per unit of MNK: α(TM) = C<sub>fill</sub>(TM) / reg_n. <small>Measured: ≈ 3.25 for TM ≤ 48; rises when A spills to DRAM.</small></span>
+
+      <span class="sym">gc</span>
+      <span class="def">B generation cost: cycles per B element generated by the PRNG FIFO device (= PRNG_FIFO_GEN_COST)</span>
+
+      <span class="sym">L1, L2</span>
+      <span class="def">Cache sizes in bytes (L1 = 16 384, L2 = 65 536)</span>
+
+      <span class="sym">TM<sub>L2</sub></span>
+      <span class="def">Maximum TM before A tile overflows L2: TM<sub>L2</sub> = L2 / (TK × A<sub>P</sub>) = 64</span>
+    </div>
+  </section>
+
+  <hr class="section">
+
+  <!-- ─── §2 Naive element counts ─────────────── -->
+  <section>
+    <h2>§2 · Naive Element Access Counts</h2>
+
+    <p>
+      Before accounting for the inner-loop structure, we count how many times
+      each unique A and B element is needed across all sessions.
+    </p>
+
+    <div class="box definition">
+      <div class="box-label">A inter-session accesses</div>
+      Each of the M×K unique A elements is needed in every N-direction tile session.
+      There are N/TN such sessions per (ti, tk) pair:
+      <div class="eq">
+        <div class="line labeled">
+          <span>A<sub>sessions</sub> = M·K × (N/TN) = MNK / TN</span>
+          <span class="eq-tag">(1)</span>
+        </div>
+        <div class="comment">
+          This counts how many times each A tile is brought in across all sessions —
+          one load per (ti, tj, tk) combination.
+        </div>
+      </div>
+    </div>
+
+    <div class="box definition">
+      <div class="box-label">B generations</div>
+      Each of the K×N unique B elements is generated once per M-direction session.
+      There are M/TM such sessions per (tj, tk) pair:
+      <div class="eq">
+        <div class="line labeled">
+          <span>B<sub>total</sub> = K·N × (M/TM) = MNK / TM</span>
+          <span class="eq-tag">(2)</span>
+        </div>
+        <div class="comment">
+          B is never cached between sessions — it is regenerated each time from the PRNG FIFO.
+          Total B generation time = (MNK/TM) × gc.
+        </div>
+      </div>
+    </div>
+
+    <p>
+      B<sub>total</sub> = MNK/TM is the correct total B cost — B is always regenerated
+      fresh. But A<sub>sessions</sub> = MNK/TN is <em>not</em> the true A load count.
+      Inside each session, the inner loop causes each A tile to be loaded
+      <strong>R times</strong>.
+    </p>
+  </section>
+
+  <hr class="section">
+
+  <!-- ─── §3 The A reuse factor ────────────────── -->
+  <section>
+    <h2>§3 · The A Reuse Factor</h2>
+
+    <h3>What happens inside a session</h3>
+    <p>
+      Within one session for output tile (ti, tj), the outer-products inner loop
+      iterates over register-tile positions in the order:
+    </p>
+    <div class="eq">
+      <div class="line">for rtk in 0 .. TK/reg_k:          ← K-direction reg tiles</div>
+      <div class="line indent">for rtj in 0 .. TN/reg_n:      ← N-direction reg tiles  [R iterations]</div>
+      <div class="line indent2 dim">load B[rtk, rtj]            ← B loaded once per rtj, held in register</div>
+      <div class="line indent2">for rti in 0 .. TM/reg_m:  ← M-direction reg tiles</div>
+      <div class="line indent2 dim">  load A[rti, rtk]          ← A register tile loaded from L1/L2</div>
+      <div class="line indent2 dim">  load C[rti, rtj]          ← C tile lives in L1, not registers</div>
+      <div class="line indent2 dim">  C[rti, rtj] += A × B</div>
+      <div class="line indent2 dim">  store C[rti, rtj]         ← C written back to L1</div>
+    </div>
+
+    <p>
+      B is loaded once per (rtk, rtj) pair and held in a register while all TM/reg_m
+      values of rti are computed. C is not kept in the register file between iterations —
+      it lives in L1 and is loaded and stored on every inner step.
+    </p>
+    <p>
+      For a fixed (rtk, rti) pair, the A register tile <strong>A[rti, rtk]</strong>
+      is loaded once per rtj iteration. There are R = TN/reg_n iterations of rtj,
+      so each unique A register tile is loaded <strong>R times per session</strong>.
+    </p>
+
+    <div class="box definition">
+      <div class="box-label">True A load count</div>
+      <div class="eq">
+        <div class="line">True A loads  =  A<sub>sessions</sub> × R</div>
+        <div class="line indent">= (MNK / TN) × (TN / reg_n)</div>
+        <div class="line labeled">
+          <span>= MNK / reg_n</span>
+          <span class="eq-tag">(3)</span>
+        </div>
+        <div class="comment">TN cancels exactly. Total A loads are independent of TN.</div>
+      </div>
+    </div>
+
+    <h3>Why C_fill(TM) ≈ L2_lat — and why that is a coincidence</h3>
+    <p>
+      The proximity of C_fill to L2_lat is <em>not</em> because each A load costs
+      L2_lat. Experiment E4b (L2_ACCESS_CYCLES sweep) shows that when L2_lat is
+      quadrupled (7→28 cycles), C_fill changes by only 1.6%. Cold L2 fills account
+      for just ~1% of total runtime. The dominant cost is <strong>warm L1 hits</strong>.
+    </p>
+    <p>
+      The inner loop does three memory operations per mulacc: load A, load C, store C.
+      With 16 elements per register tile and 64 computations per register-tile group,
+      this is 3×16/64 = 3/4 of a memory op per compute element. Nearly all of these
+      hit L1 (L1 hit rate ≈ 99%) at L1_lat = 4 cycles each. The normalized cost per
+      unit MNK is therefore:
+    </p>
+    <div class="eq">
+      <div class="line">C_fill  ≈  (3 mem-ops / mulacc) × (reg_m × reg_k elements / reg-tile)
+                 / (reg_m × reg_n × reg_k elements / mulacc)  ×  L1_lat × reg_n</div>
+      <div class="line indent dim">=  (3/reg_n) × L1_lat × reg_n  =  3 × L1_lat  =  3 × 4  =  <strong>12 cycles</strong></div>
+      <div class="comment">
+        Measured: 12.95. The gap (8%) is B FIFO overhead and the ~1% cold L2 fill contribution.
+      </div>
+    </div>
+    <p>
+      C_fill ≈ 12–14 ≈ L2_lat because <em>3 × L1_lat ≈ L2_lat</em> for our hardware
+      parameters (L1_lat=4, L2_lat=14). That ratio is a property of the cache
+      hierarchy, not of A loading. On a system where L2_lat = 40 cycles, C_fill
+      would still be ≈ 12 but would no longer equal L2_lat.
+    </p>
+    <p>
+      The ~6% decrease of C_fill with R (from E3-S2) comes from the 1% cold-fill
+      portion: at R=1 every spatial-group cache line is loaded cold; at R=16 the
+      same lines may be L1-warm across tile passes. This is a second-order effect.
+    </p>
+    <p>
+      Therefore the total A access time is:
+    </p>
+    <div class="eq">
+      <div class="line">T_A  =  (MNK / reg_n) × C<sub>fill</sub>(TM)</div>
+      <div class="line indent dim">= MNK × [ C<sub>fill</sub>(TM) / reg_n ]</div>
+      <div class="line labeled">
+        <span>= MNK × α(TM)</span>
+        <span class="eq-tag">(4)</span>
+      </div>
+      <div class="comment">
+        α(TM) = C_fill(TM) / reg_n is a function of TM only — TN has cancelled out completely.
+      </div>
+    </div>
+
+    <div class="box warning">
+      <div class="box-label">Key departure from the naive model</div>
+      <p>
+        The naive model wrote T_A = MNK · C_A / TN, treating C_A as a hardware constant.
+        Our finding is that C_A is <em>not</em> constant — it scales as:
+      </p>
+      <div class="eq" style="margin:0.6rem 0">
+        <div class="line">C_A  =  α(TM) × TN</div>
+      </div>
+      <p style="margin-bottom:0">
+        Substituting: T_A = MNK · (α(TM) × TN) / TN = MNK · α(TM). TN is gone.
+        The original ratio rule TM*/TN* = ρ<sub>t</sub> was derived assuming C_A is constant —
+        it does not apply.
+      </p>
+    </div>
+  </section>
+
+  <hr class="section">
+
+  <!-- ─── §4 The full model ────────────────────── -->
+  <section>
+    <h2>§4 · The Full Cost Model</h2>
+
+    <p>
+      Total time is the maximum of the A access time and the B generation time
+      (in a pipelined system, the slower one dominates):
+    </p>
+
+    <div class="key-result">
+      T  =  MNK × max( α(TM),  gc / TM )
+    </div>
+
+    <p>
+      where:
+    </p>
+    <ul style="margin: 0 0 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.95rem;">
+      <li><strong>MNK × α(TM)</strong> is the total A access time — constant in TN, piecewise in TM</li>
+      <li><strong>MNK × gc / TM</strong> is the total B generation time — constant in TN, decreasing in TM</li>
+      <li>The <strong>max</strong> picks the bottleneck: in a pipelined system, A loading and B generation partially overlap</li>
+    </ul>
+
+    <div class="box assumption">
+      <div class="box-label">Model assumptions</div>
+      <p>
+        <strong>A1 (C-stationary outer-products):</strong>
+        The inner loop order is rtk → rtj → rti as shown in §3. This determines
+        the reuse factor R = TN/reg_n. A different ordering could change R.
+      </p>
+      <p>
+        <strong>A2 (Pipelined max model):</strong>
+        T = max(T_A, T_B). A generation and B loading overlap in time; the bottleneck
+        dominates. Experimentally confirmed in E1a: max model error ≤ 2% vs sum model
+        error up to 78%.
+      </p>
+      <p style="margin-bottom:0">
+        <strong>A3 (No stalls within a session):</strong>
+        The PRNG FIFO has enough capacity that it does not stall during a session.
+        When gc is large and the FIFO stalls, the stall time is already accounted
+        for in the B generation term MNK × gc/TM.
+      </p>
+    </div>
+
+    <h3>What TN controls</h3>
+    <p>
+      TN does not appear anywhere in T = MNK × max(α(TM), gc/TM). This means
+      TN has <em>no effect on total runtime</em>, within the regime where A fits
+      in L2 and C fits in L1. TN is a free parameter, and the right choice is to
+      <strong>maximize TN subject to the C tile fitting in L1</strong>:
+    </p>
+    <div class="eq">
+      <div class="line">TN*  =  L1 / (TM × C<sub>P</sub>)  — constrained to divide N</div>
+      <div class="comment">
+        Larger TN means fewer sessions (better for prefetch locality), but TN has
+        no direct effect on T in the model.
+      </div>
+    </div>
+  </section>
+
+  <hr class="section">
+
+  <!-- ─── §5 α(TM) ─────────────────────────────── -->
+  <section>
+    <h2>§5 · The α(TM) Function</h2>
+
+    <p>
+      α(TM) = C<sub>fill</sub>(TM) / reg_n is the A-side cost per unit of MNK.
+      C<sub>fill</sub>(TM) depends on where the A tile sits in the cache hierarchy:
+    </p>
+
+    <div class="eq">
+      <div class="line">A tile size  =  TM × TK × A<sub>P</sub>  bytes</div>
+      <div class="line">TM<sub>L2</sub>  =  L2 / (TK × A<sub>P</sub>)  =  65536 / (256 × 4)  =  64  ← L2 boundary</div>
+    </div>
+
+    <h3>Measured α values (E3 — gc=0, no B-cost contamination)</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>TM</th>
+            <th>A tile</th>
+            <th>Regime</th>
+            <th>α(TM)</th>
+            <th>C_fill = α × reg_n</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">8</td>
+            <td class="mono">8 KB</td>
+            <td class="prose dim">L2</td>
+            <td class="mono">3.400</td>
+            <td class="mono">13.60 cycles</td>
+            <td class="prose dim">small TM, slight L2 thrashing</td>
+          </tr>
+          <tr>
+            <td class="mono">16</td>
+            <td class="mono">16 KB</td>
+            <td class="prose dim">L2</td>
+            <td class="mono">3.300</td>
+            <td class="mono">13.20 cycles</td>
+            <td class="prose dim"></td>
+          </tr>
+          <tr>
+            <td class="mono hi">32</td>
+            <td class="mono">32 KB</td>
+            <td class="prose dim">L2</td>
+            <td class="mono hi">3.237</td>
+            <td class="mono">12.95 cycles</td>
+            <td class="prose dim">sweet spot in L2 regime</td>
+          </tr>
+          <tr>
+            <td class="mono">48</td>
+            <td class="mono">48 KB</td>
+            <td class="prose dim">L2</td>
+            <td class="mono">3.255</td>
+            <td class="mono">13.02 cycles</td>
+            <td class="prose dim"></td>
+          </tr>
+          <tr>
+            <td class="mono">64</td>
+            <td class="mono">64 KB = L2</td>
+            <td class="prose">borderline</td>
+            <td class="mono">3.560</td>
+            <td class="mono">14.24 cycles</td>
+            <td class="prose">A fills L2; C evicts A lines → DRAM</td>
+          </tr>
+          <tr>
+            <td class="mono">96</td>
+            <td class="mono">96 KB</td>
+            <td class="prose">DRAM</td>
+            <td class="mono">3.940</td>
+            <td class="mono">15.76 cycles</td>
+            <td class="prose">A in DRAM; C_fill flat past L2 boundary</td>
+          </tr>
+          <tr>
+            <td class="mono">128</td>
+            <td class="mono">128 KB</td>
+            <td class="prose">DRAM</td>
+            <td class="mono">3.936</td>
+            <td class="mono">15.75 cycles</td>
+            <td class="prose">same as TM=96 — α is flat in DRAM regime</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      α rises only ~22% from the L2 minimum (3.237 at TM=32) to the DRAM regime
+      (≈3.94). Once A spills to DRAM the cost per register-tile load saturates:
+      TM=96 and TM=128 have essentially identical C_fill (15.76 vs 15.75), confirming
+      that α is flat past the L2 boundary.
+    </p>
+
+    <h3>Piecewise approximation</h3>
+    <div class="eq" style="padding-bottom:0.25rem">
+      <div class="line" style="margin-bottom:0.25rem">α(TM)  ≈</div>
+      <div class="piecewise">
+        <span class="brace">{</span>
+        <span class="val">3.25</span>
+        <span class="cond">if TM ≤ 48  (A tile fits in L2)</span>
+        <span class="val">3.56</span>
+        <span class="cond">if TM = 64  (A exactly fills L2)</span>
+        <span class="val">3.94</span>
+        <span class="cond">if TM ≥ 96  (A in DRAM, α flat)</span>
+      </div>
+    </div>
+
+    <p>
+      For most purposes: in the L2 regime α ≈ 3.25; in the DRAM regime α ≈ 3.94.
+      The moderate and <em>flat</em> rise past the L2 boundary is what makes
+      larger TM sometimes worth pursuing (see §6).
+    </p>
+  </section>
+
+  <hr class="section">
+
+  <!-- ─── §6 Optimization ──────────────────────── -->
+  <section>
+    <h2>§6 · Tile Shape Optimization</h2>
+
+    <p>
+      Since T = MNK × max(α(TM), gc/TM) does not depend on TN, the only tuning
+      knob is TM.
+    </p>
+
+    <h3>The balance condition</h3>
+    <p>
+      Within each cache regime where α is constant, T(TM) = MNK × max(α, gc/TM)
+      is monotonically <em>decreasing</em> in TM (larger TM reduces the B term while
+      α stays fixed). So within a regime we always want TM as large as possible.
+    </p>
+    <p>
+      The interesting decision is whether to cross into a higher-cost regime (larger α).
+      The crossover condition: A-side cost in the new regime = B-side cost at the
+      new TM:
+    </p>
+    <div class="eq">
+      <div class="line">α<sub>new</sub>  =  gc / TM<sub>boundary</sub></div>
+      <div class="line">⟺  TM<sub>boundary</sub>  =  gc / α<sub>new</sub></div>
+      <div class="comment">
+        If TM_boundary > the next regime's minimum TM, it is worth crossing.
+        If TM_boundary is below the current TM, staying is better.
+      </div>
+    </div>
+
+    <div class="box theorem">
+      <div class="box-label">Algorithm — Find optimal TM*</div>
+      <ol class="steps">
+        <li><span class="n">1.</span><span>Evaluate T(TM) = MNK × max(α(TM), gc/TM) at each valid TM (powers of 2 that divide M).</span></li>
+        <li><span class="n">2.</span><span>The TM with the lowest T(TM) is TM*.</span></li>
+        <li><span class="n">3.</span><span>Set TN* = floor(L1 / (TM* × C_P)), rounded down to a divisor of N.</span></li>
+      </ol>
+      <p style="margin-top:0.75rem; margin-bottom:0">
+        No closed-form formula: the piecewise nature of α(TM) and the discrete
+        constraint that TM must divide M make evaluation the right approach.
+      </p>
+    </div>
+
+    <h3>Key insight: going past the L2 boundary can be optimal</h3>
+    <p>
+      Because α rises only modestly from L2 to DRAM (3.237 → 3.94, a +22% increase),
+      while gc/TM falls by ×2 each time TM doubles, larger TM in the DRAM regime
+      can beat smaller TM in the L2 regime at high gc. Furthermore, α is <em>flat</em>
+      in the DRAM regime (TM=96 and TM=128 have the same α ≈ 3.94), so larger DRAM-regime
+      TM is almost always better when gc forces us past the L2 boundary.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>TM</th>
+            <th>α</th>
+            <th>gc/TM at gc=256</th>
+            <th>T (gc=256)</th>
+            <th>gc/TM at gc=512</th>
+            <th>T (gc=512)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">32</td>
+            <td class="mono">3.237</td>
+            <td class="mono">8.0</td>
+            <td class="mono">268 M <span class="dim">(B-dom)</span></td>
+            <td class="mono">16.0</td>
+            <td class="mono">537 M <span class="dim">(B-dom)</span></td>
+          </tr>
+          <tr>
+            <td class="mono">64</td>
+            <td class="mono">3.560</td>
+            <td class="mono">4.0</td>
+            <td class="mono">67 M <span class="dim">(B-dom)</span></td>
+            <td class="mono">8.0</td>
+            <td class="mono">134 M <span class="dim">(B-dom)</span></td>
+          </tr>
+          <tr>
+            <td class="mono ok">128</td>
+            <td class="mono">3.936</td>
+            <td class="mono">2.0</td>
+            <td class="mono ok">66 M <span class="dim">(A-dom)</span></td>
+            <td class="mono">4.0</td>
+            <td class="mono ok">67 M <span class="dim">(balanced)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      For both gc=256 and gc=512, <strong>TM=128 (DRAM) is the best choice</strong>.
+      Doubling TM from 64 to 128 cuts gc/TM in half (a 2× B saving) while only
+      raising α by 11% (a small A penalty). The net is a gain.
+    </p>
+
+    <h3>Practical recommendations (our hardware)</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>gen_cost (gc)</th>
+            <th>TM*</th>
+            <th>TN* = L1/(TM*×4)</th>
+            <th>T* ≈</th>
+            <th>Bottleneck</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">1 – 64</td>
+            <td class="mono hi">32</td>
+            <td class="mono">64</td>
+            <td class="mono">54 M cycles</td>
+            <td class="prose dim">A-dominated</td>
+          </tr>
+          <tr>
+            <td class="mono">64 – 252</td>
+            <td class="mono hi">64</td>
+            <td class="mono">32</td>
+            <td class="mono">67 – 68 M cycles</td>
+            <td class="prose dim">A→B transition</td>
+          </tr>
+          <tr>
+            <td class="mono">252 – 503</td>
+            <td class="mono hi">128</td>
+            <td class="mono">16</td>
+            <td class="mono">66 – 67 M cycles</td>
+            <td class="prose dim">A-dominated (DRAM)</td>
+          </tr>
+          <tr>
+            <td class="mono">503+</td>
+            <td class="mono hi">128</td>
+            <td class="mono">16</td>
+            <td class="mono">68 – 134 M cycles</td>
+            <td class="prose dim">B-dominated (at gc=512: 68 M)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="dim" style="font-size:0.88rem">
+      Crossover gc values: TM=64 beats TM=32 when gc > α<sub>L2</sub>×64 ≈ 208.
+      TM=128 beats TM=64 when gc > α<sub>DRAM</sub>×64 ≈ 252 (close approximation).
+    </p>
+  </section>
+
+  <hr class="section">
+
+  <!-- ─── §7 Experimental validation ──────────── -->
+  <section>
+    <h2>§7 · Experimental Validation</h2>
+
+    <h3>E1b — Isolating C_A (sub-sweep 2: TN independence)</h3>
+    <p>
+      Fixed TM=32, gc=1, mulac_norecord=True. Swept TN ∈ {4,8,16,32,64}.
+      C_A defined as T × TN / MNK (the quantity that should equal α × TN):
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>TN</th><th>R = TN/4</th><th>T (cycles)</th><th>C_A = T×TN/MNK</th><th>C_A/R ≈ C_fill</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">4</td><td class="mono">1</td><td class="mono">57.6 M</td><td class="mono">13.7</td><td class="mono ok">13.7</td></tr>
+          <tr><td class="mono">8</td><td class="mono">2</td><td class="mono">55.7 M</td><td class="mono">26.6</td><td class="mono ok">13.3</td></tr>
+          <tr><td class="mono">16</td><td class="mono">4</td><td class="mono">54.8 M</td><td class="mono">52.3</td><td class="mono ok">13.1</td></tr>
+          <tr><td class="mono hi">32</td><td class="mono">8</td><td class="mono">54.3 M</td><td class="mono hi">103.6</td><td class="mono ok">12.9</td></tr>
+          <tr><td class="mono">64</td><td class="mono">16</td><td class="mono">54.1 M</td><td class="mono">206.4</td><td class="mono ok">12.9</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      C_fill ≈ 13 cycles. C_A/R is constant across all TN —
+      confirming C_A = α × TN. Total T changes by less than 7% across the full TN range.
+      (The similarity to L2_ACCESS_CYCLES = 14 is a coincidence; see E4b.)
+    </p>
+
+    <h3>E2 — Model validation across (TM, gc)</h3>
+
+    <p><strong>Prediction 1 — TN independence</strong> (TM=32 fixed, gc varied):</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>TN</th><th>gc=1</th><th>gc=64</th><th>gc=256</th><th>gc=512</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">8</td><td class="mono">55.7 M</td><td class="mono">56.0 M</td><td class="mono">135.8 M</td><td class="mono">270.0 M</td></tr>
+          <tr><td class="mono">16</td><td class="mono">54.8 M</td><td class="mono">54.9 M</td><td class="mono">135.6 M</td><td class="mono">269.8 M</td></tr>
+          <tr><td class="mono">32</td><td class="mono">54.3 M</td><td class="mono">54.4 M</td><td class="mono">135.6 M</td><td class="mono">269.8 M</td></tr>
+          <tr><td class="mono">64</td><td class="mono">54.1 M</td><td class="mono">54.1 M</td><td class="mono">135.7 M</td><td class="mono">269.9 M</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Within-column variation: &lt;0.1% at gc ≥ 256. Confirmed: TN has no effect on T.
+    </p>
+
+    <p><strong>Prediction 2 — TM model fit</strong> (TN=32 fixed; errors vs T = MNK×max(α(TM), gc/TM)):</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>TM</th><th>α</th><th>gc=1</th><th>gc=64</th><th>gc=256</th><th>gc=512</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">8</td><td class="mono">3.400</td><td class="mono">57 M <span class="ok">(+0%)</span></td><td class="mono">135 M <span class="ok">(+1%)</span></td><td class="mono">538 M <span class="ok">(+0%)</span></td><td class="mono">1075 M <span class="ok">(+0%)</span></td></tr>
+          <tr><td class="mono">16</td><td class="mono">3.300</td><td class="mono">55 M <span class="ok">(+0%)</span></td><td class="mono">68 M <span class="ok">(+2%)</span></td><td class="mono">269 M <span class="ok">(+1%)</span></td><td class="mono">538 M <span class="ok">(+0%)</span></td></tr>
+          <tr><td class="mono">32</td><td class="mono">3.237</td><td class="mono">54 M <span class="ok">(+0%)</span></td><td class="mono">54 M <span class="ok">(+0%)</span></td><td class="mono">135 M <span class="ok">(+1%)</span></td><td class="mono">269 M <span class="ok">(+1%)</span></td></tr>
+          <tr><td class="mono">64</td><td class="mono">3.560</td><td class="mono">59 M <span class="ok">(+0%)</span></td><td class="mono">59 M <span class="ok">(+0%)</span></td><td class="mono">68 M <span class="ok">(+3%)</span></td><td class="mono">136 M <span class="ok">(+1%)</span></td></tr>
+          <tr><td class="mono ok">128</td><td class="mono">3.936</td><td class="mono">66 M <span class="ok">(+0%)</span></td><td class="mono">66 M <span class="ok">(+0%)</span></td><td class="mono ok">66 M <span class="ok">(+0%)</span></td><td class="mono ok">68 M <span class="ok">(+2%)</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box result">
+      <div class="box-label">Result</div>
+      <p>
+        Model error ≤ 3% across all 20 (TM, gc) combinations tested.
+        The model T = MNK × max(α(TM), gc/TM) is experimentally confirmed.
+      </p>
+      <p style="margin-bottom:0">
+        <strong>Key finding:</strong> TM=64 is 1.98× faster than TM=32 at gc=512
+        (predicted 2.00×). TM=128 beats TM=64 for gc ≥ 252 — DRAM territory
+        is worth entering when gc is high enough.
+      </p>
+    </div>
+
+    <h3>E3 — Clean C_fill measurement at gc=0</h3>
+    <p>
+      Previous experiments used gc=1, introducing ~1% B-cost contamination.
+      E3 re-measures C_fill(TM) at gc=0 (instantaneous B) for a bias-free baseline.
+      Two sub-sweeps:
+    </p>
+    <ul class="prose" style="margin:0.4rem 0 0.8rem 1.2rem; line-height:1.7">
+      <li><strong>S1 (TM sweep, TN=32)</strong>: confirms the α(TM) table in §5 to 3 sig. figs.
+          Key new finding: α is <em>flat</em> in the DRAM regime (TM=96 ≈ TM=128 ≈ 3.94).</li>
+      <li><strong>S2 (TN sweep, TM=32)</strong>: C_fill varies 13.7→12.9 (6%) from TN=4 to TN=64.
+          Consistent with L1 reuse of A lines across rtj, but a second-order effect.</li>
+    </ul>
+
+    <h3>E4 — Mechanistic probe of C_fill ≈ L2_lat</h3>
+
+    <p><strong>E4a — TK sweep</strong> (gc=0, TM=32, TN=32):</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>TK</th><th>warm-C%</th><th>C_fill</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">4</td><td class="mono">0%</td><td class="mono">12.983</td></tr>
+          <tr><td class="mono">32</td><td class="mono">87.5%</td><td class="mono">12.958</td></tr>
+          <tr><td class="mono">256</td><td class="mono">98.4%</td><td class="mono">12.955</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      C_fill is flat across all TK (0.2% variation). The warm/cold ratio is
+      determined by the global matrix dimensions, not tile K size. Spatial locality
+      (4 TK-passes share one A cache line) and C warm-up (C stays in L1 across tile_k
+      passes) operate equivalently whether within or across tile boundaries.
+    </p>
+
+    <p><strong>E4b — L2_ACCESS_CYCLES sweep</strong> (gc=0, TM=32, TN=32, TK=256):</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>L2_lat</th><th>C_fill</th><th>cf / cf(14)</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">7</td><td class="mono">12.886</td><td class="mono">0.995</td></tr>
+          <tr><td class="mono">14</td><td class="mono">12.955</td><td class="mono">1.000</td></tr>
+          <tr><td class="mono">28</td><td class="mono">13.092</td><td class="mono">1.011</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Quadrupling L2_lat (7→28) changes C_fill by 1.6% only.
+      Fitting T = T_warm + T_cold × (L2/14) gives:
+      <strong>T_cold = 0.57 M cy (1.05% of total), T_warm = 53.8 M cy (99%).</strong>
+      Cold L2 fills are negligible. The dominant cost is warm L1 hits.
+    </p>
+
+    <p><strong>E4c — TN overflow</strong> (gc=0, TM=32, TK=256):</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>TN</th><th>C-tile</th><th>C_fill</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">32</td><td class="mono">4 KB</td><td class="mono">12.955</td></tr>
+          <tr><td class="mono">64</td><td class="mono">8 KB</td><td class="mono">12.900</td></tr>
+          <tr><td class="mono ok">128</td><td class="mono ok">16 KB = L1</td><td class="mono ok">14.777 ← overflow</td></tr>
+          <tr><td class="mono">256</td><td class="mono">32 KB</td><td class="mono">14.594</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      C_fill is flat while the C tile fits in L1, then jumps 14% once it fills L1
+      exactly (TN=128). This is the L1 overflow that was already implicit in the
+      model's TN constraint TN* ≤ L1/(TM × C_P).
+    </p>
+
+    <div class="box result">
+      <div class="box-label">E4 Result — corrected explanation of C_fill ≈ L2_lat</div>
+      <p>
+        C_fill ≈ 12–13 cycles is set by <strong>warm L1 hits</strong>, not L2 cold fills.
+        The formula is C_fill ≈ 3 × L1_lat = 3 × 4 = 12, where "3" is the number of
+        memory operations per mulacc (load A, load C, store C) normalized by register-tile
+        geometry. C_fill ≈ L2_lat = 14 only because 3 × L1_lat ≈ L2_lat for our
+        specific hardware parameters. On any system where that ratio differs,
+        C_fill would track L1_lat, not L2_lat.
+      </p>
+      <p style="margin-bottom:0">
+        The condition for the model to hold: C tile must fit in L1 (TN ≤ L1/(TM×C_P))
+        and A tile must fit in L2 (TM ≤ L2/(TK×A_P)). These are exactly the constraints
+        already encoded in α(TM) and TN*.
+      </p>
+    </div>
+  </section>
+
+</div>

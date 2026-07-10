@@ -23,8 +23,7 @@ PrngFifoPipelinedDev::PrngFifoPipelinedDev(InitParameters p, const size_t& cpu_c
       prefill_paused_(false),
       prefill_last_update_(0)
 {
-    if (fifo_capacity_ > 0)
-        assert(gen_cost_ > 0);
+    // gen_cost_ == 0 is valid: elements are generated instantly (no stalls ever).
 }
 
 bool PrngFifoPipelinedDev::contains(Addr addr) const
@@ -40,6 +39,14 @@ bool PrngFifoPipelinedDev::contains(Addr addr) const
 void PrngFifoPipelinedDev::catchUpCurrent(size_t cycle)
 {
     if (!current_active_ || current_paused_) return;
+    if (gen_cost_ == 0) {
+        while (current_ready_.size() < fifo_capacity_) {
+            current_ready_.push(cycle);
+            ++stats_.generates;
+        }
+        current_paused_ = true;
+        return;
+    }
     while (current_last_update_ + gen_cost_ <= cycle) {
         current_last_update_ += gen_cost_;
         current_ready_.push(current_last_update_);
@@ -54,6 +61,14 @@ void PrngFifoPipelinedDev::catchUpCurrent(size_t cycle)
 void PrngFifoPipelinedDev::catchUpPrefill(size_t cycle)
 {
     if (!prefill_active_ || prefill_paused_) return;
+    if (gen_cost_ == 0) {
+        while (prefill_ready_.size() < fifo_capacity_) {
+            prefill_ready_.push(cycle);
+            ++stats_.prefill_generates;
+        }
+        prefill_paused_ = true;
+        return;
+    }
     while (prefill_last_update_ + gen_cost_ <= cycle) {
         prefill_last_update_ += gen_cost_;
         prefill_ready_.push(prefill_last_update_);
