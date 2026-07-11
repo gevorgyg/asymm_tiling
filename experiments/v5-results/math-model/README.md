@@ -116,35 +116,122 @@ This makes sense: total A loads = MNK/TN sessions × R=TN/reg_n loads per sessio
 
     T  =  MNK * max(α(TM),  gc / TM)
 
-where `α(TM)` is a piecewise constant determined by which cache level holds A:
+where `α(TM)` is a piecewise constant determined by which cache level holds A.
 
-| A-tile size | α (gc=0, E3) | C_fill | dominant cost |
-|-------------|--------------|--------|---------------|
-| TM=8  (8 KB, L2)   | 3.400 | 13.60 | L2 fill latency / reg_n |
-| TM=16 (16 KB, L2)  | 3.300 | 13.20 | L2 fill latency / reg_n |
-| TM=24 (24 KB, L2)  | 3.259 | 13.04 | L2 fill latency / reg_n |
-| TM=32 (32 KB, L2)  | 3.237 | 12.95 | L2 fill latency / reg_n |
-| TM=48 (48 KB, L2)  | 3.255 | 13.02 | L2 fill latency / reg_n |
-| TM=64 (64 KB=L2)   | 3.560 | 14.24 | borderline DRAM |
-| TM=96 (96 KB, DRAM)  | 3.940 | 15.76 | DRAM latency / reg_n |
-| TM=128 (128 KB, DRAM)| 3.936 | 15.75 | DRAM latency / reg_n |
+### How α(TM) is measured: the gc=0 calibration
 
-**Optimal TM**: since T_A does not depend on TN, the only lever is TM.
-T(TM) = MNK * max(α(TM), gc/TM) decreases as TM grows (B term falls) but α(TM)
-rises once the L2 boundary is crossed. The crossover where B-dominated TM gets
-better than staying at the L2 boundary depends on gc:
+The model has two terms. To isolate α(TM) we need to zero out the B term.
+Setting gc=0 (instantaneous B generation) does exactly that:
 
-- gc < α * TM_L2 = 3.25 * 64 ≈ 208: A-dominated everywhere; TM ≈ 32-48 is optimal
-- gc > 208: B-dominated; larger TM (even into DRAM) may win because gc/TM falls fast
+    T_gc0 = MNK × max(α(TM), 0/TM)
+          = MNK × max(α(TM), 0)
+          = MNK × α(TM)                  [since α(TM) > 0 always]
 
-**TN's role**: Since TN doesn't appear in T, it is a free parameter chosen to
-saturate the L1 constraint: TN* = L1 / (TM * C_P). For TM=32: TN* = 16384/(32*4) = 128
-(but that overflows L1 based on sub-sweep 2; in practice TN ≤ 64 is safe).
+So dividing by MNK gives α exactly:
+
+    α(TM) = T_gc0 / MNK
+
+This is not an approximation — it is exact. With gc=0 the B term is always zero
+regardless of TM, so everything measured is purely A-access cost. We just run
+the simulator with PRNG_FIFO_GEN_COST=0 and read off the cycles.
+
+The same trick works per-(TM, TN) pair: run gc=0 at each pair and compute
+α(TM, TN) = T_gc0 / MNK to get a cell-specific calibration table (E6, E7).
+
+### The α(TM) table (E3, gc=0, TN=32)
+
+| A-tile size | α(TM) | C_fill | regime |
+|-------------|-------|--------|--------|
+| TM=8  (8 KB)    | 3.400 | 13.60 | L2 |
+| TM=16 (16 KB)   | 3.300 | 13.20 | L2 |
+| TM=24 (24 KB)   | 3.259 | 13.04 | L2 |
+| TM=32 (32 KB)   | 3.237 | 12.95 | L2 — minimum |
+| TM=48 (48 KB)   | 3.255 | 13.02 | L2 |
+| TM=64 (64 KB=L2) | 3.560 | 14.24 | L2/DRAM boundary |
+| TM=96 (96 KB)   | 3.940 | 15.76 | DRAM |
+| TM=128 (128 KB) | 3.936 | 15.75 | DRAM — flat |
+
+**TN's role**: TN doesn't appear in T, so it is a free parameter. Choose TN as
+large as possible subject to the C tile fitting in L1:
+TN* = L1 / (TM × C_P). At TM=32: TN* = 16384/(32×4) = 128, but E4c shows
+TN=128 exactly fills L1 causing a 14% α jump, so TN ≤ 64 is safe.
 
 **What happened to the ratio rule?** The ratio ρ_t = C_B/C_A was derived assuming
-C_A is a hardware constant. It is not — C_A encodes TN through the reuse factor R.
-The correct fundamental parameter is α = C_fill/reg_n (≈ L2_lat/reg_n). The
-ratio rule becomes: choose TM to satisfy TM = gc / α, but cap at the L2 boundary.
+C_A is a hardware constant. It is not — C_A = α(TM) × TN scales with TN through
+the reuse factor R. Once the correct form is substituted, TN cancels, the ratio
+rule disappears, and the only lever is TM.
+
+---
+
+## Finding TM* analytically — worked examples
+
+To minimize T = MNK × max(α(TM), gc/TM) we minimize max(α(TM), gc/TM) over all
+valid TM. There is no closed-form derivative — α(TM) is piecewise — so we
+evaluate the expression at each TM and take the minimum. The computation per TM
+is: look up α, divide gc by TM, take the max. Four arithmetic operations.
+
+The two terms have opposite trends:
+- `gc/TM` decreases as TM grows (B sessions are amortized over more elements)
+- `α(TM)` is mostly flat within each cache regime, jumps at the L2/DRAM boundary
+
+For small TM the B term dominates; growing TM reduces it until α takes over.
+The optimal TM is always at or just past this crossover.
+
+**gc = 64:**
+
+| TM | α(TM) | gc/TM | max | bottleneck |
+|----|-------|-------|-----|------------|
+| 8  | 3.400 | 8.000 | 8.000 | B |
+| 16 | 3.300 | 4.000 | 4.000 | B |
+| 24 | 3.259 | 2.667 | 3.259 | A |
+| **32** | **3.237** | **2.000** | **3.237** | **A ← min** |
+| 48 | 3.255 | 1.333 | 3.255 | A |
+| 64 | 3.560 | 1.000 | 3.560 | A |
+
+Crossover is between TM=16 (B, 4.000) and TM=24 (A, 3.259). Once A-dominated,
+cost = α(TM), so the cheapest α wins. TM=32 has the smallest α in the table
+(3.237). **TM* = 32.**
+
+**gc = 130:**
+
+| TM | α(TM) | gc/TM | max | bottleneck |
+|----|-------|-------|-----|------------|
+| 16 | 3.300 | 8.125 | 8.125 | B |
+| 24 | 3.259 | 5.417 | 5.417 | B |
+| 32 | 3.237 | 4.063 | 4.063 | B |
+| **48** | **3.255** | **2.708** | **3.255** | **A ← min** |
+| 64 | 3.560 | 2.031 | 3.560 | A |
+| 96 | 3.940 | 1.354 | 3.940 | A |
+
+Crossover between TM=32 (B, 4.063) and TM=48 (A, 3.255). Note TM=32 is
+B-dominated here (gc/32=4.063 > α(32)=3.237), so its lower α doesn't help —
+the B side is still the bottleneck there. **TM* = 48.**
+
+**gc = 230:**
+
+| TM | α(TM) | gc/TM | max | bottleneck |
+|----|-------|-------|-----|------------|
+| 32 | 3.237 | 7.188 | 7.188 | B |
+| 48 | 3.255 | 4.792 | 4.792 | B |
+| **64** | **3.560** | **3.594** | **3.594** | **B (barely) ← min** |
+| 96 | 3.940 | 2.396 | 3.940 | A |
+| 128| 3.936 | 1.797 | 3.936 | A |
+
+At TM=64: gc/TM = 3.594 > α(64) = 3.560 — still B-dominated, cost 3.594.
+At TM=96: cost jumps to 3.940 (A-dominated). The B savings from 64→96
+(3.594 → 2.396) don't compensate for the α jump (3.560 → 3.940). **TM* = 64.**
+
+**gc = 380:**
+
+| TM | α(TM) | gc/TM | max | bottleneck |
+|----|-------|-------|-----|------------|
+| 48 | 3.255 | 7.917 | 7.917 | B |
+| 64 | 3.560 | 5.938 | 5.938 | B |
+| 96 | 3.940 | 3.958 | 3.958 | B (3.958 > 3.940, barely) |
+| **128** | **3.936** | **2.969** | **3.936** | **A ← min** |
+
+At TM=96: gc/96 = 3.958 > α(96) = 3.940 — B-dominated by 0.5%. At TM=128:
+A-dominated, cost = α(128) = 3.936 < 3.958. **TM* = 128.**
 
 ---
 
@@ -304,3 +391,199 @@ and the 1% cold-fill contribution.
 **C_fill ≈ L2_lat = 14 is a numerical coincidence**: 3 × L1_lat happens to ≈ L2_lat
 for our parameters (L1_lat=4, L2_lat=14). On hardware with L2_lat=40, C_fill would
 still be 12 but would no longer equal L2_lat.
+
+---
+
+## E5 — Validating the optimal TM prediction
+
+`e5-optimal-tm/`
+
+The model T = MNK × max(α(TM), gc/TM) predicts a specific TM* for each gc.
+E5 sweeps all valid TM values for four gc values chosen to cover different regimes,
+and checks that the empirically best TM matches the prediction.
+
+**Predicted TM\* per gc** (from the α(TM) table measured in E3):
+
+| gc  | Predicted TM* | Reason |
+|-----|--------------|--------|
+| 64  | 32 | A-dominated everywhere; argmin of α in L2 regime |
+| 130 | 48 | crossover between TM=32 (B-dominated) and TM=48 (A-dominated) |
+| 230 | 64 | gc/64 = 3.59 ≈ α(64)=3.56; roughly balanced at the L2 boundary |
+| 380 | 128 | gc/128 = 2.97 < α(128)=3.94; A-dominated in DRAM regime |
+
+**Results (TN=32, M=192 for TM≤96, M=256 for TM=128):**
+
+| gc  | TM* (predicted) | TM* (empirical) | Match | T/MNK at TM* |
+|-----|----------------|----------------|-------|--------------|
+| 64  | 32 | 32 | ✓ | 3.241 |
+| 130 | 48 | 48 | ✓ | 3.260 |
+| 230 | 64 | 64 | ✓ | 3.699 |
+| 380 | 128 | 128 | ✓ | 3.942 |
+
+All four predictions confirmed. Model error ≤ 3% at the optimal TM for every gc.
+
+**Note on normalization**: TM=128 requires M=256 (TM must divide M), while other
+TM values use M=192. The empirical argmin was computed on T/MNK (not raw cycles)
+so that results from different M are directly comparable.
+
+---
+
+## E6 — TN independence of the optimal TM
+
+`e6-tn-independence/`
+
+The model has no TN term, so TM\* should not change when TN varies (within the
+regime where C fits in L1). E6 tests this by sweeping TM ∈ {8,16,24,32,48,64,96}
+× TN ∈ {4,16,32,64} at gc=130 (which puts TM*=48 in E5).
+
+The experiment has two parts.
+
+### Part 1: prediction using the E3 α table (calibrated at TN=32)
+
+Model prediction: TM\*=48 for all TN.
+
+| TN | Predicted TM* | Empirical TM* | Match |
+|----|--------------|--------------|-------|
+| 4  | 48 | 48 | ✓ |
+| 16 | 48 | 48 | ✓ |
+| 32 | 48 | 48 | ✓ |
+| 64 | 48 | 48 | ✓ |
+
+TM*=48 for all TN. The E3 model predicts correctly across the full TN range.
+
+However, for TN=4 in the DRAM regime (TM=64, TM=96), the model underestimates
+measured cycles by ~75%. This is because α in the DRAM regime actually depends
+on TN, but the E3 table was calibrated at TN=32 only.
+
+### Part 2: recalibration — measuring α(TM, TN) per cell
+
+To investigate the TN-dependent error, E6 runs a second gc=0 calibration sweep
+over the same TM × TN grid, measuring α(TM, TN) = T_gc0/MNK at each pair.
+All predictions are then recomputed using the cell-specific α.
+
+**Calibrated α(TM, TN) table (from gc=0 runs):**
+
+| TM  | TN=4  | TN=16 | TN=32 | TN=64 | E3 (TN=32) |
+|-----|-------|-------|-------|-------|------------|
+| 8   | 3.401 | 3.400 | 3.400 | 3.400 | 3.400 |
+| 16  | 3.492 | 3.327 | 3.300 | 3.286 | 3.300 |
+| 24  | 3.452 | 3.287 | 3.259 | 3.244 | 3.259 |
+| 32  | 3.430 | 3.264 | 3.237 | 3.223 | 3.237 |
+| 48  | 3.414 | 3.249 | 3.255 | 3.428 | 3.255 |
+| **64**  | **6.218** | **3.941** | **3.560** | **3.760** | 3.560 |
+| **96**  | **6.206** | **3.931** | **3.940** | **3.749** | 3.940 |
+
+Key observations:
+- **L2 regime (TM ≤ 48)**: α varies by at most 6% across TN values. TN=4 is
+  slightly higher because with R=1 (one rtj per tile_n), every A load is a cold
+  fill with no L1 warm-up across rtj passes. The effect is small.
+- **DRAM regime (TM ≥ 64)**: α(TM=64, TN=4) = 6.218 — nearly 2× higher than
+  α(TM=64, TN=32) = 3.560. Why: at TN=4, R = TN/reg_n = 1, so every session
+  starts with a cold DRAM fill (no rtj warm-up). At TN=32, R=8 and the same A
+  lines stay warm for 7 of the 8 rtj passes. In the DRAM regime the cost of one
+  cold fill (~198 cy) dominates, so TN=4 amplifies the difference dramatically.
+- **Significance for TM\***: The large DRAM-regime TN effect does not shift TM*
+  because the L2-regime minimum (TM=32–48, α ≈ 3.25–3.44) still beats even the
+  least-DRAM-penalized TM=64 at TN=32 (α=3.56), let alone at TN=4 (α=6.22).
+
+**Part 2 results (using recalibrated α):**
+
+| TN | Predicted TM* | Empirical TM* | Match |
+|----|--------------|--------------|-------|
+| 4  | 48 | 48 | ✓ |
+| 16 | 48 | 48 | ✓ |
+| 32 | 48 | 48 | ✓ |
+| 64 | 48 | 48 | ✓ |
+
+TM*=48 confirmed for all TN with cell-specific α. Using calibrated α reduces
+DRAM-regime prediction errors from ~75% to <1%. Residual 2–4% error in
+B-bottlenecked cells comes from FIFO overhead present at gc=130 but absent at gc=0.
+
+### Summary
+
+The model T = MNK × max(α(TM), gc/TM) with TN-independent α(TM) correctly
+predicts TM* for all tested TN values (TN ∈ {4,16,32,64}). The TN-dependence of
+α is a real but second-order effect: it matters for accurate absolute cycle counts
+in the DRAM regime but does not move the optimal tile choice.
+
+---
+
+## E7 — TN independence across all gc values
+
+`e7-tn-gc-sweep/`
+
+E6 tested TN independence at gc=130 only. E7 extends to all four gc values from
+E5 (gc ∈ {64, 130, 230, 380}), sweeping TM ∈ {8,16,24,32,48,64,96,128} ×
+TN ∈ {4,16,32,64}. For each (gc, TN) pair, the experiment finds the empirical TM*
+and compares it to (a) the E3 (TN-independent) prediction and (b) the calibrated
+(per-TN) prediction.
+
+### Summary table: empirical TM* for all (gc, TN)
+
+| gc  | TN=4 | TN=16 | TN=32 | TN=64 | E3-pred |
+|-----|------|-------|-------|-------|---------|
+| 64  | 48 ✗ | 48 ✗  | 32 ✓  | 32 ✓  | 32 |
+| 130 | 48 ✓ | 48 ✓  | 48 ✓  | 48 ✓  | 48 |
+| 230 | 48 ✗ | 128 ✗ | 64 ✓  | 128 ✗ | 64 |
+| 380 | 128 ✓| 128 ✓ | 128 ✓ | 128 ✓ | 128 |
+
+The calibrated (per-TN) model correctly predicts TM* in all but one marginal case
+(gc=380, TN=4 where TM=96 and TM=128 have nearly identical calibrated α, 6.206
+vs 6.209).
+
+### Finding 1: gc=64 — TM* shifts from 32 to 48 at small TN
+
+Within the L2 regime, the α minimum shifts slightly with TN. At TN=32 (the E3
+calibration TN), TM=32 has the lowest α (3.237 < 3.255). At TN=4, the ordering
+reverses: α(32,TN=4)=3.430 > α(48,TN=4)=3.414. So TM*=48 at TN=4 and TN=16.
+
+This is a small effect (~0.5% difference in α) but real. Since gc=64 is fully
+A-dominated from TM=24 onward, the TM with the lowest α wins — and that changes
+with TN.
+
+### Finding 2: gc=130 — all ✓, consistent with E6
+
+TM*=48 for all TN, confirming E6. TM=48 is comfortably inside the L2 regime
+where the TN sensitivity of α is small and the crossover is far enough from the
+L2/DRAM boundary that nothing changes.
+
+### Finding 3: gc=230 — the most sensitive case (3 of 4 TN values shift)
+
+The E3-predicted TM*=64 sits exactly at the L2/DRAM boundary — the most TN-sensitive
+point in the α curve. Results for each TN:
+
+- **TN=4**: TM*=48. α(64,TN=4)=6.22 — the DRAM-regime penalty is so large that
+  TM=48 (T/MNK=4.97) beats TM=64 (T/MNK=6.27) by more than 20%.
+- **TN=16**: TM*=128. α(64,TN=16)=3.941, α(128,TN=16)=3.925. TM=128 edges TM=64
+  by 0.7% (3.932 vs 3.955). Small but consistent.
+- **TN=32**: TM*=64 ✓. This is the E3 calibration TN; the prediction holds.
+- **TN=64**: TM*=128. Same mechanism as TN=16; TM=128 narrowly wins.
+
+### Finding 4: gc=380 — all ✓
+
+TM*=128 for all TN. The B cost gc/96=3.958 and gc/128=2.969 straddle the DRAM-
+regime α (≈3.94) so TM=128 wins everywhere. Even at TN=4 where all DRAM-regime
+TM values have α≈6.21, TM=128 is the best among them (lowest absolute cycles).
+
+### When does TM* depend on TN?
+
+Three conditions must all hold:
+
+1. **The E3-predicted TM* is at or past the L2/DRAM boundary (TM ≥ 64).** In the
+   L2 regime the TN sensitivity of α is small (~6%); it only becomes large in the
+   DRAM regime (~2×). Exception: gc=64 shows a small inversion within L2 because
+   TM=32 and TM=48 have very similar α and the ordering flips.
+
+2. **TN is far from the E3 calibration value (TN=32).** At TN=32 the E3 α table
+   is exact. Deviations grow as TN moves away, especially toward TN=4.
+
+3. **The cost difference between TM options is small.** When one TM is clearly
+   better (gc=380, where TM=128 beats all others by 3%), TN noise can't flip the
+   winner. When two options are within 1% (gc=230, TM=64 vs TM=128 at TN=16),
+   TN-dependent α can tip the balance.
+
+### Practical rule
+
+If you are choosing TN=32 (the calibration value): the E3 model is correct for
+all gc values. If you use a different TN and gc is near a cache-regime boundary
+(gc ≈ 64–230), use the per-TN calibrated α to get the right TM*.

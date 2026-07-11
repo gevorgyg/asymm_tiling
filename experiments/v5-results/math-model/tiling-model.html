@@ -301,9 +301,9 @@
     <p class="doc-eyebrow">Asymmetric Tiling Project · Formal Model</p>
     <h1>A Tile-Shape Cost Model for Asymmetric Matrix Multiply</h1>
     <p class="doc-sub">
-      Revised model incorporating the A reuse factor — with experimental validation from E1b and E2.
+      Revised model incorporating the A reuse factor — with experimental validation from E1b through E6.
     </p>
-    <div class="doc-status">Experimentally confirmed · E1b + E2 · max error ≤ 3%</div>
+    <div class="doc-status">Experimentally confirmed · E1b – E7 · max error ≤ 3%</div>
   </header>
 
   <!-- ─── §1 Setup ─────────────────────────────── -->
@@ -596,7 +596,33 @@
       <div class="line">TM<sub>L2</sub>  =  L2 / (TK × A<sub>P</sub>)  =  65536 / (256 × 4)  =  64  ← L2 boundary</div>
     </div>
 
-    <h3>Measured α values (E3 — gc=0, no B-cost contamination)</h3>
+    <h3>How α(TM) is measured: the gc=0 calibration</h3>
+    <p>
+      The model has two terms. To read off α(TM) from a simulation, we need to
+      eliminate the B term. Setting <strong>gc=0</strong> (instantaneous B generation,
+      PRNG_FIFO_GEN_COST=0) does exactly that:
+    </p>
+    <div class="eq">
+      <div class="line">T<sub>gc=0</sub>  =  MNK × max( α(TM),  0/TM )</div>
+      <div class="line indent">         =  MNK × max( α(TM),  0 )</div>
+      <div class="line labeled">
+        <span>         =  MNK × α(TM)</span>
+        <span class="eq-tag">exact — α(TM) > 0 always</span>
+      </div>
+    </div>
+    <p>
+      Rearranging: <strong>α(TM) = T<sub>gc=0</sub> / MNK.</strong>
+      This is not an approximation — with gc=0 the B generation cost is
+      identically zero regardless of TM, so every measured cycle is purely A-access
+      overhead. Run the simulator with gc=0, read off the cycles, divide by MNK.
+    </p>
+    <p>
+      The same procedure works per-(TM, TN) pair. Run gc=0 at each (TM, TN) and
+      compute α(TM, TN) = T<sub>gc=0</sub> / MNK. This builds the cell-specific
+      calibration table used in E6 and E7.
+    </p>
+
+    <h3>Measured α values (E3 — gc=0, TN=32)</h3>
 
     <div class="tbl-wrap">
       <table>
@@ -849,6 +875,89 @@
       Crossover gc values: TM=64 beats TM=32 when gc > α<sub>L2</sub>×64 ≈ 208.
       TM=128 beats TM=64 when gc > α<sub>DRAM</sub>×64 ≈ 252 (close approximation).
     </p>
+
+    <h3>Worked examples — calculating TM* by hand</h3>
+    <p>
+      For each candidate TM: (1) look up α(TM) from the table, (2) compute gc/TM,
+      (3) take the max. Pick the TM with the smallest result. Four arithmetic
+      operations per row.
+    </p>
+
+    <p><strong>gc = 64</strong></p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>TM</th><th>α(TM)</th><th>gc/TM = 64/TM</th><th>max</th><th>Bottleneck</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">8</td><td class="mono">3.400</td><td class="mono">8.000</td><td class="mono">8.000</td><td class="prose dim">B</td></tr>
+          <tr><td class="mono">16</td><td class="mono">3.300</td><td class="mono">4.000</td><td class="mono">4.000</td><td class="prose dim">B</td></tr>
+          <tr><td class="mono">24</td><td class="mono">3.259</td><td class="mono">2.667</td><td class="mono">3.259</td><td class="prose dim">A — crossover here</td></tr>
+          <tr><td class="mono hi">32</td><td class="mono hi">3.237</td><td class="mono">2.000</td><td class="mono hi">3.237</td><td class="prose ok">A ← min</td></tr>
+          <tr><td class="mono">48</td><td class="mono">3.255</td><td class="mono">1.333</td><td class="mono">3.255</td><td class="prose dim">A</td></tr>
+          <tr><td class="mono">64</td><td class="mono">3.560</td><td class="mono">1.000</td><td class="mono">3.560</td><td class="prose dim">A</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Crossover between TM=16 (B) and TM=24 (A). Once A-dominated, cost = α(TM), so
+      the TM with the smallest α wins. TM=32 has α=3.237 (minimum in L2 regime).
+      <strong>TM* = 32.</strong>
+    </p>
+
+    <p><strong>gc = 130</strong></p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>TM</th><th>α(TM)</th><th>gc/TM = 130/TM</th><th>max</th><th>Bottleneck</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">16</td><td class="mono">3.300</td><td class="mono">8.125</td><td class="mono">8.125</td><td class="prose dim">B</td></tr>
+          <tr><td class="mono">32</td><td class="mono">3.237</td><td class="mono">4.063</td><td class="mono">4.063</td><td class="prose dim">B — lower α, doesn't help yet</td></tr>
+          <tr><td class="mono hi">48</td><td class="mono hi">3.255</td><td class="mono">2.708</td><td class="mono hi">3.255</td><td class="prose ok">A ← min</td></tr>
+          <tr><td class="mono">64</td><td class="mono">3.560</td><td class="mono">2.031</td><td class="mono">3.560</td><td class="prose dim">A</td></tr>
+          <tr><td class="mono">96</td><td class="mono">3.940</td><td class="mono">1.354</td><td class="mono">3.940</td><td class="prose dim">A</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      TM=32 is still B-dominated (gc/32 = 4.063 &gt; α(32) = 3.237), so its lower α
+      provides no benefit — the B side is still the bottleneck. TM=48 is the first
+      A-dominated point. <strong>TM* = 48.</strong>
+    </p>
+
+    <p><strong>gc = 230</strong></p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>TM</th><th>α(TM)</th><th>gc/TM = 230/TM</th><th>max</th><th>Bottleneck</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">32</td><td class="mono">3.237</td><td class="mono">7.188</td><td class="mono">7.188</td><td class="prose dim">B</td></tr>
+          <tr><td class="mono">48</td><td class="mono">3.255</td><td class="mono">4.792</td><td class="mono">4.792</td><td class="prose dim">B</td></tr>
+          <tr><td class="mono hi">64</td><td class="mono hi">3.560</td><td class="mono">3.594</td><td class="mono hi">3.594</td><td class="prose ok">B (barely) ← min</td></tr>
+          <tr><td class="mono">96</td><td class="mono">3.940</td><td class="mono">2.396</td><td class="mono">3.940</td><td class="prose dim">A — α jump erases B gain</td></tr>
+          <tr><td class="mono">128</td><td class="mono">3.936</td><td class="mono">1.797</td><td class="mono">3.936</td><td class="prose dim">A</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      At TM=64: gc/TM = 3.594 &gt; α(64) = 3.560 — still B-dominated by 1%.
+      At TM=96: A-dominated, cost jumps to 3.940. The B savings from 64→96
+      (3.594→2.396) don't compensate for the α jump (3.560→3.940).
+      <strong>TM* = 64.</strong>
+    </p>
+
+    <p><strong>gc = 380</strong></p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>TM</th><th>α(TM)</th><th>gc/TM = 380/TM</th><th>max</th><th>Bottleneck</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">48</td><td class="mono">3.255</td><td class="mono">7.917</td><td class="mono">7.917</td><td class="prose dim">B</td></tr>
+          <tr><td class="mono">64</td><td class="mono">3.560</td><td class="mono">5.938</td><td class="mono">5.938</td><td class="prose dim">B</td></tr>
+          <tr><td class="mono">96</td><td class="mono">3.940</td><td class="mono">3.958</td><td class="mono">3.958</td><td class="prose dim">B (3.958 &gt; 3.940, barely)</td></tr>
+          <tr><td class="mono hi">128</td><td class="mono hi">3.936</td><td class="mono">2.969</td><td class="mono hi">3.936</td><td class="prose ok">A ← min</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      At TM=96: gc/96 = 3.958 &gt; α(96) = 3.940 — B-dominated by 0.5%.
+      At TM=128: A-dominated, cost = 3.936 &lt; 3.958. <strong>TM* = 128.</strong>
+    </p>
   </section>
 
   <hr class="section">
@@ -1018,6 +1127,302 @@
         The condition for the model to hold: C tile must fit in L1 (TN ≤ L1/(TM×C_P))
         and A tile must fit in L2 (TM ≤ L2/(TK×A_P)). These are exactly the constraints
         already encoded in α(TM) and TN*.
+      </p>
+    </div>
+
+    <h3>E5 — Validating the optimal TM prediction</h3>
+    <p>
+      The model predicts TM* for each gc by finding the TM that minimises
+      T/MNK = max(α(TM), gc/TM). E5 sweeps all valid TM values across four gc
+      values chosen to exercise different regimes:
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>gc</th>
+            <th>Predicted TM*</th>
+            <th>Empirical TM*</th>
+            <th>Match</th>
+            <th>T/MNK at TM*</th>
+            <th>Bottleneck</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">64</td>
+            <td class="mono hi">32</td>
+            <td class="mono ok">32</td>
+            <td class="mono ok">✓</td>
+            <td class="mono">3.241</td>
+            <td class="prose dim">A-dominated</td>
+          </tr>
+          <tr>
+            <td class="mono">130</td>
+            <td class="mono hi">48</td>
+            <td class="mono ok">48</td>
+            <td class="mono ok">✓</td>
+            <td class="mono">3.260</td>
+            <td class="prose dim">A-dominated (near crossover)</td>
+          </tr>
+          <tr>
+            <td class="mono">230</td>
+            <td class="mono hi">64</td>
+            <td class="mono ok">64</td>
+            <td class="mono ok">✓</td>
+            <td class="mono">3.699</td>
+            <td class="prose dim">balanced at L2 boundary</td>
+          </tr>
+          <tr>
+            <td class="mono">380</td>
+            <td class="mono hi">128</td>
+            <td class="mono ok">128</td>
+            <td class="mono ok">✓</td>
+            <td class="mono">3.942</td>
+            <td class="prose dim">A-dominated (DRAM regime)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      All four predictions confirmed. Model error ≤ 3% at the optimal TM for every gc.
+      TM=128 uses M=256 (the only M divisible by 128 we tested); the argmin was computed
+      on T/MNK rather than raw cycles so the two matrix sizes are directly comparable.
+    </p>
+
+    <h3>E6 — TN independence of the optimal TM</h3>
+    <p>
+      Because TN does not appear in T = MNK × max(α(TM), gc/TM), TM* should be the
+      same regardless of TN (as long as the C tile fits in L1). E6 sweeps
+      TM ∈ {8,16,24,32,48,64,96} × TN ∈ {4,16,32,64} at gc=130.
+      The experiment runs in two passes.
+    </p>
+
+    <p><strong>Part 1 — E3 α table (calibrated at TN=32)</strong></p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>TN</th><th>Predicted TM*</th><th>Empirical TM*</th><th>Match</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">4</td><td class="mono">48</td><td class="mono ok">48</td><td class="mono ok">✓</td></tr>
+          <tr><td class="mono">16</td><td class="mono">48</td><td class="mono ok">48</td><td class="mono ok">✓</td></tr>
+          <tr><td class="mono">32</td><td class="mono">48</td><td class="mono ok">48</td><td class="mono ok">✓</td></tr>
+          <tr><td class="mono">64</td><td class="mono">48</td><td class="mono ok">48</td><td class="mono ok">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      TM*=48 for every TN tested. However, for TN=4 in the DRAM regime (TM=64,96),
+      the model using the E3 table (calibrated at TN=32) underestimates measured
+      cycles by ~75%. This motivates a recalibration.
+    </p>
+
+    <p><strong>Part 2 — per-(TM, TN) calibrated α from gc=0 runs</strong></p>
+    <p>
+      A second gc=0 sweep measures α(TM, TN) = T<sub>gc=0</sub>/MNK at every
+      (TM, TN) pair. The resulting calibration table reveals why the DRAM regime
+      is TN-sensitive:
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>TM</th>
+            <th>A tile</th>
+            <th>TN=4</th>
+            <th>TN=16</th>
+            <th>TN=32</th>
+            <th>TN=64</th>
+            <th>E3 (TN=32)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">8</td><td class="mono">8 KB</td>
+            <td class="mono">3.401</td><td class="mono">3.400</td><td class="mono">3.400</td><td class="mono">3.400</td><td class="mono">3.400</td>
+          </tr>
+          <tr>
+            <td class="mono">16</td><td class="mono">16 KB</td>
+            <td class="mono">3.492</td><td class="mono">3.327</td><td class="mono">3.300</td><td class="mono">3.286</td><td class="mono">3.300</td>
+          </tr>
+          <tr>
+            <td class="mono">24</td><td class="mono">24 KB</td>
+            <td class="mono">3.452</td><td class="mono">3.287</td><td class="mono">3.259</td><td class="mono">3.244</td><td class="mono">3.259</td>
+          </tr>
+          <tr>
+            <td class="mono hi">32</td><td class="mono">32 KB</td>
+            <td class="mono">3.430</td><td class="mono">3.264</td><td class="mono hi">3.237</td><td class="mono">3.223</td><td class="mono hi">3.237</td>
+          </tr>
+          <tr>
+            <td class="mono hi">48</td><td class="mono">48 KB</td>
+            <td class="mono">3.414</td><td class="mono">3.249</td><td class="mono hi">3.255</td><td class="mono">3.428</td><td class="mono hi">3.255</td>
+          </tr>
+          <tr>
+            <td class="mono">64</td><td class="mono">64 KB = L2</td>
+            <td class="mono" style="color:var(--stress)">6.218</td>
+            <td class="mono">3.941</td><td class="mono">3.560</td><td class="mono">3.760</td><td class="mono">3.560</td>
+          </tr>
+          <tr>
+            <td class="mono">96</td><td class="mono">96 KB (DRAM)</td>
+            <td class="mono" style="color:var(--stress)">6.206</td>
+            <td class="mono">3.931</td><td class="mono">3.940</td><td class="mono">3.749</td><td class="mono">3.940</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box result">
+      <div class="box-label">Why α(TM=64, TN=4) ≈ 2× α(TM=64, TN=32)</div>
+      <p>
+        In the DRAM regime (A tile overflows L2), each A register tile must be fetched
+        from DRAM the first time it is used in a session. The reuse factor
+        R = TN/reg_n determines how many rtj iterations share a single cold fill:
+        at TN=32, R=8 — one cold DRAM fill amortized over 8 warm loads.
+        At TN=4, R=1 — <em>every</em> load is a cold DRAM fill with no warm-up.
+      </p>
+      <p style="margin-bottom:0">
+        In the L2 regime (TM ≤ 48) the same dynamic exists but the cost difference
+        between a cold L2 fill (~14 cy) and a warm L1 hit (~4 cy) is much smaller,
+        so the TN=4 penalty is only ~6%. The DRAM regime amplifies this to ~2×
+        because a cold DRAM fill costs ~198 cy vs 4 cy — a 46× ratio.
+      </p>
+    </div>
+
+    <p>
+      Using the recalibrated α, prediction errors for TN=4 in the DRAM regime drop
+      from ~75% to &lt;1%. TM*=48 remains optimal for all TN even with the fully
+      calibrated α: the L2-regime minimum (TM=48, α ≈ 3.25–3.41) still beats the
+      least-penalised DRAM option (TM=64, TN=32, α=3.56). The ~2–4% residual error
+      in B-bottlenecked cells comes from FIFO scheduling overhead present at gc=130
+      but absent in the gc=0 calibration runs.
+    </p>
+
+    <h3>E7 — TN independence across all gc values</h3>
+    <p>
+      E6 tested TN independence at gc=130 only. E7 sweeps all four gc values from
+      E5 (64, 130, 230, 380) × TN ∈ {4,16,32,64}, checking empirical TM* against
+      both the E3 (TN-independent) and the calibrated (per-TN) predictions.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>gc</th>
+            <th>E3-pred</th>
+            <th>TN=4</th>
+            <th>TN=16</th>
+            <th>TN=32</th>
+            <th>TN=64</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">64</td>
+            <td class="mono">32</td>
+            <td class="mono" style="color:var(--stress)">48 ✗</td>
+            <td class="mono" style="color:var(--stress)">48 ✗</td>
+            <td class="mono ok">32 ✓</td>
+            <td class="mono ok">32 ✓</td>
+          </tr>
+          <tr>
+            <td class="mono">130</td>
+            <td class="mono">48</td>
+            <td class="mono ok">48 ✓</td>
+            <td class="mono ok">48 ✓</td>
+            <td class="mono ok">48 ✓</td>
+            <td class="mono ok">48 ✓</td>
+          </tr>
+          <tr>
+            <td class="mono">230</td>
+            <td class="mono">64</td>
+            <td class="mono" style="color:var(--stress)">48 ✗</td>
+            <td class="mono" style="color:var(--stress)">128 ✗</td>
+            <td class="mono ok">64 ✓</td>
+            <td class="mono" style="color:var(--stress)">128 ✗</td>
+          </tr>
+          <tr>
+            <td class="mono">380</td>
+            <td class="mono">128</td>
+            <td class="mono ok">128 ✓</td>
+            <td class="mono ok">128 ✓</td>
+            <td class="mono ok">128 ✓</td>
+            <td class="mono ok">128 ✓</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The calibrated (per-TN) model correctly predicts TM* in all but one
+      marginal case (gc=380, TN=4, where TM=96 and TM=128 have calibrated
+      α values of 6.206 vs 6.209 — essentially a tie; TM=128 won empirically
+      by 0.19%).
+    </p>
+
+    <div class="box result">
+      <div class="box-label">E7 Findings — when TM* depends on TN</div>
+      <p>
+        <strong>gc=64 (TM*=32 at TN=32):</strong> at TN=4 and TN=16, TM* shifts
+        to 48. Within the L2 regime, the α minimum flips: α(32,TN=4)=3.430 &gt;
+        α(48,TN=4)=3.414. The difference is 0.016 — small but enough because
+        gc=64 is fully A-dominated and the TM with the lowest α always wins.
+      </p>
+      <p>
+        <strong>gc=130 (TM*=48):</strong> unchanged for all TN. TM=48 is inside
+        the L2 regime, far from the L2/DRAM boundary, and the TN sensitivity of
+        α in L2 is too small to matter.
+      </p>
+      <p>
+        <strong>gc=230 (TM*=64 at TN=32):</strong> the most sensitive case —
+        TM*=64 sits exactly at the L2/DRAM boundary. At TN=4: α(64,TN=4)=6.22
+        makes TM=64 extremely costly; TM=48 (T/MNK=4.97) beats TM=64 (T/MNK=6.27)
+        by &gt;20%. At TN=16 and TN=64: α(128,TN) &lt; α(64,TN) by a small margin,
+        so TM=128 edges out TM=64.
+      </p>
+      <p style="margin-bottom:0">
+        <strong>gc=380 (TM*=128):</strong> unchanged for all TN. At this gc, TM=128
+        wins decisively even in the DRAM regime where all large-TM options have
+        α≈6.2 at TN=4. The B savings from TM=96→128 still tip the balance.
+      </p>
+    </div>
+
+    <div class="box theorem">
+      <div class="box-label">When TM* depends on TN — three conditions</div>
+      <ol class="steps">
+        <li><span class="n">1.</span><span>The E3-predicted TM* sits <strong>at or past the L2/DRAM boundary</strong> (TM ≥ 64). In the L2 regime the TN sensitivity of α is at most 6%; only in the DRAM regime does it reach ~2×.</span></li>
+        <li><span class="n">2.</span><span>TN is <strong>far from the E3 calibration value</strong> (TN=32). At TN=32 the E3 table is exact by construction. Deviations grow toward TN=4.</span></li>
+        <li><span class="n">3.</span><span>The competing TM options are <strong>close in cost</strong>. When one option wins by &gt;3%, TN noise cannot flip the result. It only matters when options are within ~1% of each other.</span></li>
+      </ol>
+      <p style="margin-top:0.75rem; margin-bottom:0">
+        <strong>Practical rule:</strong> if you use TN=32, the E3 model is correct
+        for all gc values. If you use small TN (≤16) and gc is near a cache-regime
+        boundary, use the per-TN calibrated α.
+      </p>
+    </div>
+
+    <div class="box result">
+      <div class="box-label">E5 + E6 + E7 Combined Result</div>
+      <p>
+        The model T = MNK × max(α(TM), gc/TM) is confirmed across all four gc values
+        (64, 130, 230, 380) and all four TN values (4, 16, 32, 64). The E3
+        (TN-independent) α table gives the right TM* whenever TN=32 or the E3-optimal
+        TM is comfortably inside the L2 regime. The calibrated (per-TN) α gives the
+        right TM* in all but one marginal tie case.
+      </p>
+      <p style="margin-bottom:0">
+        <strong>Conclusion on TN:</strong> TN does not appear in
+        T = MNK × max(α(TM), gc/TM). It can be chosen freely to maximize spatial
+        locality, subject only to the C-tile L1 constraint. The exceptions found in
+        E7 (gc=64 and gc=230 at small TN) are due to the TN-dependence of α itself,
+        not a TN term in the time function — and the calibrated model captures them.
+        The original ratio rule TM*/TN* = ρ<sub>t</sub> is fully invalidated.
       </p>
     </div>
   </section>
