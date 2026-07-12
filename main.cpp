@@ -48,7 +48,7 @@ Stationary parseStationary(const std::string& str)
 
 void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
                           uint reg_m, uint reg_n, uint reg_k, uint seed_bytes,
-                          bool b_fifo_pipelined = false)
+                          bool b_fifo_pipelined = false, uint num_prefill = 1)
 {
     InstGenerator gen{InstGenerator::Params{
         .a_height    = c.a_height,
@@ -60,6 +60,7 @@ void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
         .reg_n       = reg_n,
         .reg_k       = reg_k,
         .seed_bytes  = seed_bytes,
+        .num_prefill = num_prefill,
     }};
 
     std::ofstream ofs(instruction_path);
@@ -77,7 +78,7 @@ void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
 // Used by both --- UNUSED OPTIONS --- output (humans) and the experiment
 // harness (cache-key normalization).
 std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
-                                          bool record_mulac)
+                                          bool record_mulac, bool no_l2)
 {
     std::vector<const char*> u;
     if (source != BSource::PrngMem) {
@@ -89,6 +90,9 @@ std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
         u.push_back("PRNG_FIFO_GEN_COST");
         u.push_back("PRNG_FIFO_SEED_BYTES");
     }
+    if (source != BSource::PrngFifoPipelined) {
+        u.push_back("PRNG_FIFO_NUM_PREFILL");
+    }
     if (!use_3dregisters) {
         u.push_back("REG_M");
         u.push_back("REG_N");
@@ -97,33 +101,36 @@ std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
     if (!record_mulac) {
         u.push_back("MULAC_CYCLES");
     }
+    if (no_l2) {
+        u.push_back("L2_SIZE_BYTES");
+        u.push_back("L2_LINE_SIZE_BYTES");
+        u.push_back("L2_ASSOC");
+        u.push_back("L2_ACCESS_CYCLES");
+        u.push_back("L2_REPLACEMENT_POLICY");
+        u.push_back("L2_WRITE_POLICY");
+    }
     return u;
 }
 
 
-void printCacheTable(const Cache& l1, const Cache& l2)
+void printCacheTable(const Cache& l1, const Cache* l2)
 {
-    const auto& a = l1.stats();
-    const auto& b = l2.stats();
-    const double hr_a = (a.hits + a.misses) ? (double)a.hits / (a.hits + a.misses) : 0.0;
-    const double hr_b = (b.hits + b.misses) ? (double)b.hits / (b.hits + b.misses) : 0.0;
+    const auto printRow = [](const Cache& c) {
+        const auto& s = c.stats();
+        const double hr = (s.hits + s.misses) ? (double)s.hits / (s.hits + s.misses) : 0.0;
+        printf("| %s | %.03f | %llu | %llu | %llu | %llu | %llu | %llu |\n", c.name(), hr,
+               (unsigned long long)s.tag_lookups,
+               (unsigned long long)s.line_fills,
+               (unsigned long long)s.evicts,
+               (unsigned long long)s.writebacks,
+               (unsigned long long)s.bytes_in,
+               (unsigned long long)s.bytes_out);
+    };
 
     printf("| Cache | Hit rate | TagLookup | LineFill | Evict | Writeback | BytesIn | BytesOut |\n");
     printf("|---|---|---|---|---|---|---|---|\n");
-    printf("| %s | %.03f | %llu | %llu | %llu | %llu | %llu | %llu |\n", l1.name(), hr_a,
-           (unsigned long long)a.tag_lookups,
-           (unsigned long long)a.line_fills,
-           (unsigned long long)a.evicts,
-           (unsigned long long)a.writebacks,
-           (unsigned long long)a.bytes_in,
-           (unsigned long long)a.bytes_out);
-    printf("| %s | %.03f | %llu | %llu | %llu | %llu | %llu | %llu |\n", l2.name(), hr_b,
-           (unsigned long long)b.tag_lookups,
-           (unsigned long long)b.line_fills,
-           (unsigned long long)b.evicts,
-           (unsigned long long)b.writebacks,
-           (unsigned long long)b.bytes_in,
-           (unsigned long long)b.bytes_out);
+    printRow(l1);
+    if (l2) printRow(*l2);
 }
 
 // L2 is the only client of main memory, so DRAM traffic is L2's boundary
@@ -193,6 +200,7 @@ int main(int argc, char* argv[])
     int         trace_level      = Interpreter::trace_instructions;
     bool        use_3dregisters  = false;
     bool        mulac_norecord   = false;
+    bool        no_l2            = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -211,6 +219,7 @@ int main(int argc, char* argv[])
         else if (arg == "--assembler_input") assembler_input = need_arg("--assembler_input");
         else if (arg == "--3dregisters")     use_3dregisters = true;
         else if (arg == "--mulac_norecord")  mulac_norecord  = true;
+        else if (arg == "--no-l2")           no_l2           = true;
         else if (arg == "--trace_level") {
             trace_level = std::atoi(need_arg("--trace_level").c_str());
             if (trace_level < Interpreter::trace_instructions ||
@@ -303,7 +312,9 @@ int main(int argc, char* argv[])
                                 .data_end_addr    = 0xFF300010,
                                 .access_cycles    = cfg.prng_access_cycles,
                                 .fifo_capacity    = b_fifo_pipelined ? cfg.prng_fifo_capacity : 0,
-                                .gen_cost         = b_fifo_pipelined ? cfg.prng_fifo_gen_cost : 0},
+                                .gen_cost         = b_fifo_pipelined ? cfg.prng_fifo_gen_cost : 0,
+                                .num_prefill      = b_fifo_pipelined ? (cfg.prng_fifo_num_prefill ? cfg.prng_fifo_num_prefill : 1u) : 0u},
+        .no_l2 = no_l2,
     };
 
     size_t cpu_cycles = 0;
@@ -313,8 +324,11 @@ int main(int argc, char* argv[])
     if (!assembler_input.empty()) {
         run_path = assembler_input;
     } else {
+        const uint num_prefill = b_fifo_pipelined
+                                   ? (cfg.prng_fifo_num_prefill ? cfg.prng_fifo_num_prefill : 1u)
+                                   : 1u;
         generateInstructions(cfg, b_stationary, b_fifo, reg_m, reg_n, reg_k,
-                             cfg.prng_fifo_seed_bytes, b_fifo_pipelined);
+                             cfg.prng_fifo_seed_bytes, b_fifo_pipelined, num_prefill);
     }
 
     Interpreter::Options opts{
@@ -335,13 +349,13 @@ int main(int argc, char* argv[])
 
     // Header: which config blocks were ignored by this run.
     printf("--- UNUSED OPTIONS ---\n");
-    for (const char* k : unusedConfigKeys(b_source, use_3dregisters, record_mulac)) {
+    for (const char* k : unusedConfigKeys(b_source, use_3dregisters, record_mulac, no_l2)) {
         printf("# %s\n", k);
     }
     printf("--- END ---\n\n");
 
-    printCacheTable(mem.l1(), mem.l2());
-    printDramTable(mem.l2());
+    printCacheTable(mem.l1(), no_l2 ? nullptr : &mem.l2());
+    if (!no_l2) printDramTable(mem.l2());
     if (b_generated)      printPrngTable(mem.prng().stats());
     if (b_fifo)           printPrngFifoTable(mem.prng_fifo().stats());
     if (b_fifo_pipelined) printPrngFifoPipelinedTable(mem.prng_fifo_pipelined().stats());

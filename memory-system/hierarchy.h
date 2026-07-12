@@ -46,6 +46,7 @@ class MemoryHierarchy
         PrngDev::InitParameters prng;
         PrngFifoDev::InitParameters prng_fifo;
         PrngFifoPipelinedDev::InitParameters prng_fifo_pipelined;
+        bool no_l2 = false;   // bypass L2; L1 misses go directly to main memory
     };
 
     explicit MemoryHierarchy(Parameters p, const size_t& cpu_cycles);

@@ -26,6 +26,11 @@ def _unused_keys(flags: runner.Flags) -> set[str]:
         u.update({"PRNG_ACCESS_CYCLES", "PRNG_GEN_COST_PER_LINE"})
     if flags.b_source not in ("prng_fifo", "prng_fifo_pipelined"):
         u.update({"PRNG_FIFO_CAPACITY", "PRNG_FIFO_GEN_COST", "PRNG_FIFO_SEED_BYTES"})
+    if flags.b_source != "prng_fifo_pipelined":
+        u.add("PRNG_FIFO_NUM_PREFILL")
+    if flags.no_l2:
+        u.update({"L2_SIZE_BYTES", "L2_LINE_SIZE_BYTES", "L2_ASSOC",
+                  "L2_ACCESS_CYCLES", "L2_REPLACEMENT_POLICY", "L2_WRITE_POLICY"})
     if not flags.three_d_reg:
         u.update({"REG_M", "REG_N", "REG_K"})
     if flags.mulac_norecord:
