@@ -329,3 +329,69 @@ If you just want to estimate TM* without the full table:
 1. Compute the crossover TM assuming you stay in the L2 regime: set α_L2 ≈ 3.25 and solve gc/TM = α_L2 → TM_cross = gc / 3.25
 2. If TM_cross ≤ 48 (still in L2): TM* is the first valid TM ≥ TM_cross. Since gc/TM < α once you cross, the minimum α in that range wins — usually TM=32 or TM=48.
 3. If TM_cross > 48: the crossover pushes past L2. You then compare the cost of TM=64 (B-dominated: gc/64) against the cost of TM=128 (A-dominated: α_DRAM ≈ 3.94). If gc/64 < 3.94, i.e., gc < 252, TM=64 wins. If gc ≥ 252, TM=128wins.
+
+
+#### next plan
+Here's the plan.
+
+---
+E8 — Dense gc sweep across TM* transition points
+
+Motivation: E7 used only 4 gc values. The model has three exact transition points where TM* changes (derived from the α table):
+
+┌──────────────┬───────────────────────────────────────┐
+│  Transition  │          Exact gc crossover           │
+├──────────────┼───────────────────────────────────────┤
+│ TM* 32 → 48  │ gc = α(32) × 32 = 3.237 × 32 ≈ 103.6  │
+├──────────────┼───────────────────────────
+│ TM* 48 → 64  │ gc = α(64) × 48 = 3.560 × 48 ≈ 170.9  │
+├──────────────┼───────────────────────────
+│ TM* 64 → 128 │ gc = α(128) × 64 = 3.936 × 64 ≈ 251.9 │
+└──────────────┴───────────────────────────
+
+We want to test gc values on both sides of gh resolution to see where the E3 modelstarts failing for small TN.
+
+gc values to test (14 total):
+
+┌─────┬──────────────────────────────────────────────┐
+│ gc  │                     Why
+
+
+
+
+#### alpha plan
+Plan: analytical α formula — regression-based approach
+
+Goal: Instead of using the theoretical C(TM) constant (which breaks in DRAM regime), fit α(TM, 1/TN) empirically using linear regression on the calibration data already collected in E8 (TN ∈ {4,8,16,32,64} for each TM).
+
+Experiment E11 — Regression α formula
+
+Step 1 — Fit the model.
+
+For each TM, we have 5 measured α values at x = 1/TN ∈ {1/4, 1/8, 1/16, 1/32, 1/64}. The model is:
+
+α(TM, TN) = a(TM) + b(TM) × (1/TN)
+Fit by ordinary least squares (numpy or scipy, 2 parameters per TM). This gives:
+- a(TM) — the TN→∞ intercept (the "purely warm-L1" α)
+- b(TM) — the empirical cold-fill slope
+
+Step 2 — Compare to the theoretical formula.
+
+The theoretical formula predicts b(TM) = C(TM) where C = 0.625 in L2 and C = 12.0 in DRAM. The regression will give the actual C(TM) per TM, and we can see how close the theory is and whether the DRAM regime has a consistent value.
+
+Step 3 — Test accuracy.
+
+Same setup as E8's formula accuracy table, but using the regression coefficients instead of the theoretical ones. Measure % error vs calibrated α over the same TM × TN grid.
+
+Step 4 — Test TM* prediction accuracy.
+
+Re-run the E8 summary table substituting the regression formula for the theoretical one. How many of the 70 (gc, TN) combinations does it get right vs the theoretical formula?
+
+Expected outcome: The regression should:
+- Match calibrated α within ~1% across all TN ≤ 64 (vs the formula's 0-10% error)
+- Correctly predict TM* in nearly all cases (vs formula failing at DRAM regime TN=4,8)
+- Give physically interpretable b(TM) values: ~0.6 for L2 regime, ~10.4 for TM=96,128
+
+Implementation: extend experiment.py in e11-regression-alpha/, loading the E8 results.json for the calibration data (no new simulator runs needed). The regression itself is ~15 lines of numpy. Output a comparison table: theoretical vs regression formula, both vs calibrated, both vs empirical TM*.
+
+This is entirely CPU-side analysis — no new simulator runs needed if we load E8's cached results.

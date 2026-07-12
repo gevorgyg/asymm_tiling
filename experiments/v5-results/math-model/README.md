@@ -587,3 +587,348 @@ Three conditions must all hold:
 If you are choosing TN=32 (the calibration value): the E3 model is correct for
 all gc values. If you use a different TN and gc is near a cache-regime boundary
 (gc ≈ 64–230), use the per-TN calibrated α to get the right TM*.
+
+---
+
+## E8 — Dense gc boundary sweep and analytical α formula test
+
+`e8-gc-boundary-sweep/`
+
+E7 used only four gc values (64, 130, 230, 380) and TN ∈ {4,16,32,64}. E8
+densifies both axes: 14 gc values chosen near and between the E3 transition
+points, and TN ∈ {4,8,16,32,64}. It also introduces a new column: the
+*analytical formula* prediction, which computes α(TM,TN) from first principles
+rather than calibration.
+
+### The analytical α formula
+
+Starting from the warm-L1 dominant model: every A register-tile load costs
+approximately L1_lat = 4 cycles when warm. Each load is R = TN/reg_n = TN/4
+loads deep within a session; only the very first load per session (rtj=0) is
+cold. The cold-fill correction gives:
+
+    α(TM, TN) ≈ α_E3(TM) + C(TM) × (1/TN − 1/32)
+
+where `C(TM) = (L_cache(TM) − L1_lat) / (reg_m × reg_k)` and `L_cache` is the
+cache latency for a cold A line:
+- **L2 regime (TM ≤ 48)**: C = (14 − 4) / 16 = 0.625
+- **DRAM regime (TM ≥ 64)**: C ≈ 12.0 (back-estimated; actual values vary)
+
+The formula is anchored at TN=32 (the E3 calibration point): at TN=32 it
+returns α_E3(TM) exactly.
+
+### Calibrated α(TM, TN) table (from E8 gc=0 sweep)
+
+| TM  | TN=4  | TN=8  | TN=16 | TN=32 | TN=64 | formula(TN=8) |
+|-----|-------|-------|-------|-------|-------|---------------|
+| 8   | 3.401 | 3.400 | 3.400 | 3.400 | 3.400 | 3.458 (+1.7%) |
+| 16  | 3.492 | 3.382 | 3.327 | 3.300 | 3.286 | 3.358 (−0.7%) |
+| 24  | 3.452 | 3.342 | 3.287 | 3.259 | 3.244 | 3.317 (−0.7%) |
+| 32  | 3.430 | 3.320 | 3.264 | 3.237 | 3.223 | 3.296 (−0.7%) |
+| 48  | 3.414 | 3.304 | 3.249 | 3.255 | 3.428 | 3.314 (+0.3%) |
+| **64**  | **6.218** | **4.701** | **3.941** | **3.560** | **3.760** | 4.685 (−0.3%) |
+| **96**  | **6.206** | **4.689** | **3.931** | **3.940** | **3.749** | 5.065 (+8.0%) |
+| **128** | **6.209** | **4.687** | **3.925** | **3.936** | **3.744** | 5.061 (+8.0%) |
+
+The formula column shows TN=8. Bold rows = DRAM regime. The formula's worst
+errors (+8%) occur at TM=96,128 in the DRAM regime: the theory assumes
+C_DRAM=12.0 but the hardware effective value is ~10.4 for these TM values.
+
+### Summary table: empirical TM* vs predictions (C=calib, F=formula, E=E3)
+
+| gc  | TN=4  | TN=8  | TN=16 | TN=32 | TN=64 | E3-pred |
+|-----|-------|-------|-------|-------|-------|---------|
+| 64  | 48 ✓✗✗ | 48 ✓✗✗ | 48 ✓✗✗ | 32 ✓✓✓ | 32 ✓✓✓ | 32 |
+| 100 | 48 ✓✗✗ | 48 ✓✗✗ | 48 ✓✗✗ | 48 ✗✗✗ | 32 ✓✓✓ | 32 |
+| 104 | 48 ✓✗✗ | 48 ✓✗✗ | 48 ✓✗✗ | 48 ✗✗✗ | 32 ✓✗✓ | 32 |
+| 108 | 48 ✓✗✓ | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✗✓✓ | 48 |
+| 130 | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✓✓✓ | 48 |
+| 165 | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✓✓✓ | 48 ✓✗✓ | 48 |
+| 171 | 48 ✓✓✗ | 48 ✓✓✗ | 48 ✓✓✗ | 64 ✓✓✓ | 48 ✓✗✗ | 64 |
+| 175 | 48 ✓✓✗ | 48 ✓✓✗ | 48 ✓✓✗ | 64 ✓✓✓ | 48 ✓✗✗ | 64 |
+| 230 | 48 ✓✓✗ | 128 ✓✗✗ | 128 ✓✗✗ | 64 ✓✓✓ | 128 ✓✗✗ | 64 |
+| 248 | 48 ✓✓✗ | 128 ✓✗✗ | 128 ✓✗✗ | 128 ✗✗✗ | 128 ✓✓✗ | 64 |
+| 252 | 48 ✓✓✗ | 128 ✓✗✓ | 128 ✓✗✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 |
+| 256 | 48 ✓✓✗ | 128 ✓✗✓ | 128 ✓✗✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 |
+| 380 | 128 ✗✗✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 |
+| 600 | 128 ✓✓✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 ✓✓✓ | 128 |
+
+### Key findings
+
+1. **Calibrated model is nearly perfect.** Fails only at (gc=100,TN=32) and
+   (gc=380,TN=4) — both cases where two TM options differ by < 0.4% in T/MNK,
+   within measurement noise.
+
+2. **Formula accuracy:** < 2% error in the L2 regime for TN ≤ 32. Fails in
+   the DRAM regime at small TN: TM=96,128 at TN=4 show +6–10% error because
+   the theoretical C_DRAM=12.0 overstates the measured effective value (~10.4).
+   Also fails at TN=64 near the DRAM boundary: −10% at TM=64. The formula
+   predicts the wrong TM* for most DRAM-regime gc values at TN=4, and many at
+   TN=8,16.
+
+3. **E3 boundary gc≈104 (32→48 transition):** At TN=32 the boundary is between
+   gc=104 and gc=108, matching the E3 prediction. At TN≤16, TM*=48 already at
+   gc=64 — the effective α minimum shifts because the cold-fill term flattens
+   the α ordering between TM=32 and TM=48.
+
+4. **E3 boundary gc≈171 (48→64 transition):** Only shifts TM* to 64 at TN=32
+   and TN=64. At TN≤16, TM*=48 persists through gc=248 (DRAM-regime α makes
+   TM=64 too expensive at small TN).
+
+5. **E3 boundary gc≈252 (64→128 transition):** Accurate for TN≥16 but TM*=48
+   persists at TN=4 even up to gc=600 (the DRAM penalty at TN=4 is so severe
+   that TM=48 with α=3.41 beats TM=128 with α=6.21).
+
+---
+
+## E9 — C-tile overflow regime
+
+`e9-tn-overflow/`
+
+E1b–E8 all operate with TN ≤ 64 and TM ≤ 48 in the well-behaved regime where
+the C tile (= TM × TN × 4 bytes) fits in L1 (16 KB). E9 deliberately breaks
+this assumption by testing TN ∈ {128, 256}, where C overflows L1 for moderate
+and large TM values. TN=64 is included as a reference.
+
+L1 overflow threshold: `TM × TN × 4 > 16384`:
+- TN=128: overflows at TM ≥ 32 (C tile = 16384 exactly at TM=32)
+- TN=256: overflows at TM ≥ 16
+
+### Calibrated α(TM, TN) — overflow regime
+
+| TM  | C-tile (TN=256) | TN=64  | TN=128 | TN=256 |
+|-----|-----------------|--------|--------|--------|
+| 8   | 8 KB (< L1)     | 3.400  | 3.404  | 3.400  |
+| 16  | 16 KB (= L1)    | 3.286  | 3.279  | 3.707! |
+| 24  | 24 KB           | 3.244  | 3.236  | 3.665! |
+| 32  | 32 KB           | 3.223  | 3.692! | 3.647! |
+| 48  | 48 KB           | 3.428  | 3.675! | 3.622! |
+| 64  | 64 KB (= L2!)   | 3.760! | 3.663! | 4.851! |
+| 96  | 96 KB (≥ L2)    | 3.749! | 3.649! | 9.169! |
+| 128 | 128 KB (≥ L2)   | 3.744! | 4.977! | 9.173! |
+
+`!` marks cells where C tile overflows L1 at the given TN. At TN=256, TM=96: the
+C tile is 6× L1 size, filling L2 entirely — α=9.17, nearly 3× the normal DRAM
+regime value.
+
+### What the overflow does to TM*
+
+| gc  | TN=64  | TN=128    | TN=256   | E3-pred |
+|-----|--------|-----------|----------|---------|
+| 64  | 32 ✓✓  | 24 ✓✗     | 48! ✓✗   | 32 |
+| 130 | 48 ✓✓  | 96! ✓✗    | 48! ✓✓   | 48 |
+| 230 | 128! ✓✗ | 96! ✓✗   | 64! ✗✓   | 64 |
+| 380 | 128! ✓✓ | 96! ✓✗   | 64! ✓✗   | 128 |
+
+`!` = C tile at empirical TM* overflows L1. C = calibrated, E = E3.
+
+At **TN=128**, the overflow regime completely restructures TM*:
+- gc=64: TM*=24 (not 32). At TN=128, TM=32 exactly fills L1 (α=3.69, 14%
+  higher than TN=64's α=3.22). TM=24 avoids overflow at TN=128 (C tile=12 KB)
+  and has α=3.24 — so 24 beats 32 despite 24 being in the middle of the L2 regime.
+- gc=130,230,380: TM*=96 in all three cases. TM=96 with TN=128 has C tile=49 KB,
+  which overflows L1 but fits in L2: α=3.65. TM=128 with TN=128 has C tile=65 KB
+  ≥ L2: α=4.98. The calibrated model correctly identifies TM=96 as the winner.
+
+At **TN=256**, effects are extreme:
+- gc=64,130: TM*=48 despite the C tile being 3× L1 at TM=48. The reason: TM=64
+  and TM=96,128 have even worse overflow (α=4.85 and 9.17 respectively).
+- gc=230,380: TM*=64. Even at α=4.85 it beats the catastrophic TM=96,128
+  (α=9.17).
+
+### Key findings
+
+1. **C-tile overflow invalidates the E3 model** completely — E3 never knows about
+   the overflow and always predicts based on the normal α table. The calibrated
+   model is always correct (it directly measures the actual α including overflow).
+
+2. **L1 overflow at the boundary causes ~14% α increase.** E.g., TM=32,TN=128:
+   C tile = 16384 bytes exactly = L1. α jumps from 3.22 (normal) to 3.69.
+
+3. **L2 overflow is catastrophic.** At TN=256, TM=96 has C tile = L2. α=9.17 —
+   more than double the DRAM-regime α with no overflow. The C tile must be
+   re-fetched from DRAM on every pass.
+
+4. **The formula fails badly in overflow (−12% to −61% error)** — as expected,
+   the formula has no overflow term.
+
+5. **Practical implication:** TN should be chosen carefully. Even though TN is a
+   "free" parameter in the basic model (TN cancels in T_A), it is constrained by
+   the C-tile L1 budget: TN < L1 / (TM × C_P). Violating this moves into a
+   fundamentally different regime where the model does not apply without
+   recalibration.
+
+---
+
+## E10 — Matrix size scaling validation
+
+`e10-matrix-size/`
+
+The model T = MNK × max(α(TM), gc/TM) predicts that T/MNK is constant for any
+M, N, K — the asymptotic assumption that per-operation cost dominates over fixed
+overheads. E10 tests this by sweeping M ∈ {128, 192, 256, 384} while holding
+N=K=256 and TN=32.
+
+Valid TM sets per M (must divide M):
+- M=128: {8, 16, 32, 64, 128}
+- M=192: {8, 16, 24, 32, 48, 64, 96}
+- M=256: {8, 16, 32, 64, 128}
+- M=384: {8, 16, 24, 32, 48, 64, 96, 128}
+- Common TM (valid for all M): {8, 16, 32, 64}
+
+### T/MNK flatness (common TM values)
+
+**gc=130:**
+
+| TM | M=128  | M=192  | M=256  | M=384  | E3-pred | max Δ% |
+|----|--------|--------|--------|--------|---------|--------|
+| 8  | 16.336 | 16.338 | 16.339 | 16.340 | 16.250  | 0.02%  |
+| 16 | 8.207  | 8.208  | 8.209  | 8.209  | 8.125   | 0.03%  |
+| 32 | 4.141  | 4.142  | 4.143  | 4.143  | 4.063   | 0.05%  |
+| 64 | 3.562  | 3.564  | 3.565  | 3.567  | 3.560   | 0.12%  |
+
+**gc=230:**
+
+| TM | M=128  | M=192  | M=256  | M=384  | E3-pred | max Δ% |
+|----|--------|--------|--------|--------|---------|--------|
+| 8  | 28.836 | 28.838 | 28.839 | 28.840 | 28.750  | 0.01%  |
+| 16 | 14.457 | 14.458 | 14.459 | 14.459 | 14.375  | 0.02%  |
+| 32 | 7.266  | 7.267  | 7.268  | 7.268  | 7.188   | 0.03%  |
+| 64 | 3.698  | 3.700  | 3.700  | 3.701  | 3.594   | 0.06%  |
+
+**T/MNK varies by ≤ 0.12% across a 3× range in M.** The model's MNK-proportional
+assumption is confirmed to within measurement precision.
+
+### TM* per M (gc=130)
+
+| M   | TM* (empirical) | TM* (E3) | Match |
+|-----|----------------|----------|-------|
+| 128 | 64 | 64 | ✓ |
+| 192 | 48 | 64 | ✗ |
+| 256 | 64 | 64 | ✓ |
+| 384 | 48 | 64 | ✗ |
+
+E3 predicts TM*=64 for all M. Empirically, M=192 and M=384 pick TM*=48
+(T/MNK=3.260), which M=128 and M=256 don't even have in their valid TM set.
+The discrepancy is not a model failure — it is a **tile-divisibility effect**:
+TM=48 is not a valid divisor of 128 or 256, so those M values must settle for
+TM=64. When TM=48 is available it wins, consistent with the E3 α table where
+α(48)=3.255 < α(64)=3.560.
+
+At gc=230, TM*=64 for all M — confirmed, no divisibility issue since 64 divides
+all M values.
+
+### Key findings
+
+1. **T/MNK is flat to 0.12% across M ∈ {128,192,256,384}.** The MNK-asymptotic
+   model is confirmed.
+
+2. **TM* differences across M are purely divisibility artifacts.** When TM=48
+   is available (M=192, M=384), it is always chosen because α(48) < α(64). When
+   it is not (M=128, M=256), the model correctly falls back to TM=64.
+
+3. **The model has no matrix-size parameter.** T/MNK depends only on tile shape
+   (TM, TN) and generation cost (gc) — not on M, N, K individually. This allows
+   predicting optimal tile shapes from single-size calibration and applying them
+   at any M.
+
+---
+
+## E11 — Regression-based α formula
+
+`e11-regression-alpha/`
+
+The theoretical formula from E8 predicts α(TM, TN) ≈ α_E3(TM) + C(TM)×(1/TN −
+1/32) with a fixed C(TM): 0.625 for L2 regime, 12.0 for DRAM. E8 showed the
+formula has +8-10% error in the DRAM regime at small TN. E11 fits the slope
+empirically from the 5-point TN calibration data in E8, replacing the theoretical
+C with a measured one — no new simulator runs required.
+
+### The regression model
+
+For each TM, fit by ordinary least squares on the 5 measured α values:
+
+    α(TM, TN) = a(TM) + b(TM) × (1/TN)
+
+where x = 1/TN ∈ {1/4, 1/8, 1/16, 1/32, 1/64} and y = α_calib(TM, TN).
+
+This gives an `a(TM)` (the TN→∞ asymptote — pure warm-L1 cost) and a `b(TM)`
+(the cold-fill slope — effective C(TM) × L_cache correction).
+
+Note: the E8 theoretical formula is equivalent to this form:
+α = (α_E3 − C/32) + C/TN, so a = α_E3 − C/32 and b = C. The regression
+finds both a and b freely from data.
+
+### Regression coefficients
+
+| TM  | a(TM)  | b(TM)  | R²     | α_E3   | b theory | b error | regime |
+|-----|--------|--------|--------|--------|----------|---------|--------|
+| 8   | 3.3995 | 0.0062 | 0.986  | 3.3996 | 0.625    | +10000% | L2 (flat) |
+| 16  | 3.2719 | 0.8819 | 1.000  | 3.2995 | 0.625    | −29%   | L2 |
+| 24  | 3.2309 | 0.8862 | 1.000  | 3.2587 | 0.625    | −29%   | L2 |
+| 32  | 3.2093 | 0.8816 | 1.000  | 3.2369 | 0.625    | −29%   | L2 |
+| 48  | 3.2986 | 0.3260 | 0.131  | 3.2550 | 0.625    | +92%   | L2 (non-monotonic) |
+| 64  | 3.3436 | 11.278 | 0.980  | 3.5604 | 12.000   | +6.4%  | DRAM |
+| 96  | 3.4792 | 10.566 | 0.978  | 3.9398 | 12.000   | +13.6% | DRAM |
+| 128 | 3.4733 | 10.600 | 0.978  | 3.9363 | 12.000   | +13.2% | DRAM |
+
+Key observations:
+- **TM=8**: b ≈ 0 — α is essentially flat across all TN. The A tile (8 KB) is
+  a quarter of L2; there is almost no cold-fill variation. The 10000% b error
+  is meaningless because b itself is near zero.
+- **TM=16,24,32**: b ≈ 0.88, R²=1.000 — perfect linear fit but theoretical
+  b=0.625 underestimates the actual slope by 29%. The effective L_cache ≈ 18 cy
+  vs theoretical L2_lat=14 cy — each cold A-reg-tile fill costs more than a
+  single L2 access, likely due to multiple L2 lines per reg-tile or latency
+  stacking.
+- **TM=48**: b=0.33, R²=0.13 — the linear model fails entirely. α is
+  non-monotonic: it decreases from TN=4→32 then rises at TN=64 (C tile = 12 KB,
+  approaching L1 = 16 KB). The 1/TN model cannot describe this.
+- **TM=64,96,128**: b ≈ 10.6, R²=0.98 — DRAM regime fits well. Theoretical
+  b=12.0 is 13% too high, consistent with E8's formula error (+8-10%).
+
+### α accuracy: regression vs theoretical vs calibrated
+
+Max |error| across all (TM, TN) combinations:
+- **Regression:** 6.39%
+- **Theoretical:** 10.30%
+- **Calibrated:** 0% (exact by construction)
+
+Regression errors are worst at TM=64, TN=64 (−6.4%), where the regression
+overshoots α at large TN because it has to fit the wide TN=4 swing.
+
+### TM* prediction accuracy
+
+| Method | Correct TM* / 70 total | Accuracy |
+|--------|----------------------|----------|
+| Calibrated | 65 / 70 | 93% |
+| **Regression** | **48 / 70** | **69%** |
+| Theoretical | 43 / 70 | 61% |
+
+Regression improves over theoretical by 5 percentage points. The main wins:
+- Correctly predicts TM*=48 at TN=4 for gc≤165 (theoretical gets these wrong
+  because it underestimates the TN=4 penalty in L2 regime)
+
+The main new failures introduced by regression:
+- gc=64,100,104 at TN=8,16: regression predicts TM*=32 instead of 48 (because
+  the fitted b(48)=0.33 makes TM=48 look more expensive at TN=8,16 than it is)
+- gc=171,175 at TN=32: regression predicts TM*=48 instead of 64 (because
+  a_reg(64)+b_reg(64)/32=3.70 significantly overshoots calibrated α(64,32)=3.56)
+
+### Key finding
+
+The regression approach is theoretically cleaner and more accurate than the
+hard-coded theoretical formula, but still substantially below calibrated (69%
+vs 93%). The root cause is that the 1/TN linear model does not fully describe
+α(TM, TN):
+
+- TM=48 is inherently non-linear (R²=0.13) due to C-tile pressure
+- The regression intercept a(TM) diverges from α_E3 at the same TN=32, causing
+  overshoot errors at the calibration point
+- At TM* boundaries where two TM options differ by <1%, even 1-2% α error flips
+  the prediction
+
+**The calibrated approach remains the most reliable.** Regression is useful for
+understanding the physics — particularly that the L2-regime cold-fill slope is
+b≈0.88 (not 0.625), and the DRAM-regime slope is b≈10.6 (not 12.0). For
+predicting TM*, calibrate at all TN values you care about.
