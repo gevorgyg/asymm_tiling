@@ -332,7 +332,7 @@
     <p class="doc-sub">
       Revised model incorporating the A reuse factor — experimentally validated across 14 gc values, 5 TN values, overflow regimes, and 4 matrix sizes.
     </p>
-    <div class="doc-status">Experimentally confirmed · E1b – E12 · max error ≤ 3%</div>
+    <div class="doc-status">Experimentally confirmed · E1b – E13 · max error ≤ 3%</div>
   </header>
 
   <!-- ─── §1 Setup ─────────────────────────────── -->
@@ -1954,6 +1954,127 @@
         Violating this triggers the overflow regime (E9) where α changes drastically
         and the analytical formula fails entirely. The safe bound is TN &lt; L1 /
         (TM × C_P).
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ E13 ══ -->
+  <section id="e13">
+    <h2>E13 — FIFO-B vs Memory-B: fair head-to-head</h2>
+
+    <p>
+      All prior experiments used <code>--Bsource prng_fifo</code>: B is generated
+      on-chip and never touches the cache, at the cost of a hardware generation
+      cost <em>gc</em> per element.  E13 asks whether this FIFO approach actually
+      beats reading B from DRAM, and by how much.
+    </p>
+
+    <p>
+      <strong>Fair comparison:</strong> same A and B element precision (4 bytes
+      each), each mode evaluated at its own empirically best (TM*, TN*).
+      Memory-B is swept over all TM × TN combinations; FIFO-B results come from
+      the E8 cache (25 gc values × all TM × all TN).
+    </p>
+
+    <h3>Memory-B T/MNK grid (B_P=A_P=4)</h3>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>TM</th><th>TN=4</th><th>TN=8</th><th>TN=16</th><th>TN=32</th><th>TN=64</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">8</td><td class="mono">6.2163</td><td class="mono">5.3882</td><td class="mono">4.9741</td><td class="mono">4.8216</td><td class="mono">4.9205</td></tr>
+          <tr><td class="mono">16</td><td class="mono">5.2942</td><td class="mono">4.5755</td><td class="mono">4.2159</td><td class="mono">4.0685</td><td class="mono">4.1622</td></tr>
+          <tr><td class="mono">24</td><td class="mono">4.9866</td><td class="mono">4.3043</td><td class="mono">3.9631</td><td class="mono">3.8537</td><td class="mono">3.9086</td></tr>
+          <tr style="font-weight:700"><td class="mono">32</td><td class="mono">4.8353</td><td class="mono">4.1713</td><td class="mono">3.8392</td><td class="mono">4.0343</td><td class="mono">3.7814 ← best</td></tr>
+          <tr><td class="mono">48</td><td class="mono">5.5695</td><td class="mono">4.9237</td><td class="mono">4.4126</td><td class="mono">3.9080</td><td class="mono">4.0721</td></tr>
+          <tr><td class="mono">64</td><td class="mono">7.9415</td><td class="mono">5.5469</td><td class="mono">4.3497</td><td class="mono">3.8439</td><td class="mono">4.0230</td></tr>
+          <tr><td class="mono">96</td><td class="mono">7.6879</td><td class="mono">5.4197</td><td class="mono">4.2856</td><td class="mono">4.2517</td><td class="mono">3.9580</td></tr>
+          <tr><td class="mono">128</td><td class="mono">9.8987</td><td class="mono">6.5037</td><td class="mono">4.8062</td><td class="mono">4.2222</td><td class="mono">3.9265</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">
+      Memory-B best: TM*=32, TN*=64, T/MNK=3.7814.  The TN=64 column beats
+      TN=32 for TM=32 because it halves the session count, reducing A-reread
+      traffic, without overflowing L1 (C tile = 32×64×4 = 8 KB = L1/2).
+      The paper's prediction of a square tile (TM=TN for ρ=1) does not hold —
+      the two-level cache introduces an A vs B asymmetry.
+    </p>
+
+    <h3>FIFO-B vs Memory-B — optimal (TM*, TN*) for each mode</h3>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>gc</th><th>TM*_FIFO</th><th>TN*_FIFO</th><th>T_FIFO</th>
+            <th>T_mem</th><th>Speedup</th><th>Winner</th><th>Δ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">64</td><td class="mono">32</td><td class="mono">64</td><td class="mono">3.2250</td><td class="mono">3.7814</td><td class="mono">1.1725</td><td class="mono ok">FIFO</td><td class="mono ok">+17.3%</td></tr>
+          <tr><td class="mono">100</td><td class="mono">48</td><td class="mono">16</td><td class="mono">3.2572</td><td class="mono">3.7814</td><td class="mono">1.1609</td><td class="mono ok">FIFO</td><td class="mono ok">+16.1%</td></tr>
+          <tr><td class="mono">104</td><td class="mono">48</td><td class="mono">16</td><td class="mono">3.2575</td><td class="mono">3.7814</td><td class="mono">1.1608</td><td class="mono ok">FIFO</td><td class="mono ok">+16.1%</td></tr>
+          <tr><td class="mono">108</td><td class="mono">48</td><td class="mono">16</td><td class="mono">3.2579</td><td class="mono">3.7814</td><td class="mono">1.1607</td><td class="mono ok">FIFO</td><td class="mono ok">+16.1%</td></tr>
+          <tr><td class="mono">130</td><td class="mono">48</td><td class="mono">16</td><td class="mono">3.2597</td><td class="mono">3.7814</td><td class="mono">1.1600</td><td class="mono ok">FIFO</td><td class="mono ok">+16.0%</td></tr>
+          <tr><td class="mono">165</td><td class="mono">48</td><td class="mono">64</td><td class="mono">3.5312</td><td class="mono">3.7814</td><td class="mono">1.0708</td><td class="mono ok">FIFO</td><td class="mono ok">+7.1%</td></tr>
+          <tr><td class="mono">171</td><td class="mono">64</td><td class="mono">32</td><td class="mono">3.5656</td><td class="mono">3.7814</td><td class="mono">1.0605</td><td class="mono ok">FIFO</td><td class="mono ok">+6.1%</td></tr>
+          <tr><td class="mono">175</td><td class="mono">64</td><td class="mono">32</td><td class="mono">3.5657</td><td class="mono">3.7814</td><td class="mono">1.0605</td><td class="mono ok">FIFO</td><td class="mono ok">+6.0%</td></tr>
+          <tr><td class="mono">230</td><td class="mono">64</td><td class="mono">32</td><td class="mono">3.6995</td><td class="mono">3.7814</td><td class="mono">1.0221</td><td class="mono ok">FIFO</td><td class="mono ok">+2.2%</td></tr>
+          <tr><td class="mono">248</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7459</td><td class="mono">3.7814</td><td class="mono">1.0095</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">252</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7459</td><td class="mono">3.7814</td><td class="mono">1.0095</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">256</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7459</td><td class="mono">3.7814</td><td class="mono">1.0095</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">380</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7469</td><td class="mono">3.7814</td><td class="mono">1.0092</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">400</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7470</td><td class="mono">3.7814</td><td class="mono">1.0092</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">420</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7472</td><td class="mono">3.7814</td><td class="mono">1.0091</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">440</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7474</td><td class="mono">3.7814</td><td class="mono">1.0091</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">460</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7475</td><td class="mono">3.7814</td><td class="mono">1.0090</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">465</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7476</td><td class="mono">3.7814</td><td class="mono">1.0090</td><td class="mono ok">FIFO</td><td class="mono ok">+0.9%</td></tr>
+          <tr><td class="mono">470</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7513</td><td class="mono">3.7814</td><td class="mono">1.0080</td><td class="mono ok">FIFO</td><td class="mono ok">+0.8%</td></tr>
+          <tr><td class="mono">475</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.7778</td><td class="mono">3.7814</td><td class="mono">1.0009</td><td class="mono ok">FIFO</td><td class="mono ok">+0.1%</td></tr>
+          <tr style="font-weight:700"><td class="mono">478</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.8012</td><td class="mono">3.7814</td><td class="mono">0.9948</td><td class="mono fail">mem</td><td class="mono fail">−0.5%</td></tr>
+          <tr class="dram-row"><td class="mono">480</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.8168</td><td class="mono">3.7814</td><td class="mono">0.9907</td><td class="mono fail">mem</td><td class="mono fail">−0.9%</td></tr>
+          <tr class="dram-row"><td class="mono">490</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.8950</td><td class="mono">3.7814</td><td class="mono">0.9708</td><td class="mono fail">mem</td><td class="mono fail">−2.9%</td></tr>
+          <tr class="dram-row"><td class="mono">500</td><td class="mono">128</td><td class="mono">64</td><td class="mono">3.9731</td><td class="mono">3.7814</td><td class="mono">0.9517</td><td class="mono fail">mem</td><td class="mono fail">−4.8%</td></tr>
+          <tr class="dram-row"><td class="mono">600</td><td class="mono">128</td><td class="mono">64</td><td class="mono">4.7543</td><td class="mono">3.7814</td><td class="mono">0.7953</td><td class="mono fail">mem</td><td class="mono fail">−20.5%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">
+      Memory-B baseline: TM*=32, TN*=64, T/MNK=3.7814.  Speedup &gt; 1 means
+      FIFO is faster.  <strong>Bold row</strong>: first gc where memory wins
+      (crossover at gc≈476–477).  <span class="ok">Green</span>: FIFO wins.
+      <span class="fail">Red</span>: memory wins.
+    </p>
+
+    <div class="box result">
+      <div class="box-label">E13 Findings</div>
+      <p>
+        <strong>FIFO wins for gc ≤ 475</strong> (20 of 25 tested values), by
+        0.1%–17%.  The cache advantage of FIFO (B never touches L2/DRAM) dominates
+        at low-to-moderate generation cost.
+      </p>
+      <p>
+        <strong>Crossover at gc ≈ 476–477 cycles/element.</strong>
+        At gc=475, FIFO wins by 0.09%; at gc=478, memory wins by 0.5%.
+        The crossing coincides with the α-bound → gc-bound transition:
+        gc* = TM* × α(128,64) ≈ 128 × 3.747 ≈ 480.
+      </p>
+      <p>
+        <strong>Large α-bound plateau (gc=248–475).</strong>
+        FIFO stays at TM*=128, TN*=64 with T/MNK ≈ 3.747 — essentially flat
+        over a 225-unit gc range.  The FIFO generator keeps pace with the tile
+        (gc/128 &lt; α(128,64)), so increasing gc costs nothing in this window.
+      </p>
+      <p>
+        <strong>Memory-B optimal: TM=32, TN=64</strong> — not the square tile
+        predicted by the paper for ρ=1.  The two-level cache makes the A-direction
+        (TM) and B-direction (TN) asymmetric in cycles even when their L1-read
+        traffic is equal.
+      </p>
+      <p style="margin-bottom:0">
+        <strong>At gc=600, memory is 20.5% faster.</strong>  Extremely high
+        generation cost makes FIFO uncompetitive even with its full cache advantage.
       </p>
     </div>
   </section>

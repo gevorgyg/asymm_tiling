@@ -1028,3 +1028,88 @@ The 3-param model reveals that TN has a non-trivial optimal point beyond just th
 
 For TM=16,24,32 (c≈0): the pressure term is negligible up to TN=64; use the
 maximum TN that fits in L1.
+
+---
+
+## E13 — FIFO-B vs Memory-B: fair head-to-head comparison
+
+`e13-fifo-vs-mem/`
+
+All prior experiments used `--Bsource prng_fifo`: B is generated on-chip from a
+PRNG FIFO, so B never touches the cache.  This avoids B memory traffic but
+requires a hardware generator with a generation cost `gc` cycles/element.
+
+E13 compares:
+
+- **FIFO-B**: optimal (TM\*, TN\*) per gc from E8 — each gc at its best tile.
+- **Memory-B**: `--Bsource mem`, B_PRECISION_BYTES=4 (= A_P, "square"),
+  own optimal (TM\*, TN\*) from a full TM×TN sweep.
+
+**Fair comparison:** same element precision for A and B (4 bytes each), each mode
+evaluated at its own empirically best (TM, TN).
+
+### Memory-B T/MNK grid (B_P=A_P=4)
+
+| TM  | TN=4   | TN=8   | TN=16  | TN=32  | TN=64  |
+|-----|--------|--------|--------|--------|--------|
+| 8   | 6.2163 | 5.3882 | 4.9741 | 4.8216 | 4.9205 |
+| 16  | 5.2942 | 4.5755 | 4.2159 | 4.0685 | 4.1622 |
+| 24  | 4.9866 | 4.3043 | 3.9631 | 3.8537 | 3.9086 |
+| **32** | 4.8353 | 4.1713 | 3.8392 | 4.0343 | **3.7814 ← best** |
+| 48  | 5.5695 | 4.9237 | 4.4126 | 3.9080 | 4.0721 |
+| 64  | 7.9415 | 5.5469 | 4.3497 | 3.8439 | 4.0230 |
+| 96  | 7.6879 | 5.4197 | 4.2856 | 4.2517 | 3.9580 |
+| 128 | 9.8987 | 6.5037 | 4.8062 | 4.2222 | 3.9265 |
+
+Memory-B optimal: **TM\*=32, TN\*=64, T/MNK=3.7814**.  The best tile is smaller
+than the TN=32-only result (TM=64 at 3.8439) because TN=64 cuts the session count
+in half, reducing total A-from-DRAM traffic.  The paper's prediction of a square
+tile (TM=TN for equal precisions) does not hold here — the two-level cache
+introduces an asymmetry that favors TN > TM.
+
+### FIFO vs Memory comparison (optimal TM\*, TN\* per mode, all gc values)
+
+| gc  | TM\*_FIFO | TN\*_FIFO | T_FIFO | T_mem  | Speedup | Winner   | Δ      |
+|-----|-----------|-----------|--------|--------|---------|----------|--------|
+| 64  | 32  | 64 | 3.2250 | 3.7814 | 1.1725 | **FIFO** | +17.3% |
+| 100 | 48  | 16 | 3.2572 | 3.7814 | 1.1609 | **FIFO** | +16.1% |
+| 104 | 48  | 16 | 3.2575 | 3.7814 | 1.1608 | **FIFO** | +16.1% |
+| 108 | 48  | 16 | 3.2579 | 3.7814 | 1.1607 | **FIFO** | +16.1% |
+| 130 | 48  | 16 | 3.2597 | 3.7814 | 1.1600 | **FIFO** | +16.0% |
+| 165 | 48  | 64 | 3.5312 | 3.7814 | 1.0708 | **FIFO** | +7.1%  |
+| 171 | 64  | 32 | 3.5656 | 3.7814 | 1.0605 | **FIFO** | +6.1%  |
+| 175 | 64  | 32 | 3.5657 | 3.7814 | 1.0605 | **FIFO** | +6.0%  |
+| 230 | 64  | 32 | 3.6995 | 3.7814 | 1.0221 | **FIFO** | +2.2%  |
+| 248 | 128 | 64 | 3.7459 | 3.7814 | 1.0095 | **FIFO** | +0.9%  |
+| 252 | 128 | 64 | 3.7459 | 3.7814 | 1.0095 | **FIFO** | +0.9%  |
+| 256 | 128 | 64 | 3.7459 | 3.7814 | 1.0095 | **FIFO** | +0.9%  |
+| 380 | 128 | 64 | 3.7469 | 3.7814 | 1.0092 | **FIFO** | +0.9%  |
+| 400 | 128 | 64 | 3.7470 | 3.7814 | 1.0092 | **FIFO** | +0.9%  |
+| 420 | 128 | 64 | 3.7472 | 3.7814 | 1.0091 | **FIFO** | +0.9%  |
+| 440 | 128 | 64 | 3.7474 | 3.7814 | 1.0091 | **FIFO** | +0.9%  |
+| 460 | 128 | 64 | 3.7475 | 3.7814 | 1.0090 | **FIFO** | +0.9%  |
+| 465 | 128 | 64 | 3.7476 | 3.7814 | 1.0090 | **FIFO** | +0.9%  |
+| 470 | 128 | 64 | 3.7513 | 3.7814 | 1.0080 | **FIFO** | +0.8%  |
+| 475 | 128 | 64 | 3.7778 | 3.7814 | 1.0009 | **FIFO** | +0.1%  |
+| **478** | **128** | **64** | **3.8012** | **3.7814** | **0.9948** | **mem** | **−0.5%** |
+| 480 | 128 | 64 | 3.8168 | 3.7814 | 0.9907 | **mem**  | −0.9%  |
+| 490 | 128 | 64 | 3.8950 | 3.7814 | 0.9708 | **mem**  | −2.9%  |
+| 500 | 128 | 64 | 3.9731 | 3.7814 | 0.9517 | **mem**  | −4.8%  |
+| 600 | 128 | 64 | 4.7543 | 3.7814 | 0.7953 | **mem**  | −20.5% |
+
+Memory-B baseline: TM\*=32, TN\*=64, T/MNK=3.7814.
+
+### Key findings
+
+1. **FIFO wins for gc ≤ 475** (20/25 tested values) by 0.1%–17%.
+2. **Crossover at gc ≈ 476–477 cycles/element.** At gc=475 FIFO wins by 0.09%;
+   at gc=478 memory wins by 0.5%.  The crossover coincides with the α-bound →
+   gc-bound transition: gc\* = TM\* × α(128,64) ≈ 128 × 3.747 ≈ 480.
+3. **Large α-bound plateau (gc=248–475).** FIFO stays at TM\*=128, TN\*=64 and
+   T/MNK ≈ 3.747 — essentially flat over a 225-unit gc range.  The FIFO generator
+   keeps pace with the tile (gc/128 < α(128,64)) so increasing gc costs nothing.
+4. **Memory-B optimal is TM=32, TN=64** — smaller than the TN=32-only result.
+   The TN=64 sweep reveals that halving sessions (64→128 per N-block) saves more
+   in A-reread cost than it adds in B bandwidth at TN=64.
+5. **At gc=600, memory is 20.5% faster.** Extremely high generation cost makes
+   FIFO uncompetitive even with its cache advantage.
