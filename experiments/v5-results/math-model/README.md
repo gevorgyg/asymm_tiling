@@ -932,3 +932,99 @@ vs 93%). The root cause is that the 1/TN linear model does not fully describe
 understanding the physics — particularly that the L2-regime cold-fill slope is
 b≈0.88 (not 0.625), and the DRAM-regime slope is b≈10.6 (not 12.0). For
 predicting TM*, calibrate at all TN values you care about.
+
+---
+
+## E12 — Non-linear α formula: adding a C-tile pressure term
+
+`e12-nonlinear-alpha/`
+
+E11's linear model `a + b/TN` fails for TM=48 (R²=0.13) because α is
+U-shaped: it drops from TN=4→16 (cold-fill savings) then rises at TN=32→64
+as the C tile (TM×TN×C_P bytes) grows and starts evicting A lines from L1.
+Two competing effects require a two-term model:
+
+    α(TM, TN) = a(TM) + b(TM)/TN + c(TM)×TN
+
+- `b/TN` — cold A-fill overhead (fewer cold fills per MNK as TN grows)
+- `c×TN` — C-tile eviction pressure (proportional to C-tile size ∝ TN)
+
+Differentiating and setting to zero gives the **optimal TN** for a given TM:
+
+    TN*(TM) = sqrt(b(TM) / c(TM))
+
+### Regression coefficients (3-param model)
+
+| TM  | a      | b      | c       | R²(3p) | R²(2p) | TN*  | L1-limit | status |
+|-----|--------|--------|---------|--------|--------|------|----------|--------|
+| 8   | 3.3993 | 0.007  | 0.00000 | 0.9999 | 0.986  | 40   | 512 | TN* inside |
+| 16  | 3.2720 | 0.882  | ≈0      | 1.0000 | 1.000  | ∞    | 256 | c≈0 |
+| 24  | 3.2316 | 0.883  | ≈0      | 1.0000 | 1.000  | ∞    | 171 | c≈0 |
+| 32  | 3.2093 | 0.882  | ≈0      | 1.0000 | 1.000  | ∞    | 128 | c≈0 |
+| **48**  | **3.0868** | **1.266** | **0.00487** | **0.9542** | **0.131** | **16.1** | 85 | **TN* inside** |
+| 64  | 2.9571 | 12.993 | 0.00889 | 0.9974 | 0.980  | 38.2 | 64  | TN* inside |
+| 96  | 3.1836 | 11.878 | 0.00679 | 0.9895 | 0.978  | 41.8 | 43  | TN* inside |
+| 128 | 3.1761 | 11.919 | 0.00683 | 0.9893 | 0.978  | 41.8 | 32  | TN* **beyond** L1 limit |
+
+The TM=48 improvement is dramatic: R² goes from 0.13 → 0.95.
+
+TN\* = 16.1 for TM=48 is confirmed by the calibrated data, where α(48, TN=16) = 3.249
+is the minimum.
+
+### TN* interpretation
+
+For TM=96: TN\* = 41.8, L1-limit = 43 — the unconstrained optimum is essentially at
+the L1 boundary. The regression discovered that the optimal TN is right at the edge.
+
+For TM=128: TN\* = 41.8, but L1-limit = 32. The unconstrained optimum (TN≈42) exceeds
+the L1 budget. The constrained optimum is TN=32 — the maximum TN that keeps the C tile
+within L1 for TM=128.
+
+For TM=16,24,32 (c≈0): no C-tile pressure in the TN ≤ 64 range. The C tile at
+TM=32, TN=64 is only 8 KB — half of L1, not yet causing meaningful eviction.
+
+### α accuracy: max |error| vs calibrated
+
+| TM  | 3-param | 2-param |
+|-----|---------|---------|
+| 8   | 0.00%   | 0.00%   |
+| 16  | 0.00%   | 0.00%   |
+| 24  | 0.00%   | 0.01%   |
+| 32  | 0.00%   | 0.00%   |
+| **48**  | **0.83%** | **3.64%** |
+| **64**  | **2.45%** | **6.39%** |
+| 96  | 4.25%   | 5.32%   |
+| 128 | 4.30%   | 5.36%   |
+
+Overall max: 4.30% (3-param) vs 6.39% (2-param).
+
+### TM* prediction accuracy
+
+| Method | Correct / 70 | Accuracy |
+|--------|-------------|----------|
+| Calibrated | 65 / 70 | 93% |
+| **3-param (E12)** | **55 / 70** | **79%** |
+| 2-param (E11) | 48 / 70 | 69% |
+| Theoretical (E8) | 43 / 70 | 61% |
+
+10 percentage-point improvement over E11. The main gains are at TM=48 in the L2
+regime (TN=4,8,16 cases now predicted correctly) and at TN=4 for DRAM regime TMs.
+
+Remaining failures (same root cause as E11): TM=64 α overestimated at TN=32 (+2.5%)
+causes wrong TM* at the 48→64 boundary (gc=171,175 at TN=32). TM=128 α
+underestimated at TN=32 (−4.3%) because the C tile exactly fills L1 at TN=32 for
+TM=128 — a non-smooth effect the polynomial can't model.
+
+### Key finding: TN is not entirely free
+
+The 3-param model reveals that TN has a non-trivial optimal point beyond just the
+"fits in L1" constraint. For each TM:
+
+    TN*(TM) = sqrt(b(TM) / c(TM))
+
+- TM=48: TN\*=16 (confirmed minimum)
+- TM=64,96: TN\*≈38-42 ≈ TN=32 (close to, but inside, L1 limit)
+- TM=128: TN\*=42 > L1-limit=32 → always use TN=32 for TM=128
+
+For TM=16,24,32 (c≈0): the pressure term is negligible up to TN=64; use the
+maximum TN that fits in L1.

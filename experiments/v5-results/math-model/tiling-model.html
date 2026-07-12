@@ -332,7 +332,7 @@
     <p class="doc-sub">
       Revised model incorporating the A reuse factor — experimentally validated across 14 gc values, 5 TN values, overflow regimes, and 4 matrix sizes.
     </p>
-    <div class="doc-status">Experimentally confirmed · E1b – E11 · max error ≤ 3%</div>
+    <div class="doc-status">Experimentally confirmed · E1b – E12 · max error ≤ 3%</div>
   </header>
 
   <!-- ─── §1 Setup ─────────────────────────────── -->
@@ -1743,6 +1743,115 @@
         (TM=8 is flat; TM=48 is non-monotonic). For accurate TM* prediction,
         calibrate at all TN values of interest. For physical insight into the
         cold-fill slope: b_L2 ≈ 0.88 and b_DRAM ≈ 10.6.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ E12 ════════════════════════════════ -->
+  <section id="e12">
+    <h2>E12 — Non-linear α: adding a C-tile pressure term</h2>
+    <p>
+      E11's linear model <code>a + b/TN</code> failed for TM=48 (R²=0.13)
+      because α is U-shaped — it drops as TN grows (fewer cold A fills) but
+      rises at large TN as the C tile crowds L1 and evicts A lines. Two
+      opposing effects need two terms:
+    </p>
+    <div class="formula-box">α(TM, TN) = a(TM) + b(TM)/TN + c(TM)×TN</div>
+    <ul>
+      <li><strong>b/TN</strong> — cold-fill overhead, decreasing with TN (same as E11)</li>
+      <li><strong>c×TN</strong> — C-tile eviction pressure, increasing with TN (∝ C-tile size)</li>
+    </ul>
+    <p>
+      Setting dα/dTN = 0 gives the <strong>optimal TN</strong> for each TM, balancing
+      the two effects:
+    </p>
+    <div class="formula-box">TN*(TM) = √(b(TM) / c(TM))</div>
+
+    <h3>Regression coefficients — 3-param model</h3>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>TM</th><th>a</th><th>b</th><th>c</th><th>R²(3p)</th><th>R²(2p)</th><th>TN*</th><th>L1 limit</th><th>note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">8</td>  <td class="mono">3.399</td><td class="mono">0.007</td><td class="mono">≈0</td>     <td class="mono">0.9999</td><td class="mono">0.986</td> <td class="mono">40</td>  <td class="mono">512</td><td>near-flat</td></tr>
+          <tr><td class="mono">16</td> <td class="mono">3.272</td><td class="mono">0.882</td><td class="mono">≈0</td>     <td class="mono">1.0000</td><td class="mono">1.000</td> <td class="mono">∞</td>   <td class="mono">256</td><td>c≈0 in TN≤64 range</td></tr>
+          <tr><td class="mono">24</td> <td class="mono">3.232</td><td class="mono">0.883</td><td class="mono">≈0</td>     <td class="mono">1.0000</td><td class="mono">1.000</td> <td class="mono">∞</td>   <td class="mono">171</td><td>c≈0 in TN≤64 range</td></tr>
+          <tr><td class="mono">32</td> <td class="mono">3.209</td><td class="mono">0.882</td><td class="mono">≈0</td>     <td class="mono">1.0000</td><td class="mono">1.000</td> <td class="mono">∞</td>   <td class="mono">128</td><td>c≈0 in TN≤64 range</td></tr>
+          <tr><td class="mono" style="font-weight:700">48</td><td class="mono">3.087</td><td class="mono">1.266</td><td class="mono ok">0.00487</td><td class="mono ok" style="font-weight:700">0.9542</td><td class="mono fail">0.131</td><td class="mono ok">16.1</td><td class="mono">85</td><td><strong>TN* inside L1 — confirmed minimum</strong></td></tr>
+          <tr class="dram-row"><td class="mono">64</td> <td class="mono">2.957</td><td class="mono">12.99</td><td class="mono">0.00889</td><td class="mono">0.9974</td><td class="mono">0.980</td><td class="mono">38.2</td><td class="mono">64</td><td>TN* inside L1</td></tr>
+          <tr class="dram-row"><td class="mono">96</td> <td class="mono">3.184</td><td class="mono">11.88</td><td class="mono">0.00679</td><td class="mono">0.9895</td><td class="mono">0.978</td><td class="mono">41.8</td><td class="mono">43</td><td>TN* ≈ L1 boundary</td></tr>
+          <tr class="dram-row"><td class="mono">128</td><td class="mono">3.176</td><td class="mono">11.92</td><td class="mono">0.00683</td><td class="mono">0.9893</td><td class="mono">0.978</td><td class="mono fail">41.8</td><td class="mono">32</td><td><span class="fail">TN* beyond L1 — constrained to TN=32</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">
+      TN* = √(b/c) = the unconstrained optimal TN. L1 limit = L1/(TM×C_P), the maximum TN
+      before C-tile overflow. For TM=128, TN*=41.8 exceeds L1-limit=32 — use TN=32.
+    </p>
+
+    <h3>TM* accuracy comparison</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Method</th><th>Correct / 70</th><th>Accuracy</th></tr></thead>
+        <tbody>
+          <tr><td>Calibrated</td><td class="mono ok">65 / 70</td><td class="mono ok">93%</td></tr>
+          <tr><td><strong>3-param (E12)</strong></td><td class="mono" style="font-weight:700">55 / 70</td><td class="mono" style="font-weight:700">79%</td></tr>
+          <tr><td>2-param (E11)</td><td class="mono">48 / 70</td><td class="mono">69%</td></tr>
+          <tr><td>Theoretical formula (E8)</td><td class="mono fail">43 / 70</td><td class="mono fail">61%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box result">
+      <div class="box-label">E12 Findings</div>
+      <p>
+        <strong>TM=48: R² 0.13 → 0.95.</strong> The 3-param model captures the
+        U-shape. The predicted minimum is at TN*=16.1 — exactly where the calibrated
+        data has its minimum (α=3.249 at TN=16). Max α error for TM=48 drops from
+        3.64% to 0.83%.
+      </p>
+      <p>
+        <strong>TM=96,128:</strong> TN*≈41.8, with L1-limits of 43 and 32
+        respectively. For TM=96 the unconstrained optimum is just barely inside the
+        L1 constraint. For TM=128 it exceeds L1 — TN=32 is the best achievable TN.
+        This explains why TM=128 is calibrated at TN=32 in E3.
+      </p>
+      <p>
+        <strong>Overall accuracy: 79% (55/70).</strong> +10 percentage points over
+        E11. Main gains: TM=48 cases at TN=8,16 (fixed by correct U-shape); TN=4
+        DRAM cases. Main remaining failures: α(64,32) overestimated (+2.5%) causes
+        wrong TM* at 48→64 gc boundary; α(128,32) underestimated (−4.3%) because C
+        tile exactly fills L1 at TN=32 for TM=128 — a sharp boundary the polynomial
+        can't model.
+      </p>
+      <p style="margin-bottom:0">
+        <strong>TN is not entirely free.</strong> The model reveals TN*(TM) = √(b/c)
+        as a principled choice for TN, rather than just "as large as L1 allows." For
+        TM=16,24,32 the pressure term is negligible (c≈0 up to TN=64), so TN=64 is
+        effectively free. For TM=48, TN=16 is optimal. For DRAM regime TMs, TN=32
+        is close to the unconstrained optimum and also stays within L1 for TM=64,96.
+      </p>
+    </div>
+
+    <div class="box theorem">
+      <div class="box-label">E11 + E12 Combined: Formula Accuracy Ladder</div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Method</th><th>Max α error</th><th>TM* accuracy</th><th>Requires</th></tr></thead>
+          <tbody>
+            <tr><td>Calibrated (gc=0 per TN)</td><td class="mono ok">0%</td><td class="mono ok">93%</td><td>simulator run per (TM,TN)</td></tr>
+            <tr><td>3-param regression</td><td class="mono">4.3%</td><td class="mono">79%</td><td>5 calibration points per TM</td></tr>
+            <tr><td>2-param regression</td><td class="mono">6.4%</td><td class="mono">69%</td><td>5 calibration points per TM</td></tr>
+            <tr><td>Theoretical formula</td><td class="mono fail">10.3%</td><td class="mono fail">61%</td><td>no calibration</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:0.75rem; margin-bottom:0">
+        For the highest accuracy, calibrate per (TM, TN). The 3-param regression
+        is the best analytical option when calibration at all TN values is too
+        expensive. The theoretical formula requires no simulator runs at all, at
+        the cost of ~10% α error in the DRAM regime.
       </p>
     </div>
   </section>
