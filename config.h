@@ -45,6 +45,7 @@ struct Config {
     uint prng_fifo_capacity;
     uint prng_fifo_gen_cost;
     uint prng_fifo_seed_bytes;   // bytes of seed stored per B tile
+    uint prng_fifo_num_prefill;  // parallel prefill buffers (pipelined only; 0 → default 1)
 
     // Hardware register tile -- used only with --3dreg.
     uint reg_m = 0;

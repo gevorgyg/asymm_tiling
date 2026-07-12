@@ -15,13 +15,11 @@ PrngFifoPipelinedDev::PrngFifoPipelinedDev(InitParameters p, const size_t& cpu_c
       data_end_addr_(p.data_end_addr),
       fifo_capacity_(p.fifo_capacity),
       gen_cost_(p.gen_cost),
+      num_prefill_(p.num_prefill ? p.num_prefill : 1),
       cpu_cycles_(cpu_cycles),
       current_active_(false),
       current_paused_(false),
-      current_last_update_(0),
-      prefill_active_(false),
-      prefill_paused_(false),
-      prefill_last_update_(0)
+      current_last_update_(0)
 {
     // gen_cost_ == 0 is valid: elements are generated instantly (no stalls ever).
 }
@@ -31,8 +29,8 @@ bool PrngFifoPipelinedDev::contains(Addr addr) const
     if (fifo_capacity_ == 0) return false;
     return addr == pref_seed_addr_  ||
            addr == pref_start_addr_ ||
-           addr == swap_addr_        ||
-           addr == stop_addr_        ||
+           addr == swap_addr_       ||
+           addr == stop_addr_       ||
            (addr >= data_start_addr_ && addr < data_end_addr_);
 }
 
@@ -58,26 +56,32 @@ void PrngFifoPipelinedDev::catchUpCurrent(size_t cycle)
     }
 }
 
-void PrngFifoPipelinedDev::catchUpPrefill(size_t cycle)
+void PrngFifoPipelinedDev::catchUpSlot(PrefillSlot& slot, size_t cycle)
 {
-    if (!prefill_active_ || prefill_paused_) return;
+    if (!slot.active || slot.paused) return;
     if (gen_cost_ == 0) {
-        while (prefill_ready_.size() < fifo_capacity_) {
-            prefill_ready_.push(cycle);
+        while (slot.ready.size() < fifo_capacity_) {
+            slot.ready.push(cycle);
             ++stats_.prefill_generates;
         }
-        prefill_paused_ = true;
+        slot.paused = true;
         return;
     }
-    while (prefill_last_update_ + gen_cost_ <= cycle) {
-        prefill_last_update_ += gen_cost_;
-        prefill_ready_.push(prefill_last_update_);
+    while (slot.last_update + gen_cost_ <= cycle) {
+        slot.last_update += gen_cost_;
+        slot.ready.push(slot.last_update);
         ++stats_.prefill_generates;
-        if (prefill_ready_.size() == fifo_capacity_) {
-            prefill_paused_ = true;
+        if (slot.ready.size() == fifo_capacity_) {
+            slot.paused = true;
             break;
         }
     }
+}
+
+void PrngFifoPipelinedDev::catchUpAllPrefill(size_t cycle)
+{
+    for (auto& slot : prefill_queue_)
+        catchUpSlot(slot, cycle);
 }
 
 void PrngFifoPipelinedDev::read(Addr addr, size_t /*size*/, Trace& trace)
@@ -86,8 +90,8 @@ void PrngFifoPipelinedDev::read(Addr addr, size_t /*size*/, Trace& trace)
     assert(addr >= data_start_addr_ && addr < data_end_addr_);
     assert(current_active_ && "DATA_REG read before any SWAP");
 
-    // Advance both generators to the current CPU cycle.
-    catchUpPrefill(cpu_cycles_);
+    // Advance all generators to the current CPU cycle.
+    catchUpAllPrefill(cpu_cycles_);
     catchUpCurrent(cpu_cycles_);
 
     uint stall = 0;
@@ -127,30 +131,26 @@ void PrngFifoPipelinedDev::write(Addr addr, size_t /*size*/, Trace& trace)
 
     if (addr == pref_start_addr_) {
         ++stats_.starts;
-        if (!prefill_active_) {
-            prefill_active_      = true;
-            prefill_paused_      = false;
-            prefill_last_update_ = cpu_cycles_;
-        }
+        PrefillSlot slot;
+        slot.active      = true;
+        slot.last_update = cpu_cycles_;
+        prefill_queue_.push_back(std::move(slot));
         trace.push_back(std::make_unique<FifoControlWrite>(addr, pref_start_addr_, accessCycles()));
         return;
     }
 
     if (addr == swap_addr_) {
         ++stats_.swaps;
-        // Bring prefill buffer up to date, then hand it to the current channel.
-        catchUpPrefill(cpu_cycles_);
+        // Bring all prefill buffers up to date, then hand the oldest to current.
+        catchUpAllPrefill(cpu_cycles_);
+        assert(!prefill_queue_.empty() && "SWAP with empty prefill queue");
 
-        current_ready_       = std::move(prefill_ready_);
-        current_last_update_ = prefill_last_update_;
+        PrefillSlot& front = prefill_queue_.front();
+        current_ready_       = std::move(front.ready);
+        current_last_update_ = front.last_update;
         current_active_      = true;
         current_paused_      = false;
-
-        // Reset prefill for the next PREF_START.
-        prefill_ready_ = std::queue<size_t>{};
-        prefill_active_      = false;
-        prefill_paused_      = false;
-        prefill_last_update_ = 0;
+        prefill_queue_.pop_front();
 
         trace.push_back(std::make_unique<FifoControlWrite>(addr, pref_start_addr_, accessCycles()));
         return;
@@ -158,12 +158,10 @@ void PrngFifoPipelinedDev::write(Addr addr, size_t /*size*/, Trace& trace)
 
     if (addr == stop_addr_) {
         ++stats_.stops;
-        current_active_ = false;
-        current_paused_ = false;
-        prefill_active_ = false;
-        prefill_paused_ = false;
-        current_ready_  = std::queue<size_t>{};
-        prefill_ready_  = std::queue<size_t>{};
+        current_active_      = false;
+        current_paused_      = false;
+        current_ready_       = std::queue<size_t>{};
+        prefill_queue_.clear();
         trace.push_back(std::make_unique<FifoControlWrite>(addr, pref_start_addr_, accessCycles()));
         return;
     }

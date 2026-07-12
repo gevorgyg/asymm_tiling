@@ -11,7 +11,8 @@ InstGenerator::GhostMat::GhostMat(uint w, uint h, uint elem_w, Addr a)
 InstGenerator::InstGenerator(Params p)
     : A_(p.a_width, p.a_height, p.a_precision, 0),
       B_(p.b_width, p.a_width, p.b_precision, A_.total_byte_size),
-      reg_m_(p.reg_m), reg_n_(p.reg_n), reg_k_(p.reg_k), seed_bytes_(p.seed_bytes) {
+      reg_m_(p.reg_m), reg_n_(p.reg_n), reg_k_(p.reg_k), seed_bytes_(p.seed_bytes),
+      num_prefill_(p.num_prefill ? p.num_prefill : 1) {
   if (A_.width != B_.height) {
     std::cerr << "invalid matrix dimensions for multiplication" << std::endl;
     exit(1);
@@ -294,43 +295,42 @@ void InstGenerator::emitTraceMultiLevelCStationaryOuterProductsPipelined(
   const uint M_tiles = A.height / tile.m;
   const uint N_tiles = B.width  / tile.n;
   const uint K_tiles = A.width  / tile.k;
+  const uint total   = M_tiles * N_tiles * K_tiles;
 
-  // Helper: seed address for tile (ti, tj, tk) — same scheme as other emitters.
-  auto seedAddr = [&](uint ti, uint tj, uint tk) -> Addr {
-    (void)ti;   // ti is not part of the PRNG session index in this scheme
-    return B.addr + (tk * N_tiles + tj) * 8;
+  // Helper: seed address for linear session index lin.
+  // lin = ti*(N_tiles*K_tiles) + tj*K_tiles + tk
+  auto seedAddrLin = [&](uint lin) -> Addr {
+    const uint tk = lin % K_tiles;
+    const uint tj = (lin / K_tiles) % N_tiles;
+    return B.addr + (tk * N_tiles + tj) * seed_bytes_;
   };
 
-  // Bootstrap: start pre-generating tile (0,0,0) before the loop.
-  // The window between PREF_START and the first SWAP is small (just the
-  // seed-load instructions), but every subsequent tile gets a full previous-
-  // session worth of prefill time.
-  {
-    emit(os, "ltea", seedAddr(0, 0, 0), 1, 1, 1, 8, b_id);
-    emit(os, "tmov", PREF_SEED_REG, 1, 1, 1, 8, b_id);
-    emit(os, "tmov", PREF_START_REG, 1, 1, 1, 8, b_id);
+  // Bootstrap: issue PREF_START for the first num_prefill_ sessions before the
+  // main loop.  Every subsequent session is started exactly num_prefill_ steps
+  // ahead of consumption, so the prefill queue depth stays at num_prefill_.
+  for (uint p = 0; p < num_prefill_ && p < total; ++p) {
+    emit(os, "ltea", seedAddrLin(p), 1, 1, 1, seed_bytes_, b_id);
+    emit(os, "tmov", PREF_SEED_REG,  1, 1, 1, seed_bytes_, b_id);
+    emit(os, "tmov", PREF_START_REG, 1, 1, 1, seed_bytes_, b_id);
   }
 
   for (uint ti = 0; ti < M_tiles; ++ti) {
     for (uint tj = 0; tj < N_tiles; ++tj) {
       for (uint tk = 0; tk < K_tiles; ++tk) {
-        // SWAP: make the pre-generated elements for this session available.
-        emit(os, "tmov", SWAP_REG, 1, 1, 1, 8, b_id);
+        // SWAP: pop the oldest prefill slot into the current channel.
+        emit(os, "tmov", SWAP_REG, 1, 1, 1, seed_bytes_, b_id);
 
-        // Immediately start pre-generating the NEXT session so it runs
-        // concurrently with this session's computation.
-        bool is_last = (ti == M_tiles - 1 && tj == N_tiles - 1 && tk == K_tiles - 1);
-        if (!is_last) {
-          uint nti = ti, ntj = tj, ntk = tk + 1;
-          if (ntk == K_tiles) { ntk = 0; ++ntj; }
-          if (ntj == N_tiles) { ntj = 0; ++nti; }
-          emit(os, "ltea", seedAddr(nti, ntj, ntk), 1, 1, 1, 8, b_id);
-          emit(os, "tmov", PREF_SEED_REG, 1, 1, 1, 8, b_id);
-          emit(os, "tmov", PREF_START_REG, 1, 1, 1, 8, b_id);
+        // Start pre-generating the session num_prefill_ steps ahead so all
+        // prefill slots stay busy throughout computation.
+        const uint lin      = ti * (N_tiles * K_tiles) + tj * K_tiles + tk;
+        const uint next_lin = lin + num_prefill_;
+        if (next_lin < total) {
+          emit(os, "ltea", seedAddrLin(next_lin), 1, 1, 1, seed_bytes_, b_id);
+          emit(os, "tmov", PREF_SEED_REG,         1, 1, 1, seed_bytes_, b_id);
+          emit(os, "tmov", PREF_START_REG,        1, 1, 1, seed_bytes_, b_id);
         }
 
-        // C-tile prefetch: its cycles add to the prefill window for this
-        // session's data (the prefill is already running after PREF_START above).
+        // C-tile prefetch adds to the overlap window available to prefill.
         emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
 
         // Inner computation: B elements from the pipelined DATA_REG.
@@ -350,7 +350,7 @@ void InstGenerator::emitTraceMultiLevelCStationaryOuterProductsPipelined(
     }
   }
 
-  emit(os, "tmov", STOP_REG, 1, 1, 1, 8, b_id);
+  emit(os, "tmov", STOP_REG, 1, 1, 1, seed_bytes_, b_id);
 }
 
 Addr InstGenerator::tileAddr(const GhostMat &M, uint row,

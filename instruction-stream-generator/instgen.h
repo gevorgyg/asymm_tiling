@@ -51,6 +51,7 @@ public:
     uint reg_n = 0;
     uint reg_k = 0;
     uint seed_bytes = 8;   // bytes of PRNG-FIFO seed stored per B tile
+    uint num_prefill = 1;  // parallel prefill buffers for pipelined mode
   };
 
   explicit InstGenerator(Params p);
@@ -114,6 +115,7 @@ private:
   uint reg_n_;
   uint reg_k_;
   uint seed_bytes_;
+  uint num_prefill_;
 };
 
 #endif
