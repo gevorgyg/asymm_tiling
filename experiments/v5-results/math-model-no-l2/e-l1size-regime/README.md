@@ -160,21 +160,77 @@ consistent across L1 sizes.
 
 ---
 
-## Anomaly: TM=96, L1=8KB
+## Anomaly explained: TM=96, L1=8KB — TM-driven C eviction
 
-At L1=8KB, TM=96 shows α ≈ 36.8 for all TN values — about 6× higher than the
-expected DRAM-regime value of ≈5.9. The WS formula predicts WS=70 < 128 (safe at
-TN=4), yet α is massive. By contrast, TM=64 at L1=8KB gives α=5.97 (normal).
+At L1=8KB, TM=96 shows α ≈ 36.8 for **all** TN values — about 6× higher than the
+expected DRAM-regime value of ≈5.9. The WS formula predicts WS=70 < 128 at TN=4
+(flagging the tile as safe), yet α is catastrophic. TM=64 at the same L1 gives
+α=5.97 (normal). The anomaly vanishes at L1=16KB (TM=96, TN=4 → α=5.94, normal).
 
-The TN-independence of this anomaly (Δ ≈ 0.04 across all TN) suggests the cost
-is not a cold-fill correction but a fixed overhead. One hypothesis: the A tile
-for TM=96 (1536 lines) is 12× larger than L1=128 lines. This extreme ratio may
-cause cache-management overhead in the simulator that is not captured by the WS
-formula (which assumes the hot working set fits in L1 within a single rtk chunk).
-The anomaly disappears at L1=16KB (TM=96 at TN=4 gives α=5.94, normal).
+### Root cause: each subtile spans 4 non-contiguous cache lines
+
+A and C both have row stride = 256 cols × 4 bytes = 1024 bytes = **16 cache lines**.
+A register tile of 4 rows × 4 cols (REG_M × REG_K) touches 4 different rows and
+therefore 4 separate cache lines, not 1. The same applies to C.
+
+So every `rti` step in the inner loop loads/stores:
+- A[rti]: 4 cache lines
+- C[rti]: 4 cache lines
+- **8 cache lines total per rti step**
+
+### Actual WS between consecutive uses of the same C subtile
+
+For C[rti=k] to survive from one rtk iteration to the next, all lines touched
+between those two accesses must fit in L1. That window spans:
+
+- The remaining TM/4 − 1 other rti subtiles (8 lines each): `(TM/4 − 1) × 8`
+- The A subtile for rti=k at the new rtk (different K-column → different line): `4`
+
+```
+actual WS = (TM/4 − 1) × 8 + 4
+```
+
+| TM | Actual WS | L1=8 KB (128 lines) | L1=16 KB (256 lines) |
+|----|-----------|---------------------|----------------------|
+| 64 | 15 × 8 + 4 = **124** | 124 < 128 → **C stays warm** | stays warm |
+| 96 | 23 × 8 + 4 = **188** | 188 > 128 → **C evicted** | 188 < 256 → stays warm |
+
+TM=64 clears L1 by 4 lines; TM=96 exceeds it by 60 lines. The regime change is
+abrupt — there is no "borderline" tile between them in the TM sweep.
+
+### Eviction cost and TN-independence
+
+When C[rti] is evicted between rtk iterations, every C subtile incurs:
+1. A DRAM writeback (dirty eviction)
+2. A write-allocate DRAM refill on the next access
+
+This penalty triggers once per C subtile per rtk boundary, regardless of TN. TN
+only controls how many rtj columns are processed *within* one rtk pass; it has no
+effect on the rtk-boundary eviction. Hence α ≈ 36.83 for all five TN values.
+
+### Why the WS formula misses this
+
+`ws_lines(TM, TN) = TM×TN/8 + TM/4 − 2` models the **TN-overflow** regime: the
+dominant term `TM×TN/8` grows with TN, capturing C eviction caused by many rtj
+columns. At TN=4 it gives 70, correctly flagging no TN-overflow.
+
+It does not model the **TM-overflow** regime: when TM is large enough that the
+TM/4 rti subtiles (A + C, 4 lines each) exceed L1 *independently of TN*. The
+formula implicitly treats each C subtile as 1 cache line; it breaks down once the
+non-contiguous row layout puts (TM/4 − 1) × 8 + 4 > L1/LINE.
+
+The corrected safe condition for TM-overflow is:
+
+```
+(TM/4 − 1) × 8 + 4  <  L1 / LINE
+```
+
+which at L1=8KB gives TM < 68 (i.e., TM ≤ 64 is the last safe value).
 
 **Practical conclusion**: at L1=8KB, TM=96 is unusable regardless of TN. Tile
-selection should stay at TM ≤ 64 for L1=8KB.
+selection must satisfy (TM/4 − 1) × 8 + 4 < L1/LINE, not just the TN-overflow
+condition. At L1=16KB the constraint is (TM/4 − 1) × 8 + 4 < 256, which all
+tiles in this sweep satisfy.
 
 ---
 
@@ -187,3 +243,4 @@ selection should stay at TM ≤ 64 for L1=8KB.
 | C = 11.0 in DRAM regime regardless of L1 size | ✓ Confirmed, 2.3–2.7% error |
 | WS overflow threshold = L1/LINE | ✓ Confirmed (e.g. TM=96,TN=32 safe at L1=32KB) |
 | α_min shifts to larger TM with larger L1 | ✓ TM*=12→24→48 for L1=16→32→64KB |
+| TM-overflow: safe iff (TM/4−1)×8+4 < L1/LINE | ✓ TM=64 safe (124<128), TM=96 not (188>128) |
