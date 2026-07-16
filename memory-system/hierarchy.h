@@ -6,6 +6,7 @@
 #include "prng/prng.h"
 #include "prng_fifo/prng_fifo.h"
 #include "prng_fifo_pipelined/prng_fifo_pipelined.h"
+#include "prng_fifo_col_major/prng_fifo_col_major.h"
 
 #include <string>
 
@@ -46,6 +47,7 @@ class MemoryHierarchy
         PrngDev::InitParameters prng;
         PrngFifoDev::InitParameters prng_fifo;
         PrngFifoPipelinedDev::InitParameters prng_fifo_pipelined;
+        PrngFifoColMajorDev::InitParameters  prng_fifo_col_major;
         bool no_l2 = false;   // bypass L2; L1 misses go directly to main memory
     };
 
@@ -67,6 +69,8 @@ class MemoryHierarchy
     PrngFifoDev&                  prng_fifo()              { return prng_fifo_; }
     const PrngFifoPipelinedDev&   prng_fifo_pipelined() const { return prng_fifo_pipelined_; }
     PrngFifoPipelinedDev&         prng_fifo_pipelined()      { return prng_fifo_pipelined_; }
+    const PrngFifoColMajorDev&    prng_fifo_col_major() const { return prng_fifo_col_major_; }
+    PrngFifoColMajorDev&          prng_fifo_col_major()       { return prng_fifo_col_major_; }
 
   private:
     MainMemory             mem_;
@@ -74,6 +78,7 @@ class MemoryHierarchy
     PrngDev                prng_;
     PrngFifoDev            prng_fifo_;
     PrngFifoPipelinedDev   prng_fifo_pipelined_;
+    PrngFifoColMajorDev    prng_fifo_col_major_;
     AddrRouter             router_;
     Cache                  l1_;
 };

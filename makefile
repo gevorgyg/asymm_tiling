@@ -7,6 +7,7 @@ MAIN_DIR   := $(MEM_DIR)/mainmem
 PRNG_DIR   := $(MEM_DIR)/prng
 FIFO_DIR   := $(MEM_DIR)/prng_fifo
 PFILO_DIR  := $(MEM_DIR)/prng_fifo_pipelined
+CMAJ_DIR   := $(MEM_DIR)/prng_fifo_col_major
 
 MEM_SRCS := $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp \
             $(CACHE_DIR)/cache.cpp $(CACHE_DIR)/cache_actions.cpp \
@@ -14,6 +15,7 @@ MEM_SRCS := $(CACHE_DIR)/set.cpp $(CACHE_DIR)/eviction_policy.cpp \
             $(PRNG_DIR)/prng.cpp $(PRNG_DIR)/prng_actions.cpp \
             $(FIFO_DIR)/prng_fifo.cpp $(FIFO_DIR)/prng_fifo_actions.cpp \
             $(PFILO_DIR)/prng_fifo_pipelined.cpp \
+            $(CMAJ_DIR)/prng_fifo_col_major.cpp \
             $(MEM_DIR)/hierarchy.cpp
 
 INT_SRCS := $(INT_DIR)/interpreter.cpp $(INT_DIR)/instruction_actions.cpp \
@@ -32,6 +34,7 @@ DEPS := config.h \
         $(PRNG_DIR)/prng.h $(PRNG_DIR)/prng_actions.h \
         $(FIFO_DIR)/prng_fifo.h $(FIFO_DIR)/prng_fifo_actions.h \
         $(PFILO_DIR)/prng_fifo_pipelined.h \
+        $(CMAJ_DIR)/prng_fifo_col_major.h \
         utils.h
 
 TEST_SRCS := tests/unit_tests.cpp $(MEM_SRCS)
