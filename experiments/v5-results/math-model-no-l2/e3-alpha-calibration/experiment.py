@@ -64,7 +64,7 @@ TN_SWEEP      = [4, 8, 16, 32, 64]
 TM_IN_L1   = 8    # A = 8 KB < L1 = 16 KB
 TM_IN_DRAM = 32   # A = 32 KB > L1 = 16 KB
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True,
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True,
               mulac_norecord=True, no_l2=True)
 
 # No L2 keys — they are unused (and stripped from cache key) when no_l2=True.

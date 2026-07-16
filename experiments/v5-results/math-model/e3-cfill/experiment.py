@@ -51,7 +51,7 @@ TN_SWEEP = [4, 8, 16, 32, 64]                  # S2 — M=256, TM=32
 
 L2_BOUNDARY_TM = L2 // (TK * A_P)   # = 64
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True, mulac_norecord=True)
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True, mulac_norecord=True)
 
 _BASE: dict[str, object] = {
     "A_WIDTH_DIM":        K,

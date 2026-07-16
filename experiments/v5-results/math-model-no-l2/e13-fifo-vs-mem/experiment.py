@@ -48,9 +48,9 @@ TK = K
 
 MNK = M * N * K
 
-FLAGS_FIFO = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True,
+FLAGS_FIFO = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True,
                    mulac_norecord=True, no_l2=True)
-FLAGS_MEM  = Flags(b_source="mem",       stationary="C", three_d_reg=True,
+FLAGS_MEM  = Flags(b_source="mem",       stationary="A", three_d_reg=True,
                    mulac_norecord=True, no_l2=True)
 
 _BASE: dict[str, object] = {

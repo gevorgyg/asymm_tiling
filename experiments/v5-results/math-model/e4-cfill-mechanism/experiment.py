@@ -39,7 +39,7 @@ L1   = 16_384
 L2   = 4 * L1
 REG_N = REG_M = REG_K = 4
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True, mulac_norecord=True)
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True, mulac_norecord=True)
 
 _BASE: dict[str, object] = {
     "A_HEIGHT_DIM":        M,

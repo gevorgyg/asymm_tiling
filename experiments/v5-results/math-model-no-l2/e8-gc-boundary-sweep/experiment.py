@@ -54,7 +54,7 @@ MNK = M * N * K
 
 L1_BOUNDARY_TM = L1 // (TK * A_P)   # = 16
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True,
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True,
               mulac_norecord=True, no_l2=True)
 
 _BASE: dict[str, object] = {

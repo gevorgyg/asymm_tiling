@@ -15,8 +15,7 @@
 constexpr char instruction_path[] = "./matmul.matv";
 
 
-enum class BSource    { Memory, PrngMem, PrngFifo, PrngFifoPipelined };
-enum class Stationary { C, B };
+enum class BSource { Memory, PrngMem, PrngFifo, PrngFifoPipelined };
 
 
 WritePolicy parseWritePolicy(const std::string& str)
@@ -38,15 +37,16 @@ BSource parseBSource(const std::string& str)
     exit(1);
 }
 
-Stationary parseStationary(const std::string& str)
+Dataflow parseStationary(const std::string& str)
 {
-    if (str == "C") return Stationary::C;
-    if (str == "B") return Stationary::B;
-    std::cerr << "error: --stationary must be B or C; got '" << str << "'\n";
+    if (str == "A")      return Dataflow::AStationary;
+    if (str == "B")      return Dataflow::BStationary;
+    if (str == "output") return Dataflow::OutputStationary;
+    std::cerr << "error: --stationary must be A, B, or output; got '" << str << "'\n";
     exit(1);
 }
 
-void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
+void generateInstructions(const Config& c, Dataflow df, bool b_fifo,
                           uint reg_m, uint reg_n, uint reg_k, uint seed_bytes,
                           bool b_fifo_pipelined = false, uint num_prefill = 1)
 {
@@ -70,7 +70,7 @@ void generateInstructions(const Config& c, bool b_stationary, bool b_fifo,
     }
 
     InstGenerator::TileShape tile{c.tile_m, c.tile_n, c.tile_k};
-    gen.generate(tile, ofs, b_stationary, b_fifo, b_fifo_pipelined);
+    gen.generate(tile, ofs, df, b_fifo, b_fifo_pipelined);
 }
 
 
@@ -193,7 +193,7 @@ void printSystemTable(size_t cycles)
 int main(int argc, char* argv[])
 {
     BSource     b_source         = BSource::Memory;
-    Stationary  stationary       = Stationary::C;
+    Dataflow    dataflow         = Dataflow::BStationary;
     std::string config_path      = "default.config";
     std::string trace_file_path  = "trace.log";
     std::string assembler_input;
@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
         };
 
         if      (arg == "--Bsource")         b_source        = parseBSource(need_arg("--Bsource"));
-        else if (arg == "--stationary")      stationary      = parseStationary(need_arg("--stationary"));
+        else if (arg == "--stationary")      dataflow        = parseStationary(need_arg("--stationary"));
         else if (arg == "--config")          config_path     = need_arg("--config");
         else if (arg == "--trace_file")      trace_file_path = need_arg("--trace_file");
         else if (arg == "--assembler_input") assembler_input = need_arg("--assembler_input");
@@ -259,10 +259,9 @@ int main(int argc, char* argv[])
     const bool b_generated        = (b_source == BSource::PrngMem);
     const bool b_fifo             = (b_source == BSource::PrngFifo);
     const bool b_fifo_pipelined   = (b_source == BSource::PrngFifoPipelined);
-    const bool b_stationary       = (stationary == Stationary::B);
 
-    if (b_fifo_pipelined && (!use_3dregisters || b_stationary)) {
-        std::cerr << "error: --Bsource prng_fifo_pipelined requires --stationary C and --3dregisters\n";
+    if (b_fifo_pipelined && (!use_3dregisters || dataflow != Dataflow::BStationary)) {
+        std::cerr << "error: --Bsource prng_fifo_pipelined requires --stationary B and --3dregisters\n";
         exit(1);
     }
 
@@ -327,7 +326,7 @@ int main(int argc, char* argv[])
         const uint num_prefill = b_fifo_pipelined
                                    ? (cfg.prng_fifo_num_prefill ? cfg.prng_fifo_num_prefill : 1u)
                                    : 1u;
-        generateInstructions(cfg, b_stationary, b_fifo, reg_m, reg_n, reg_k,
+        generateInstructions(cfg, dataflow, b_fifo, reg_m, reg_n, reg_k,
                              cfg.prng_fifo_seed_bytes, b_fifo_pipelined, num_prefill);
     }
 

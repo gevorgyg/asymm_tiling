@@ -49,9 +49,9 @@ TM_ALL  = TM_M192 + TM_M256
 GC_SWEEP = [64, 100, 104, 108, 130, 165, 171, 175, 230, 248, 252, 256,
             380, 400, 420, 440, 460, 465, 470, 475, 478, 480, 490, 500, 600]
 
-FLAGS_FIFO = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True,
+FLAGS_FIFO = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True,
                    mulac_norecord=True)
-FLAGS_MEM  = Flags(b_source="mem",       stationary="C", three_d_reg=True,
+FLAGS_MEM  = Flags(b_source="mem",       stationary="A", three_d_reg=True,
                    mulac_norecord=True)
 
 _BASE_192: dict[str, object] = {

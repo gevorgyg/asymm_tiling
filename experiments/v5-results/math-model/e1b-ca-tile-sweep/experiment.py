@@ -93,7 +93,7 @@ BASE_S2: dict[str, object] = {
 }
 
 # gc=1 traffic run: no MULAC, B source is prng_fifo
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True, mulac_norecord=True)
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True, mulac_norecord=True)
 
 
 def _ca(cycles: int, tn: int, mnk: int) -> float:

@@ -47,7 +47,7 @@ TK        = K
 
 MNK = M * N * K
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True,
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True,
               mulac_norecord=True, no_l2=True)
 
 # L1 sizes to sweep (all must be multiples of LINE=64)

@@ -32,7 +32,7 @@ EXPERIMENT_DIR = Path(__file__).resolve().parent
 LINE = 64
 A_P  = 8
 
-FLAGS = Flags(b_source="mem", stationary="C", three_d_reg=True, no_l2=True)
+FLAGS = Flags(b_source="mem", stationary="A", three_d_reg=True, no_l2=True)
 
 # ── Traffic-model sweep (M=N=K=256) ──────────────────────────────────────────
 
@@ -65,7 +65,7 @@ FAMILIES_128 = {
     512:  [(128, 4), (64, 8), (32, 16), (16, 32), (8, 64), (4, 128)],
 }
 OPT_TILE  = {1.0: (32, 32), 0.5: (16, 32), 0.25: (16, 64), 0.125: (8, 64)}
-FLAGS_NR  = Flags(b_source="mem", stationary="C", three_d_reg=True,
+FLAGS_NR  = Flags(b_source="mem", stationary="A", three_d_reg=True,
                   no_l2=True, mulac_norecord=True)
 
 

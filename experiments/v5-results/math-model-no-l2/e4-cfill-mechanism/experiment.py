@@ -61,7 +61,7 @@ MNK2      = M2 * N * K   # 16,777,216
 
 L1_BOUNDARY_TM = L1 // (TK * A_P)   # = 16
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True,
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True,
               mulac_norecord=True, no_l2=True)
 
 _BASE192: dict[str, object] = {

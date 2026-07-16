@@ -68,9 +68,9 @@ PALETTE_GC: dict[int, str] = {
 }
 _COLOR_MEM = "#444444"
 
-FLAGS_MEM  = Flags(b_source="mem",                 stationary="C", three_d_reg=True, outer_products=True)
-FLAGS_STD  = Flags(b_source="prng_fifo",           stationary="C", three_d_reg=True, outer_products=True)
-FLAGS_PIPE = Flags(b_source="prng_fifo_pipelined", stationary="C", three_d_reg=True, outer_products=True)
+FLAGS_MEM  = Flags(b_source="mem",                 stationary="A", three_d_reg=True, outer_products=True)
+FLAGS_STD  = Flags(b_source="prng_fifo",           stationary="B", three_d_reg=True, outer_products=True)
+FLAGS_PIPE = Flags(b_source="prng_fifo_pipelined", stationary="B", three_d_reg=True, outer_products=True)
 
 
 def _gc_label(gc: int, source: str) -> str:

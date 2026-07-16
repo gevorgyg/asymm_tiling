@@ -34,7 +34,7 @@ REG_N = REG_M = REG_K = 4
 L1_LAT = 4
 L2_LAT = 14
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True, mulac_norecord=True)
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True, mulac_norecord=True)
 
 _BASE_192: dict[str, object] = {
     "A_HEIGHT_DIM":        192,

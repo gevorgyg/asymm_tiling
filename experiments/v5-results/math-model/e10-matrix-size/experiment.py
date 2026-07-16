@@ -33,7 +33,7 @@ LINE = 64
 L1   = 16_384
 L2   = 4 * L1
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True, mulac_norecord=True)
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True, mulac_norecord=True)
 
 def _base(m: int) -> dict[str, object]:
     return {

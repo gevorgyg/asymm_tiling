@@ -47,7 +47,7 @@ GC_SWEEP     = [1, 64, 256, 512]
 
 MNK = M * N * K
 
-FLAGS = Flags(b_source="prng_fifo", stationary="C", three_d_reg=True, mulac_norecord=True)
+FLAGS = Flags(b_source="prng_fifo", stationary="B", three_d_reg=True, mulac_norecord=True)
 
 _BASE: dict[str, object] = {
     "A_HEIGHT_DIM":       M,

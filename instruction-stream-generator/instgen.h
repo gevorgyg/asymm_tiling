@@ -15,6 +15,15 @@
 // PRNG window covers B's addresses), so the instruction stream is identical
 // in both modes.
 
+// Which operand is held in the processor register while the inner loops run.
+// All modes prefetch the C tile into L1 at the start of each output tile.
+//
+//   AStationary:      A sub-tile in %ra; B and C cycle through L1.     Mem only.
+//   BStationary:      B sub-tile in %rb; A and C cycle through L1.     Mem or FIFO.
+//   OutputStationary: C sub-tile in %rc (accumulator); A and B stream. Mem or FIFO.
+//
+enum class Dataflow { AStationary, BStationary, OutputStationary };
+
 class InstGenerator {
 public:
   // Tile sizes in elements.
@@ -56,8 +65,8 @@ public:
 
   explicit InstGenerator(Params p);
 
-  void generate(TileShape tile, std::ostream &os, bool b_stationary = false, bool b_fifo = false,
-                bool b_fifo_pipelined = false) const;
+  void generate(TileShape tile, std::ostream &os, Dataflow df,
+                bool b_fifo = false, bool b_fifo_pipelined = false) const;
 
 private:
   // MMIO ports of the PRNG-FIFO device (must match main.cpp's wiring).
@@ -67,45 +76,47 @@ private:
   static constexpr Addr STOP_REG  = 0xFF00000C;
 
   void emitTrace(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                 TileShape tile, std::ostream &os, bool b_stationary, bool b_fifo) const;
+                 TileShape tile, std::ostream &os, Dataflow df, bool b_fifo) const;
 
-  // C-stationary: prefetch the C tile, stream A subcolumns x B subrows as
-  // rank-1 updates (M outermost). B-stationary mirrors it: hold one B tile,
-  // stream A over M while C accumulates (N outermost). Both register-tiled.
-  void emitTraceMultiLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                      TileShape tile, std::ostream &os, bool b_fifo) const;
-  void emitTraceMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                      TileShape tile, std::ostream &os, bool b_fifo) const;
-  // Pipelined prefill variant: pre-generates next session while computing
-  // current session, overlapping generation latency with computation.
-  void emitTraceMultiLevelCStationaryOuterProductsPipelined(const GhostMat &A, const GhostMat &B,
-                                                             const GhostMat &C, TileShape tile,
-                                                             std::ostream &os) const;
-  void emitTraceSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
-                                       TileShape tile, std::ostream &os, bool b_fifo) const;
-  void emitTraceSingleLevelCStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+  // Multi-level (3D-register) variants — all prefetch the C tile first.
+  //
+  // AStationary:      A reg-tile in %ra; for each A, B cols iterate; C load/store per (rti,rtj).
+  // BStationary:      B reg-tile in %rb (from FIFO or L1); A rows iterate; C load/store per (rti,rtj).
+  // OutputStationary: C reg-tile in %rc across ALL k; A and B stream; C touched only at tile boundary.
+  //                   For FIFO: the full B tile is consumed once per (rti, rtj, tk) pass;
+  //                   only the column matching rtj is fed to tmulac.
+  void emitMultiLevelAStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                  TileShape tile, std::ostream &os) const;
+  void emitMultiLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                  TileShape tile, std::ostream &os, bool b_fifo) const;
+  void emitMultiLevelOutputStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                        TileShape tile, std::ostream &os, bool b_fifo) const;
 
-  // PRNG-FIFO helpers: seed the device for B tile (tk,tj) and start it; stop it.
+  // Single-level variants (no register sub-tiling).
+  void emitSingleLevelAStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                   TileShape tile, std::ostream &os) const;
+  void emitSingleLevelBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                   TileShape tile, std::ostream &os, bool b_fifo) const;
+  void emitSingleLevelOutputStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                        TileShape tile, std::ostream &os, bool b_fifo) const;
+
+  // Pipelined-prefill variant (FIFO only, always multi-level, always B-stationary
+  // at the register level with overlapped generation).
+  void emitPipelinedBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
+                                 TileShape tile, std::ostream &os) const;
+
+  // PRNG-FIFO helpers.
   void emitFifoStart(std::ostream &os, uint tk, uint tj, uint n_tiles, const char *reg) const;
   void emitFifoStop(std::ostream &os, const char *reg) const;
 
-  // Byte address of element (row, col) inside matrix M.
   Addr tileAddr(const GhostMat &M, uint row, uint col) const;
 
-  // Emit one instruction: "<op> (0x<addr>, w, h, stride, ew), <reg>".
   void emit(std::ostream &os, const char *op, Addr addr, uint w, uint h,
-                   uint stride, uint ew, const char *reg) const;
-
-  // ltea convenience: load tile from M at (row, col) into <reg>.
+            uint stride, uint ew, const char *reg) const;
   void load(std::ostream &os, const GhostMat &M, uint row, uint col,
-                   uint w, uint h, const char *reg) const;
-
-  // tmov convenience: store tile from <reg> into M at (row, col).
+            uint w, uint h, const char *reg) const;
   void store(std::ostream &os, const GhostMat &M, uint row, uint col,
-                     uint w, uint h, const char *reg) const;
-
-  // prefetch convenience: prefetch cache tile from M at (row, col).
+             uint w, uint h, const char *reg) const;
   void emitPrefetch(std::ostream &os, const GhostMat &M, uint row, uint col,
                     uint w, uint h) const;
 
