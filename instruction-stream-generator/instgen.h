@@ -106,11 +106,17 @@ private:
   void emitPipelinedBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                  TileShape tile, std::ostream &os) const;
 
-  // Column-major output-stationary with FIFO: one START per B column (rtj outer),
-  // B sub-tile held in %rb while all M rows (rti) iterate. N_reg starts per tile
-  // instead of M_reg × N_reg × K_tiles. FIFO is assumed to generate one column
-  // at a time (software convention, no new hardware).
+  // Column-major output-stationary with FIFO: one START per rti covers the full
+  // B tile in col-major order; rtj iterates inside consuming columns sequentially.
+  // M_reg starts per output tile, no ghost reads.
   void emitMultiLevelOutputStationaryColMajorFifo(
+      const GhostMat &A, const GhostMat &B, const GhostMat &C,
+      TileShape tile, std::ostream &os) const;
+
+  // Pipelined col-major output-stationary: same structure as above but uses the
+  // pipelined FIFO device. SWAP at the top of each rti; the previous rti's tile
+  // is pre-generated in the background so each SWAP is stall-free.
+  void emitPipelinedOutputStationaryColMajor(
       const GhostMat &A, const GhostMat &B, const GhostMat &C,
       TileShape tile, std::ostream &os) const;
 

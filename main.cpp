@@ -263,13 +263,17 @@ int main(int argc, char* argv[])
     const bool b_fifo             = (b_source == BSource::PrngFifo);
     const bool b_fifo_pipelined   = (b_source == BSource::PrngFifoPipelined);
 
-    if (b_fifo_pipelined && (!use_3dregisters || dataflow != Dataflow::BStationary)) {
-        std::cerr << "error: --Bsource prng_fifo_pipelined requires --stationary B and --3dregisters\n";
+    if (b_fifo_pipelined && !use_3dregisters) {
+        std::cerr << "error: --Bsource prng_fifo_pipelined requires --3dregisters\n";
+        exit(1);
+    }
+    if (b_fifo_pipelined && !b_fifo_col_major && dataflow != Dataflow::BStationary) {
+        std::cerr << "error: --Bsource prng_fifo_pipelined requires --stationary B (or --col-major-fifo for output-stationary)\n";
         exit(1);
     }
 
-    if (b_fifo_col_major && (!b_fifo || !use_3dregisters || dataflow != Dataflow::OutputStationary)) {
-        std::cerr << "error: --col-major-fifo requires --Bsource prng_fifo, --stationary output, and --3dregisters\n";
+    if (b_fifo_col_major && ((!b_fifo && !b_fifo_pipelined) || !use_3dregisters || dataflow != Dataflow::OutputStationary)) {
+        std::cerr << "error: --col-major-fifo requires --Bsource prng_fifo[_pipelined], --stationary output, and --3dregisters\n";
         exit(1);
     }
 
