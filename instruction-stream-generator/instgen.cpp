@@ -423,13 +423,16 @@ void InstGenerator::emitPipelinedBStationary(
 
 // ── Column-major output-stationary FIFO ──────────────────────────────────────
 //
-// Loop order: rtj (column) outer → START → tk → rtk → ltea B → rti inner.
-// Each B sub-tile is read from the FIFO once and held in %rb while all M rows
-// (rti) iterate. This gives N_reg starts per output tile instead of the
-// M_reg × N_reg × K_tiles starts of the row-major output-stationary emitter.
+// True C-stationary: C in %rc across ALL k. Loop order matches the standard
+// output-stationary (rti outer → rtj → tk → rtk), but the FIFO is assumed
+// to generate one B column at a time (software convention, no new hardware).
 //
-// The FIFO is assumed (by software convention) to generate one B column
-// (a_width × reg_n elements) per START. No new hardware device is needed.
+// Row-major output-stationary must consume every rtj sub-tile per rtk to stay
+// in FIFO order, discarding all but the current rtj — wasted reads. Here each
+// START covers the full K column for rtj, and every element consumed is used.
+//
+// Restarts: one START per (rti, rtj) = M_reg × N_reg per output tile, vs
+// M_reg × N_reg × K_tiles for row-major. No ghost reads.
 void InstGenerator::emitMultiLevelOutputStationaryColMajorFifo(
     const GhostMat &A, const GhostMat &B, const GhostMat &C,
     TileShape tile, std::ostream &os) const
@@ -447,30 +450,30 @@ void InstGenerator::emitMultiLevelOutputStationaryColMajorFifo(
     for (uint tj = 0; tj < N_tiles; ++tj) {
       emitPrefetch(os, C, ti * tile.m, tj * tile.n, tile.n, tile.m);
 
-      for (uint rtj = 0; rtj < N_reg; ++rtj) {
-        // One START per column: FIFO generates all K rows of column rtj.
-        // Seed encodes the column index so each column gets a distinct PRNG sequence.
-        emitFifoStart(os, 0, tj * N_reg + rtj, N_tiles * N_reg, b_id);
+      for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+        for (uint rtj = 0; rtj < N_reg; ++rtj) {
+          // C held in %rc across all k — true C-stationary.
+          load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_,
+               reg_n_, reg_m_, c_id);
 
-        for (uint tk = 0; tk < K_tiles; ++tk) {
-          for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
-            // Read one B column segment (reg_n × reg_k elements) from FIFO.
-            emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
+          // One START per (rti, rtj): FIFO generates full K column for rtj.
+          // Every element consumed is used — no ghost reads.
+          emitFifoStart(os, 0, tj * N_reg + rtj, N_tiles * N_reg, b_id);
 
-            // B in %rb is reused for all M rows — no FIFO restart needed.
-            for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+          for (uint tk = 0; tk < K_tiles; ++tk) {
+            for (uint rtk = 0; rtk < tile.k / reg_k_; ++rtk) {
+              emit(os, "ltea", DATA_REG, reg_n_, reg_k_, reg_n_, B.elem_width, b_id);
               load(os, A, ti * tile.m + rti * reg_m_, tk * tile.k + rtk * reg_k_,
                    reg_k_, reg_m_, a_id);
-              load(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_,
-                   reg_n_, reg_m_, c_id);
               os << "tmulac " << a_id << ", " << b_id << ", " << c_id << "\n";
-              store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_,
-                    reg_n_, reg_m_, c_id);
             }
           }
-        }
 
-        emitFifoStop(os, b_id);
+          emitFifoStop(os, b_id);
+
+          store(os, C, ti * tile.m + rti * reg_m_, tj * tile.n + rtj * reg_n_,
+                reg_n_, reg_m_, c_id);
+        }
       }
     }
   }
