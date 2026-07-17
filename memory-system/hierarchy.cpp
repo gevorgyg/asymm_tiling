@@ -25,7 +25,6 @@ MemoryHierarchy::MemoryHierarchy(Parameters p, const size_t& cpu_cycles)
       prng_(p.prng),
       prng_fifo_(p.prng_fifo, cpu_cycles),
       prng_fifo_pipelined_(p.prng_fifo_pipelined, cpu_cycles),
-      prng_fifo_col_major_(p.prng_fifo_col_major, cpu_cycles),
       router_(prng_, p.no_l2 ? static_cast<MemoryObject&>(mem_) : static_cast<MemoryObject&>(l2_)),
       l1_(p.l1_access_cycles, p.l1, parsePolicy(p.l1_policy), &router_)
 {
@@ -51,12 +50,6 @@ void MemoryHierarchy::access(Addr addr, size_t size, bool is_write, Trace& trace
     if (prng_fifo_pipelined_.contains(addr)) {
         if (is_write) prng_fifo_pipelined_.write(addr, size, trace);
         else          prng_fifo_pipelined_.read(addr, size, trace);
-        return;
-    }
-
-    if (prng_fifo_col_major_.contains(addr)) {
-        if (is_write) prng_fifo_col_major_.write(addr, size, trace);
-        else          prng_fifo_col_major_.read(addr, size, trace);
         return;
     }
 

@@ -16,7 +16,7 @@ from ._workspace import asymm_binary, workspace_root
 
 @dataclass
 class Flags:
-    b_source: str = "mem"          # "mem" | "prng_mem" | "prng_fifo" | "prng_fifo_pipelined" | "prng_fifo_col_major"
+    b_source: str = "mem"          # "mem" | "prng_mem" | "prng_fifo"
     stationary: str = "B"          # "A" | "B" | "output"
     three_d_reg: bool = False
     mulac_norecord: bool = False
