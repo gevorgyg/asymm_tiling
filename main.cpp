@@ -48,7 +48,8 @@ Dataflow parseStationary(const std::string& str)
 
 void generateInstructions(const Config& c, Dataflow df, bool b_fifo,
                           uint reg_m, uint reg_n, uint reg_k, uint seed_bytes,
-                          bool b_fifo_pipelined = false, uint num_prefill = 1)
+                          bool b_fifo_pipelined = false, uint num_prefill = 1,
+                          bool b_fifo_col_major = false)
 {
     InstGenerator gen{InstGenerator::Params{
         .a_height    = c.a_height,
@@ -70,7 +71,7 @@ void generateInstructions(const Config& c, Dataflow df, bool b_fifo,
     }
 
     InstGenerator::TileShape tile{c.tile_m, c.tile_n, c.tile_k};
-    gen.generate(tile, ofs, df, b_fifo, b_fifo_pipelined);
+    gen.generate(tile, ofs, df, b_fifo, b_fifo_pipelined, b_fifo_col_major);
 }
 
 
@@ -201,6 +202,7 @@ int main(int argc, char* argv[])
     bool        use_3dregisters  = false;
     bool        mulac_norecord   = false;
     bool        no_l2            = false;
+    bool        b_fifo_col_major = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -217,9 +219,10 @@ int main(int argc, char* argv[])
         else if (arg == "--config")          config_path     = need_arg("--config");
         else if (arg == "--trace_file")      trace_file_path = need_arg("--trace_file");
         else if (arg == "--assembler_input") assembler_input = need_arg("--assembler_input");
-        else if (arg == "--3dregisters")     use_3dregisters = true;
-        else if (arg == "--mulac_norecord")  mulac_norecord  = true;
-        else if (arg == "--no-l2")           no_l2           = true;
+        else if (arg == "--3dregisters")     use_3dregisters  = true;
+        else if (arg == "--mulac_norecord")  mulac_norecord   = true;
+        else if (arg == "--no-l2")           no_l2            = true;
+        else if (arg == "--col-major-fifo")  b_fifo_col_major = true;
         else if (arg == "--trace_level") {
             trace_level = std::atoi(need_arg("--trace_level").c_str());
             if (trace_level < Interpreter::trace_instructions ||
@@ -262,6 +265,11 @@ int main(int argc, char* argv[])
 
     if (b_fifo_pipelined && (!use_3dregisters || dataflow != Dataflow::BStationary)) {
         std::cerr << "error: --Bsource prng_fifo_pipelined requires --stationary B and --3dregisters\n";
+        exit(1);
+    }
+
+    if (b_fifo_col_major && (!b_fifo || !use_3dregisters || dataflow != Dataflow::OutputStationary)) {
+        std::cerr << "error: --col-major-fifo requires --Bsource prng_fifo, --stationary output, and --3dregisters\n";
         exit(1);
     }
 
@@ -327,7 +335,8 @@ int main(int argc, char* argv[])
                                    ? (cfg.prng_fifo_num_prefill ? cfg.prng_fifo_num_prefill : 1u)
                                    : 1u;
         generateInstructions(cfg, dataflow, b_fifo, reg_m, reg_n, reg_k,
-                             cfg.prng_fifo_seed_bytes, b_fifo_pipelined, num_prefill);
+                             cfg.prng_fifo_seed_bytes, b_fifo_pipelined, num_prefill,
+                             b_fifo_col_major);
     }
 
     Interpreter::Options opts{

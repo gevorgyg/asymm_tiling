@@ -66,7 +66,8 @@ public:
   explicit InstGenerator(Params p);
 
   void generate(TileShape tile, std::ostream &os, Dataflow df,
-                bool b_fifo = false, bool b_fifo_pipelined = false) const;
+                bool b_fifo = false, bool b_fifo_pipelined = false,
+                bool b_fifo_col_major = false) const;
 
 private:
   // MMIO ports of the PRNG-FIFO device (must match main.cpp's wiring).
@@ -104,6 +105,14 @@ private:
   // at the register level with overlapped generation).
   void emitPipelinedBStationary(const GhostMat &A, const GhostMat &B, const GhostMat &C,
                                  TileShape tile, std::ostream &os) const;
+
+  // Column-major output-stationary with FIFO: one START per B column (rtj outer),
+  // B sub-tile held in %rb while all M rows (rti) iterate. N_reg starts per tile
+  // instead of M_reg × N_reg × K_tiles. FIFO is assumed to generate one column
+  // at a time (software convention, no new hardware).
+  void emitMultiLevelOutputStationaryColMajorFifo(
+      const GhostMat &A, const GhostMat &B, const GhostMat &C,
+      TileShape tile, std::ostream &os) const;
 
   // PRNG-FIFO helpers.
   void emitFifoStart(std::ostream &os, uint tk, uint tj, uint n_tiles, const char *reg) const;

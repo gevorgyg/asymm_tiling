@@ -16,11 +16,12 @@ from ._workspace import asymm_binary, workspace_root
 
 @dataclass
 class Flags:
-    b_source: str = "mem"          # "mem" | "prng_mem" | "prng_fifo"
+    b_source: str = "mem"          # "mem" | "prng_mem" | "prng_fifo" | "prng_fifo_pipelined"
     stationary: str = "B"          # "A" | "B" | "output"
     three_d_reg: bool = False
     mulac_norecord: bool = False
     no_l2: bool = False
+    col_major_fifo: bool = False   # column-major output-stationary FIFO; requires prng_fifo + output + 3dregisters
     trace_level: int = 0
     trace_file: Optional[str] = None
     assembler_input: Optional[str] = None
@@ -37,6 +38,8 @@ class Flags:
             argv.append("--mulac_norecord")
         if self.no_l2:
             argv.append("--no-l2")
+        if self.col_major_fifo:
+            argv.append("--col-major-fifo")
         if self.trace_file is not None:
             argv += ["--trace_file", self.trace_file]
         if self.assembler_input is not None:
