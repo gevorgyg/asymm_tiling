@@ -1,0 +1,2112 @@
+=== B-stat α calibration ===
+========================================================================
+B-stationary α calibration (gc=0)
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, FIFO_CAP=16384
+(reading from v55 B-stat cache — expect all cache hits)
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+────────────────────────────────────────────────────────────────────────
+L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  α_calib(TM, TN) = cycles/MNK   [L1=16KB, gc=0, B-stationary]
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4    3.6483    3.6470    3.6463    3.6460    3.6458
+         8    3.3997    3.3973    3.3963    3.3958    3.3957
+        16    6.0524    4.6403    3.9343    3.5811    3.4041
+        24    6.0067    4.5966    3.8916    3.5387    3.3617
+        32    5.9839    4.5747    3.8701    3.5174    3.3403
+        48    5.9609    4.5527    3.8486    3.4959         —
+        64    5.9492    4.5415    3.8377    3.4849         —
+        96    5.9374    4.5302    3.8266         —         —
+
+────────────────────────────────────────────────────────────────────────
+L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  α_calib(TM, TN) = cycles/MNK   [L1=32KB, gc=0, B-stationary]
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4    3.6465    3.6451    3.6445    3.6441    3.6440
+         8    3.3952    3.3945    3.3942    3.3940    3.3939
+        16    3.2709    3.2697    3.2692    3.2689    3.2689
+        24    3.2303    3.2297    3.2293    3.2290    3.3531
+        32    5.9839    4.5747    3.8701    3.5174    3.3403
+        48    5.9609    4.5527    3.8486    3.4959         —
+        64    5.9492    4.5415    3.8377    3.4849         —
+        96    5.9374    4.5302    3.8266         —         —
+
+────────────────────────────────────────────────────────────────────────
+L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  α_calib(TM, TN) = cycles/MNK   [L1=64KB, gc=0, B-stationary]
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4    3.6428    3.6415    3.6408    3.6405    3.6403
+         8    3.3916    3.3909    3.3905    3.3903    3.3902
+        16    3.2660    3.2656    3.2653    3.2652    3.2652
+        24    3.2262    3.2255    3.2251    3.2247    3.2240
+        32    3.2037    3.2031    3.2028    3.2027    3.2027
+        48    3.1862    3.1858    3.1856    3.1855         —
+        64    5.9492    4.5415    3.8377    3.4849         —
+        96    5.9374    4.5302    3.8266         —         —
+
+════════════════════════════════════════════════════════════════════════
+Best α per L1  (argmin cycles/MNK at gc=0)
+════════════════════════════════════════════════════════════════════════
+  L1=   16KB:  TM=32, TN=64  →  α=3.3403
+  L1=   32KB:  TM=24, TN=32  →  α=3.2290
+  L1=   64KB:  TM=48, TN=32  →  α=3.1855
+
+=== C-stat col-maj α calibration ===
+========================================================================
+C-stationary col-major α calibration (gc=0)
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, FIFO_CAP=16384
+(reading from v55 C-stat col-maj cache — expect all cache hits)
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+────────────────────────────────────────────────────────────────────────
+L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  α_calib(TM, TN) = cycles/MNK   [L1=16KB, gc=0, C-stat col-maj]
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4    1.6796    1.6782    1.6775    1.6772    1.6771
+         8    1.6822    1.6792    1.6779    1.6772    1.6771
+        16    4.4509    3.0427    2.3386    1.9917    1.8230
+        24    4.6408    3.1157    2.3531    2.0046    1.8374
+        32    4.7358    3.1522    2.3604    2.0144    1.8440
+        48    4.7868    3.1741    2.3677    2.0210         —
+        64    4.8316    3.1932    2.3741    2.0250         —
+        96    4.8507    3.2014    2.3768         —         —
+
+────────────────────────────────────────────────────────────────────────
+L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  α_calib(TM, TN) = cycles/MNK   [L1=32KB, gc=0, C-stat col-maj]
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4    1.6777    1.6764    1.6757    1.6754    1.6752
+         8    1.6777    1.6764    1.6757    1.6754    1.6752
+        16    1.6788    1.6769    1.6757    1.6754    1.6752
+        24    1.6803    1.6786    1.6777    1.6772    1.7650
+        32    4.4499    3.0421    2.3382    1.9920    1.8213
+        48    4.6401    3.1152    2.3528    2.0059         —
+        64    4.7545    3.1601    2.3628    2.0136         —
+        96    4.7992    3.1792    2.3692         —         —
+
+────────────────────────────────────────────────────────────────────────
+L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  α_calib(TM, TN) = cycles/MNK   [L1=64KB, gc=0, C-stat col-maj]
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4    1.6741    1.6727    1.6721    1.6717    1.6716
+         8    1.6741    1.6727    1.6721    1.6717    1.6716
+        16    1.6741    1.6727    1.6721    1.6717    1.6716
+        24    1.6761    1.6745    1.6736    1.6731    1.6726
+        32    1.6746    1.6729    1.6721    1.6717    1.6716
+        48    1.6780    1.6765    1.6758    1.6754         —
+        64    4.4849    3.0552    2.3404    1.9908         —
+        96    4.6633    3.1238    2.3541         —         —
+
+════════════════════════════════════════════════════════════════════════
+Best α per L1  (argmin cycles/MNK at gc=0)
+════════════════════════════════════════════════════════════════════════
+  L1=   16KB:  TM= 4, TN=64  →  α=1.6771
+  L1=   32KB:  TM= 4, TN=64  →  α=1.6752
+  L1=   64KB:  TM= 4, TN=64  →  α=1.6716
+
+=== FIFO cap vs L1 size ===
+========================================================================
+B-stationary: FIFO capacity vs L1 size (fixed SRAM budget)
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, LINE=64B
+Budgets: [64, 128] KB
+gc sweep: [10, 100]
+
+════════════════════════════════════════════════════════════════════════
+Total SRAM budget = 64KB
+════════════════════════════════════════════════════════════════════════
+  Splits: L1 ∈ [8, 24, 40, 56]KB, FIFO ∈ [14336, 10240, 6144, 2048] elems
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem
+────────────────────────────────────────────────────────────────────────
+
+  L1=8KB, FIFO=14336 elems (max TN=56)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=32, TN=32  →  44,265,120 cycles  (α=3.5179)
+
+  L1=24KB, FIFO=10240 elems (max TN=40)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=16, TN=32  →  41,167,656 cycles  (α=3.2717)
+
+  L1=40KB, FIFO=6144 elems (max TN=24)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=32, TN=16  →  40,383,204 cycles  (α=3.2094)
+
+  L1=56KB, FIFO=2048 elems (max TN=8)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=48, TN=8  →  40,126,196 cycles  (α=3.1889)
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem
+────────────────────────────────────────────────────────────────────────
+
+  L1=8KB, FIFO=14336 elems (max TN=56)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=32, TN=32  →  44,334,240 cycles  (α=3.5234)
+
+  L1=24KB, FIFO=10240 elems (max TN=40)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=64, TN=32  →  43,887,312 cycles  (α=3.4879)
+
+  L1=40KB, FIFO=6144 elems (max TN=24)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=32, TN=16  →  41,255,844 cycles  (α=3.2787)
+
+  L1=56KB, FIFO=2048 elems (max TN=8)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=48, TN=8  →  40,310,516 cycles  (α=3.2036)
+
+────────────────────────────────────────────────────────────────────────
+Summary: best cycles at each split  (budget=64KB)
+────────────────────────────────────────────────────────────────────────
+      L1      FIFO                   gc=10                  gc=100
+  ────────────────────────────────────────────────────────────────
+      8KB     14336   44265K cy TM=32,TN=32   44334K cy TM=32,TN=32
+     24KB     10240   41167K cy TM=16,TN=32   43887K cy TM=64,TN=32
+     40KB      6144   40383K cy TM=32,TN=16   41255K cy TM=32,TN=16
+     56KB      2048    40126K cy TM=48,TN=8    40310K cy TM=48,TN=8
+
+  gc=10: best split L1=56KB (TM=48,TN=8)  →  40,126,196 cycles
+    L1=    8KB    44,265,120  (++10.3%)
+    L1=   24KB    41,167,656  (++2.6%)
+    L1=   40KB    40,383,204  (++0.6%)
+    L1=   56KB    40,126,196  (+0.0%)
+  gc=100: best split L1=56KB (TM=48,TN=8)  →  40,310,516 cycles
+    L1=    8KB    44,334,240  (++10.0%)
+    L1=   24KB    43,887,312  (++8.9%)
+    L1=   40KB    41,255,844  (++2.3%)
+    L1=   56KB    40,310,516  (+0.0%)
+
+════════════════════════════════════════════════════════════════════════
+Total SRAM budget = 128KB
+════════════════════════════════════════════════════════════════════════
+  Splits: L1 ∈ [8, 24, 40, 56, 72, 88, 104, 120]KB, FIFO ∈ [30720, 26624, 22528, 18432, 14336, 10240, 6144, 2048] elems
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem
+────────────────────────────────────────────────────────────────────────
+
+  L1=8KB, FIFO=30720 elems (max TN=120)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=16, TN=64  →  42,839,712 cycles  (α=3.4046)
+
+  L1=24KB, FIFO=26624 elems (max TN=104)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=16, TN=32  →  41,167,656 cycles  (α=3.2717)
+
+  L1=40KB, FIFO=22528 elems (max TN=88)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=32, TN=16  →  40,383,204 cycles  (α=3.2094)
+
+  L1=56KB, FIFO=18432 elems (max TN=72)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=48, TN=16  →  40,115,924 cycles  (α=3.1881)
+
+  L1=72KB, FIFO=14336 elems (max TN=56)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=48, TN=32  →  40,064,168 cycles  (α=3.1840)
+
+  L1=88KB, FIFO=10240 elems (max TN=40)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=64, TN=32  →  39,931,992 cycles  (α=3.1735)
+
+  L1=104KB, FIFO=6144 elems (max TN=24)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=64, TN=16  →  39,890,304 cycles  (α=3.1702)
+
+  L1=120KB, FIFO=2048 elems (max TN=8)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=96, TN=8  →  39,807,700 cycles  (α=3.1636)
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem
+────────────────────────────────────────────────────────────────────────
+
+  L1=8KB, FIFO=30720 elems (max TN=120)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=32, TN=32  →  44,334,240 cycles  (α=3.5234)
+
+  L1=24KB, FIFO=26624 elems (max TN=104)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=32, TN=64  →  42,068,688 cycles  (α=3.3433)
+
+  L1=40KB, FIFO=22528 elems (max TN=88)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=32, TN=16  →  41,255,844 cycles  (α=3.2787)
+
+  L1=56KB, FIFO=18432 elems (max TN=72)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Best: TM=48, TN=16  →  40,208,084 cycles  (α=3.1955)
+
+  L1=72KB, FIFO=14336 elems (max TN=56)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=48, TN=32  →  40,110,248 cycles  (α=3.1877)
+
+  L1=88KB, FIFO=10240 elems (max TN=40)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  Best: TM=64, TN=32  →  39,966,552 cycles  (α=3.1763)
+
+  L1=104KB, FIFO=6144 elems (max TN=24)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=64, TN=16  →  39,959,424 cycles  (α=3.1757)
+
+  L1=120KB, FIFO=2048 elems (max TN=8)
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  Best: TM=96, TN=8  →  39,899,860 cycles  (α=3.1710)
+
+────────────────────────────────────────────────────────────────────────
+Summary: best cycles at each split  (budget=128KB)
+────────────────────────────────────────────────────────────────────────
+      L1      FIFO                   gc=10                  gc=100
+  ────────────────────────────────────────────────────────────────
+      8KB     30720   42839K cy TM=16,TN=64   44334K cy TM=32,TN=32
+     24KB     26624   41167K cy TM=16,TN=32   42068K cy TM=32,TN=64
+     40KB     22528   40383K cy TM=32,TN=16   41255K cy TM=32,TN=16
+     56KB     18432   40115K cy TM=48,TN=16   40208K cy TM=48,TN=16
+     72KB     14336   40064K cy TM=48,TN=32   40110K cy TM=48,TN=32
+     88KB     10240   39931K cy TM=64,TN=32   39966K cy TM=64,TN=32
+    104KB      6144   39890K cy TM=64,TN=16   39959K cy TM=64,TN=16
+    120KB      2048    39807K cy TM=96,TN=8    39899K cy TM=96,TN=8
+
+  gc=10: best split L1=120KB (TM=96,TN=8)  →  39,807,700 cycles
+    L1=    8KB    42,839,712  (++7.6%)
+    L1=   24KB    41,167,656  (++3.4%)
+    L1=   40KB    40,383,204  (++1.4%)
+    L1=   56KB    40,115,924  (++0.8%)
+    L1=   72KB    40,064,168  (++0.6%)
+    L1=   88KB    39,931,992  (++0.3%)
+    L1=  104KB    39,890,304  (++0.2%)
+    L1=  120KB    39,807,700  (+0.0%)
+  gc=100: best split L1=120KB (TM=96,TN=8)  →  39,899,860 cycles
+    L1=    8KB    44,334,240  (++11.1%)
+    L1=   24KB    42,068,688  (++5.4%)
+    L1=   40KB    41,255,844  (++3.4%)
+    L1=   56KB    40,208,084  (++0.8%)
+    L1=   72KB    40,110,248  (++0.5%)
+    L1=   88KB    39,966,552  (++0.2%)
+    L1=  104KB    39,959,424  (++0.1%)
+    L1=  120KB    39,899,860  (+0.0%)
+
+=== Roofline validation ===
+========================================================================
+Roofline model validation
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, FIFO_CAP=16384
+Model: predicted_cycles = MNK × max(α_calib(TM,TN),  gc/TM)
+Data:  α_calib from gc=0; validation at gc ∈ {10, 100}
+(reading from v55 caches — expect all cache hits)
+
+════════════════════════════════════════════════════════════════════════
+Roofline validation — B-stationary
+════════════════════════════════════════════════════════════════════════
+  predicted best = argmin_{TM,TN} MNK × max(α_calib, gc/TM)
+
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+                   condition    pred (TM,TN)   emp (TM,TN)  match    gap %
+  ────────────────────────────────────────────────────────────────────────────
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc= 10, L1=16KB  (32,64)          (32,64)          ✓    +0.0%
+    α_calib=3.3403  gc/TM=0.3125  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc= 10, L1=32KB  (24,32)          (24,32)          ✓    +0.0%
+    α_calib=3.2290  gc/TM=0.4167  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc= 10, L1=64KB  (48,32)          (48,32)          ✓    +0.0%
+    α_calib=3.1855  gc/TM=0.2083  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc=100, L1=16KB  (32,64)          (32,64)          ✓    +0.0%
+    α_calib=3.3403  gc/TM=3.1250  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc=100, L1=32KB  (32,64)          (32,64)          ✓    +0.0%
+    α_calib=3.3403  gc/TM=3.1250  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc=100, L1=64KB  (48,32)          (48,32)          ✓    +0.0%
+    α_calib=3.1855  gc/TM=2.0833  → compute/mem
+
+  Exact match rate : 6/6 (100%)
+  When wrong       : — (no wrong predictions)
+
+════════════════════════════════════════════════════════════════════════
+Roofline validation — C-stat col-major
+════════════════════════════════════════════════════════════════════════
+  predicted best = argmin_{TM,TN} MNK × max(α_calib, gc/TM)
+
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+                   condition    pred (TM,TN)   emp (TM,TN)  match    gap %
+  ────────────────────────────────────────────────────────────────────────────
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc= 10, L1=16KB  ( 8,64)          (16,32)          ✗    +0.6%
+    α_calib=1.6771  gc/TM=1.2500  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc= 10, L1=32KB  ( 8,64)          (64,32)          ✗    +0.4%
+    α_calib=1.6752  gc/TM=1.2500  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc= 10, L1=64KB  ( 8,64)          (64,32)          ✗    +0.3%
+    α_calib=1.6716  gc/TM=1.2500  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc=100, L1=16KB  (64,32)          (16,32)          ✗    +0.0%
+    α_calib=2.0250  gc/TM=1.5625  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc=100, L1=32KB  (64,32)          (64,32)          ✓    +0.0%
+    α_calib=2.0136  gc/TM=1.5625  → compute/mem
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+             gc=100, L1=64KB  (64,32)          (64,32)          ✓    +0.0%
+    α_calib=1.9908  gc/TM=1.5625  → compute/mem
+
+  Exact match rate : 2/6 (33%)
+  When wrong       : median gap +0.4%,  worst +0.6%
+
+ALL DONE

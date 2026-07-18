@@ -1,0 +1,4497 @@
+=== Experiment 1: B-stat vs C-stat row-major ===
+========================================================================
+B-stationary vs C-stationary row-major FIFO
+Empirical TM×TN sweep — L1 size and generation cost
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, LINE=64B, FIFO_CAP=16384
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,906,240   45,889,440   45,881,040   45,876,840   45,874,920 
+         8  42,778,272   42,748,452   42,735,612   42,729,192   42,728,232 
+        16  76,156,608   58,388,928   49,505,088   45,060,288   42,833,568 
+        24  75,582,240   57,838,880   48,967,200   44,527,040   42,300,480 
+        32  75,294,336   57,563,136   48,697,536   44,258,976   42,031,056*
+        48  75,004,992   57,285,952   48,426,432   43,988,032          —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=32, TN=64  →  42,031,056 cycles  (T/MNK=3.3403)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,133,632   27,423,648   40,005,840   65,171,304   115,502,952 
+         8  21,166,752   27,436,068   40,009,980   65,171,304         0*
+        16  56,004,672   44,592,768   48,324,000   69,128,964   117,339,492 
+        24  58,395,072   45,511,488   48,506,880   69,290,244   117,520,932 
+        32  59,590,272   45,970,848   48,598,320   69,414,084   117,603,012 
+        48  60,232,512   46,245,888   48,689,760   69,497,604          —
+        64  60,795,552   46,487,088   48,770,040   69,548,004          —
+        96  61,036,032   46,590,048   48,804,240          —         —
+    Best: TM=8, TN=64  →  0 cycles  (T/MNK=0.0000)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 4 cached, 4 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+========================================================================
+B-stationary vs C-stationary row-major FIFO
+Empirical TM×TN sweep — L1 size and generation cost
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, LINE=64B, FIFO_CAP=16384
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,906,240   45,889,440   45,881,040   45,876,840   45,874,920 
+         8  42,778,272   42,748,452   42,735,612   42,729,192   42,728,232 
+        16  76,156,608   58,388,928   49,505,088   45,060,288   42,833,568 
+        24  75,582,240   57,838,880   48,967,200   44,527,040   42,300,480 
+        32  75,294,336   57,563,136   48,697,536   44,258,976   42,031,056*
+        48  75,004,992   57,285,952   48,426,432   43,988,032          —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=32, TN=64  →  42,031,056 cycles  (T/MNK=3.3403)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,133,632*  27,423,648   40,005,840   65,171,304   115,502,952 
+         8  21,166,752   27,436,068   40,009,980   65,171,304          ?
+        16  56,004,672   44,592,768   48,324,000   69,128,964   117,339,492 
+        24  58,395,072   45,511,488   48,506,880   69,290,244   117,520,932 
+        32  59,590,272   45,970,848   48,598,320   69,414,084   117,603,012 
+        48  60,232,512   46,245,888   48,689,760   69,497,604          —
+        64  60,795,552   46,487,088   48,770,040   69,548,004          —
+        96  61,036,032   46,590,048   48,804,240          —         —
+    Best: TM=4, TN=4  →  21,133,632 cycles  (T/MNK=1.6796)
+
+  ▶ Winner: C-stat row-maj  (1.989× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 7 cached, 1 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,883,200   45,866,400   45,858,000   45,853,800   45,851,880 
+         8  42,722,112   42,712,992   42,708,432   42,706,152   42,705,192 
+        16  41,157,408   41,142,228   41,135,628   41,132,328   41,131,848 
+        24  40,646,940   40,638,440   40,634,100   40,630,760*  42,191,220 
+        32  75,294,336   57,563,136   48,697,536   44,258,976   42,031,056 
+        48  75,004,992   57,285,952   48,426,432   43,988,032          —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=24, TN=32  →  40,630,760 cycles  (T/MNK=3.2290)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,110,592*  27,400,608   39,982,800   65,148,264   115,479,912 
+         8  21,110,592*  27,400,608   39,982,800   65,148,264   115,479,912 
+        16  21,124,452   27,406,548   39,982,800   65,148,264   115,479,912 
+        24  21,142,812   27,428,328   40,008,180   65,171,304   116,608,872 
+        32  55,993,152   44,585,568   48,318,960   69,131,844   117,317,892 
+        48  58,386,432   45,505,728   48,502,560   69,307,524          —
+        64  59,824,992   46,069,488   48,628,920   69,404,004          —
+        96  60,388,032   46,310,688   48,709,200          —         —
+    Best: TM=4, TN=4  →  21,110,592 cycles  (T/MNK=1.6777)
+
+  ▶ Winner: C-stat row-maj  (1.925× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,837,120   45,820,320   45,811,920   45,807,720   45,805,800 
+         8  42,676,032   42,666,912   42,662,352   42,660,072   42,659,112 
+        16  41,095,488   41,090,208   41,087,568   41,086,248   41,085,768 
+        24  40,594,740   40,586,420   40,581,000   40,575,860   40,566,900 
+        32  40,312,416   40,304,556   40,301,076   40,299,336   40,299,096 
+        48  40,091,292   40,086,952   40,084,692   40,083,112*         —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=48, TN=32  →  40,083,112 cycles  (T/MNK=3.1855)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,064,512*  27,354,528   39,936,720   65,102,184   115,433,832 
+         8  21,064,512*  27,354,528   39,936,720   65,102,184   115,433,832 
+        16  21,064,512*  27,354,528   39,936,720   65,102,184   115,433,832 
+        24  21,090,792   27,376,488   39,956,520   65,120,004   115,447,332 
+        32  21,070,812   27,356,328   39,936,720   65,102,184   115,433,832 
+        48  21,114,012   27,402,408   39,983,700   65,148,264          —
+        64  56,432,532   44,750,628   48,346,860   69,117,444          —
+        96  58,677,492   45,613,908   48,519,300          —         —
+    Best: TM=4, TN=4  →  21,064,512 cycles  (T/MNK=1.6741)
+
+  ▶ Winner: C-stat row-maj  (1.903× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,299,456   46,086,048   45,979,344   45,925,992   45,899,496 
+         8  42,974,880   42,846,756   42,784,764   42,753,768   42,740,520 
+        16  76,254,912   58,438,080   49,529,664   45,072,576   42,839,712 
+        24  75,647,776   57,871,648   48,983,584   44,535,232   42,304,576 
+        32  75,343,488   57,587,712   48,709,824   44,265,120   42,034,128*
+        48  75,037,760   57,302,336   48,434,624   43,992,128          —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=32, TN=64  →  42,034,128 cycles  (T/MNK=3.3406)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,719,616*  64,688,448   127,135,296   252,964,320   504,676,512 
+         8  33,752,736   64,700,868   127,131,156   252,976,740   504,722,052 
+        16  56,397,888   64,629,600   127,056,096   252,925,620   504,801,972 
+        24  58,788,288   65,419,680   127,238,976   253,177,620   504,965,232 
+        32  59,983,488   65,833,344   127,330,416   253,278,420   505,062,612 
+        48  60,625,728   66,092,424   127,434,456   253,338,900          —
+        64  61,188,768   66,456,144   127,535,976   253,410,900          —
+        96  61,429,248   66,502,656   127,558,656          —         —
+    Best: TM=4, TN=4  →  33,719,616 cycles  (T/MNK=2.6798)
+
+  ▶ Winner: C-stat row-maj  (1.247× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,276,416   46,063,008   45,956,304   45,902,952   45,876,456 
+         8  42,918,720   42,811,296   42,757,584   42,730,728   42,717,480 
+        16  41,255,712   41,191,380   41,160,204   41,144,616   41,137,992 
+        24  40,712,476   40,671,208   40,650,484   40,638,952*  42,195,316 
+        32  75,343,488   57,587,712   48,709,824   44,265,120   42,034,128 
+        48  75,037,760   57,302,336   48,434,624   43,992,128          —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=24, TN=32  →  40,638,952 cycles  (T/MNK=3.2297)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,696,576*  64,666,848   127,131,696   252,959,640   504,668,952 
+         8  33,696,576*  64,666,848   127,123,776   252,971,520   504,712,512 
+        16  33,710,436   64,672,788   127,119,816   252,977,460   504,702,612 
+        24  33,728,796   64,702,056   127,466,316   253,302,180   504,702,792 
+        32  56,386,368   64,430,568   127,073,016   253,001,940   504,786,132 
+        48  58,779,648   65,346,408   127,282,896   253,222,260          —
+        64  60,218,208   65,915,184   127,397,736   253,307,220          —
+        96  60,781,248   65,995,488   127,466,496          —         —
+    Best: TM=4, TN=4  →  33,696,576 cycles  (T/MNK=2.6780)
+
+  ▶ Winner: C-stat row-maj  (1.206× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,230,336   46,016,928   45,910,224   45,856,872   45,830,376 
+         8  42,872,640   42,765,216   42,711,504   42,684,648   42,671,400 
+        16  41,193,792   41,139,360   41,112,144   41,098,536   41,091,912 
+        24  40,660,276   40,619,188   40,597,384   40,584,052   40,570,996 
+        32  40,361,568   40,329,132   40,313,364   40,305,480   40,302,168 
+        48  40,124,060   40,103,336   40,092,884   40,087,208*         —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=48, TN=32  →  40,087,208 cycles  (T/MNK=3.1858)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,650,496*  64,623,648   127,124,496   252,950,280   504,653,832 
+         8  33,650,496*  64,623,648   127,117,296   252,961,080   504,693,432 
+        16  33,650,496*  64,623,648   127,113,696   252,966,480   504,684,432 
+        24  33,676,776   64,654,248   127,321,776   253,090,680   504,659,952 
+        32  33,656,796   64,629,048   127,110,096   252,961,980   504,679,932 
+        48  33,699,996   64,688,664   127,456,596   253,288,500          —
+        64  56,825,748   64,755,108   127,112,796   252,996,180          —
+        96  59,070,708   65,705,100   127,437,156          —         —
+    Best: TM=4, TN=4  →  33,650,496 cycles  (T/MNK=2.6743)
+
+  ▶ Winner: C-stat row-maj  (1.191× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,078,272   315,733,440   315,561,024   315,541,056   315,634,752 
+         8  158,776,512   158,435,220   158,266,644   158,248,596   158,343,252 
+        16  80,924,992   79,760,640   79,576,704   79,484,736   79,438,752 
+        24  76,385,056   58,240,288   53,350,144   53,264,256   53,221,312 
+        32  75,896,448   57,864,192   48,848,064   44,334,240   42,068,688*
+        48  75,406,400   57,486,656   48,526,784   44,038,208          —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=32, TN=64  →  42,068,688 cycles  (T/MNK=3.3433)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,078,272   630,518,208   1,259,597,376   2,517,888,480   5,034,524,832 
+         8  316,078,272   630,514,068   1,259,593,236   2,517,900,900   5,034,570,372 
+        16  315,960,192*  630,426,048   1,259,518,176   2,517,849,780   5,034,650,292 
+        24  317,244,672   630,976,128   1,259,701,056   2,518,101,780   5,034,813,552 
+        32  317,886,912   631,251,168   1,259,792,496   2,518,202,580   5,034,910,932 
+        48  318,546,072   631,540,248   1,259,896,536   2,518,263,060          —
+        64  319,229,712   631,835,808   1,259,998,056   2,518,335,060          —
+        96  319,424,112   631,915,728   1,260,020,736          —         —
+    Best: TM=16, TN=4  →  315,960,192 cycles  (T/MNK=25.1103)
+
+  ▶ Winner: B-stationary  (7.511× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,072,512   315,729,120   315,557,424   315,534,936   315,622,872 
+         8  158,739,072   158,419,200   158,259,264   158,242,656   158,331,552 
+        16  80,468,832   79,770,180   79,612,164   79,596,516   79,685,892 
+        24  54,658,588   54,142,184   53,761,804   53,743,956   53,369,812 
+        32  75,896,448   57,864,192   48,848,064   44,334,240   42,068,688*
+        48  75,406,400   57,486,656   48,526,784   44,038,208          —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=32, TN=64  →  42,068,688 cycles  (T/MNK=3.3433)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,072,512   630,513,888   1,259,593,776   2,517,883,800   5,034,517,272 
+         8  316,040,832   630,498,048   1,259,585,856   2,517,895,680   5,034,560,832 
+        16  316,038,852   630,496,068   1,259,581,896   2,517,901,620   5,034,550,932 
+        24  316,368,972   630,836,268   1,259,928,396   2,518,226,340   5,034,551,112 
+        32  315,977,112*  630,442,968   1,259,535,096   2,517,926,100   5,034,634,452 
+        48  317,284,272   631,018,608   1,259,744,976   2,518,146,420          —
+        64  318,262,032   631,421,088   1,259,859,816   2,518,231,380          —
+        96  318,778,992   631,639,248   1,259,928,576          —         —
+    Best: TM=32, TN=4  →  315,977,112 cycles  (T/MNK=25.1116)
+
+  ▶ Winner: B-stationary  (7.511× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat row-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,060,992   315,720,480   315,550,224   315,522,696   315,599,112 
+         8  158,730,432   158,412,000   158,252,784   158,230,776   158,308,152 
+        16  80,411,712   79,757,760   79,604,064   79,584,816   79,662,672 
+        24  54,606,388   54,090,164   53,678,688   53,453,256   53,295,112 
+        32  41,676,576   41,361,516   41,186,004   41,061,384   40,925,976 
+        48  40,492,700   40,287,656   40,185,044   40,133,288*         —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=48, TN=32  →  40,133,288 cycles  (T/MNK=3.1895)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,060,992   630,505,248   1,259,586,576   2,517,874,440   5,034,502,152 
+         8  316,032,192   630,490,848   1,259,579,376   2,517,885,240   5,034,541,752 
+        16  316,017,792   630,483,648   1,259,575,776   2,517,890,640   5,034,532,752 
+        24  316,216,512   630,687,768   1,259,783,856   2,518,014,840   5,034,508,272 
+        32  316,015,092*  630,480,048   1,259,572,176   2,517,886,140   5,034,528,252 
+        48  316,353,492   630,824,388   1,259,918,676   2,518,212,660          —
+        64  316,370,052   630,600,468   1,259,574,876   2,517,920,340          —
+        96  318,093,012   631,391,028   1,259,899,236          —         —
+    Best: TM=32, TN=4  →  316,015,092 cycles  (T/MNK=25.1146)
+
+  ▶ Winner: B-stationary  (7.874× faster)
+
+
+════════════════════════════════════════════════════════════════════════
+SUMMARY — winner and speedup at each (L1, gc)
+════════════════════════════════════════════════════════════════════════
+      L1                    gc=0                   gc=10                  gc=100
+  ────────────────────────────────────────────────────────────────────────────────
+     16KB  C-rmaj 1.99× TM=4,TN=4  C-rmaj 1.25× TM=4,TN=4  B-stat 7.51× TM=32,TN=64
+     32KB  C-rmaj 1.92× TM=4,TN=4  C-rmaj 1.21× TM=4,TN=4  B-stat 7.51× TM=32,TN=64
+     64KB  C-rmaj 1.90× TM=4,TN=4  C-rmaj 1.19× TM=4,TN=4  B-stat 7.87× TM=48,TN=32
+
+=== Experiment 2: B-stat vs C-stat col-major ===
+========================================================================
+B-stationary vs C-stationary col-major FIFO
+Empirical TM×TN sweep — L1 size and generation cost
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, LINE=64B, FIFO_CAP=16384
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 7 cached, 1 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 6 cached, 2 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 6 cached, 2 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 6 cached, 1 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,906,240   45,889,440   45,881,040   45,876,840   45,874,920 
+         8  42,778,272   42,748,452   42,735,612   42,729,192   42,728,232 
+        16  76,156,608   58,388,928   49,505,088   45,060,288   42,833,568 
+        24  75,582,240   57,838,880   48,967,200   44,527,040   42,300,480 
+        32  75,294,336   57,563,136   48,697,536   44,258,976   42,031,056*
+        48  75,004,992   57,285,952   48,426,432   43,988,032          —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=32, TN=64  →  42,031,056 cycles  (T/MNK=3.3403)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,133,632   21,116,832   21,108,432   21,104,232   21,102,312*
+         8  21,166,752   21,129,252   21,112,572   21,104,232   21,102,312*
+        16  56,004,672   38,285,952   29,426,592   25,061,892   22,938,852 
+        24  58,395,072   39,204,672   29,609,472   25,223,172   23,120,292 
+        32  59,590,272   39,664,032   29,700,912   25,347,012   23,202,372 
+        48  60,232,512   39,939,072   29,792,352   25,430,532          —
+        64  60,795,552   40,180,272   29,872,632   25,480,932          —
+        96  61,036,032   40,283,232   29,906,832          —         —
+    Best: TM=4, TN=64  →  21,102,312 cycles  (T/MNK=1.6771)
+
+  ▶ Winner: C-stat col-maj  (1.992× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,883,200   45,866,400   45,858,000   45,853,800   45,851,880 
+         8  42,722,112   42,712,992   42,708,432   42,706,152   42,705,192 
+        16  41,157,408   41,142,228   41,135,628   41,132,328   41,131,848 
+        24  40,646,940   40,638,440   40,634,100   40,630,760*  42,191,220 
+        32  75,294,336   57,563,136   48,697,536   44,258,976   42,031,056 
+        48  75,004,992   57,285,952   48,426,432   43,988,032          —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=24, TN=32  →  40,630,760 cycles  (T/MNK=3.2290)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,110,592   21,093,792   21,085,392   21,081,192   21,079,272*
+         8  21,110,592   21,093,792   21,085,392   21,081,192   21,079,272*
+        16  21,124,452   21,099,732   21,085,392   21,081,192   21,079,272*
+        24  21,142,812   21,121,512   21,110,772   21,104,232   22,208,232 
+        32  55,993,152   38,278,752   29,421,552   25,064,772   22,917,252 
+        48  58,386,432   39,198,912   29,605,152   25,240,452          —
+        64  59,824,992   39,762,672   29,731,512   25,336,932          —
+        96  60,388,032   40,003,872   29,811,792          —         —
+    Best: TM=4, TN=64  →  21,079,272 cycles  (T/MNK=1.6752)
+
+  ▶ Winner: C-stat col-maj  (1.928× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,837,120   45,820,320   45,811,920   45,807,720   45,805,800 
+         8  42,676,032   42,666,912   42,662,352   42,660,072   42,659,112 
+        16  41,095,488   41,090,208   41,087,568   41,086,248   41,085,768 
+        24  40,594,740   40,586,420   40,581,000   40,575,860   40,566,900 
+        32  40,312,416   40,304,556   40,301,076   40,299,336   40,299,096 
+        48  40,091,292   40,086,952   40,084,692   40,083,112*         —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=48, TN=32  →  40,083,112 cycles  (T/MNK=3.1855)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,064,512   21,047,712   21,039,312   21,035,112   21,033,192*
+         8  21,064,512   21,047,712   21,039,312   21,035,112   21,033,192*
+        16  21,064,512   21,047,712   21,039,312   21,035,112   21,033,192*
+        24  21,090,792   21,069,672   21,059,112   21,052,932   21,046,692 
+        32  21,070,812   21,049,512   21,039,312   21,035,112   21,033,192*
+        48  21,114,012   21,095,592   21,086,292   21,081,192          —
+        64  56,432,532   38,443,812   29,449,452   25,050,372          —
+        96  58,677,492   39,307,092   29,621,892          —         —
+    Best: TM=4, TN=64  →  21,033,192 cycles  (T/MNK=1.6716)
+
+  ▶ Winner: C-stat col-maj  (1.906× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,299,456   46,086,048   45,979,344   45,925,992   45,899,496 
+         8  42,974,880   42,846,756   42,784,764   42,753,768   42,740,520 
+        16  76,254,912   58,438,080   49,529,664   45,072,576   42,839,712 
+        24  75,647,776   57,871,648   48,983,584   44,535,232   42,304,576 
+        32  75,343,488   57,587,712   48,709,824   44,265,120   42,034,128*
+        48  75,037,760   57,302,336   48,434,624   43,992,128          —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=32, TN=64  →  42,034,128 cycles  (T/MNK=3.3406)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,523,008   33,119,136   32,640,336   32,367,840   32,407,584 
+         8  33,556,128   33,131,556   32,644,476   32,380,260   32,453,124 
+        16  56,201,280   38,384,256   32,317,152   32,260,020*  32,368,884 
+        24  58,526,144   39,270,208   32,315,712   32,350,740   32,350,704 
+        32  59,688,576   39,713,184   32,314,992   32,327,700   32,366,004 
+        48  60,298,048   39,971,840   32,326,872   32,304,660          —
+        64  60,832,416   40,198,704   32,347,752   32,326,260          —
+        96  61,060,608   40,295,520   32,335,872          —         —
+    Best: TM=16, TN=32  →  32,260,020 cycles  (T/MNK=2.5638)
+
+  ▶ Winner: C-stat col-maj  (1.303× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,276,416   46,063,008   45,956,304   45,902,952   45,876,456 
+         8  42,918,720   42,811,296   42,757,584   42,730,728   42,717,480 
+        16  41,255,712   41,191,380   41,160,204   41,144,616   41,137,992 
+        24  40,712,476   40,671,208   40,650,484   40,638,952*  42,195,316 
+        32  75,343,488   57,587,712   48,709,824   44,265,120   42,034,128 
+        48  75,037,760   57,302,336   48,434,624   43,992,128          —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=24, TN=32  →  40,638,952 cycles  (T/MNK=3.2297)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,499,968   33,096,096   32,626,128   32,363,160   32,400,024 
+         8  33,499,968   33,096,096   32,626,128   32,375,040   32,443,584 
+        16  33,513,828   33,102,036   32,626,128   32,380,980   32,433,684 
+        24  33,532,188   33,123,816   32,777,100   32,705,700   32,433,864 
+        32  56,189,760   38,377,056   32,334,072   32,327,700   32,366,004 
+        48  58,517,504   39,264,448   32,359,632   32,349,300          —
+        64  59,911,008   39,805,680   32,347,752   32,326,260*         —
+        96  60,445,376   40,032,544   32,335,872          —         —
+    Best: TM=64, TN=32  →  32,326,260 cycles  (T/MNK=2.5691)
+
+  ▶ Winner: C-stat col-maj  (1.257× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,230,336   46,016,928   45,910,224   45,856,872   45,830,376 
+         8  42,872,640   42,765,216   42,711,504   42,684,648   42,671,400 
+        16  41,193,792   41,139,360   41,112,144   41,098,536   41,091,912 
+        24  40,660,276   40,619,188   40,597,384   40,584,052   40,570,996 
+        32  40,361,568   40,329,132   40,313,364   40,305,480   40,302,168 
+        48  40,124,060   40,103,336   40,092,884   40,087,208*         —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=48, TN=32  →  40,087,208 cycles  (T/MNK=3.1858)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,453,888   33,050,016   32,597,712   32,353,800   32,384,904 
+         8  33,453,888   33,050,016   32,597,712   32,364,600   32,424,504 
+        16  33,453,888   33,050,016   32,597,712   32,370,000   32,415,504 
+        24  33,480,168   33,071,976   32,688,456   32,494,200   32,391,024 
+        32  33,460,188   33,051,816   32,617,992   32,365,500   32,411,004 
+        48  33,503,388   33,097,896   32,763,228   32,692,020          —
+        64  56,616,852   38,535,972   32,339,292   32,326,260*         —
+        96  58,800,372   39,368,532   32,352,612          —         —
+    Best: TM=64, TN=32  →  32,326,260 cycles  (T/MNK=2.5691)
+
+  ▶ Winner: C-stat col-maj  (1.240× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,078,272   315,733,440   315,561,024   315,541,056   315,634,752 
+         8  158,776,512   158,435,220   158,266,644   158,248,596   158,343,252 
+        16  80,924,992   79,760,640   79,576,704   79,484,736   79,438,752 
+        24  76,385,056   58,240,288   53,350,144   53,264,256   53,221,312 
+        32  75,896,448   57,864,192   48,848,064   44,334,240   42,068,688*
+        48  75,406,400   57,486,656   48,526,784   44,038,208          —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=32, TN=64  →  42,068,688 cycles  (T/MNK=3.3433)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  315,881,664   315,635,136   315,511,872   315,483,360   315,523,104 
+         8  315,881,664   315,630,996   315,507,732   315,495,780   315,568,644 
+        16  315,763,584   315,542,976   315,432,672   315,375,540*  315,484,404 
+        24  316,310,784   315,724,416   315,431,232   315,466,260   315,466,224 
+        32  316,584,384   315,815,136   315,430,512   315,443,220   315,481,524 
+        48  316,874,904   315,919,896   315,442,392   315,420,180          —
+        64  317,235,984   316,054,176   315,463,272   315,441,780          —
+        96  317,292,144   316,064,976   315,451,392          —         —
+    Best: TM=16, TN=32  →  315,375,540 cycles  (T/MNK=25.0638)
+
+  ▶ Winner: B-stationary  (7.497× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,072,512   315,729,120   315,557,424   315,534,936   315,622,872 
+         8  158,739,072   158,419,200   158,259,264   158,242,656   158,331,552 
+        16  80,468,832   79,770,180   79,612,164   79,596,516   79,685,892 
+        24  54,658,588   54,142,184   53,761,804   53,743,956   53,369,812 
+        32  75,896,448   57,864,192   48,848,064   44,334,240   42,068,688*
+        48  75,406,400   57,486,656   48,526,784   44,038,208          —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=32, TN=64  →  42,068,688 cycles  (T/MNK=3.3433)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  315,875,904   315,630,816   315,508,272   315,478,680   315,515,544 
+         8  315,844,224   315,614,976   315,500,352   315,490,560   315,559,104 
+        16  315,842,244   315,612,996   315,496,392   315,496,500   315,549,204 
+        24  316,172,364   315,953,196   315,842,892   315,821,220   315,549,384 
+        32  315,780,504   315,559,896   315,449,592   315,443,220   315,481,524 
+        48  316,350,384   315,766,896   315,475,152   315,464,820          —
+        64  316,821,264   315,915,936   315,463,272   315,441,780*         —
+        96  317,015,664   315,972,816   315,451,392          —         —
+    Best: TM=64, TN=32  →  315,441,780 cycles  (T/MNK=25.0691)
+
+  ▶ Winner: B-stationary  (7.498× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-stat col-maj…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,060,992   315,720,480   315,550,224   315,522,696   315,599,112 
+         8  158,730,432   158,412,000   158,252,784   158,230,776   158,308,152 
+        16  80,411,712   79,757,760   79,604,064   79,584,816   79,662,672 
+        24  54,606,388   54,090,164   53,678,688   53,453,256   53,295,112 
+        32  41,676,576   41,361,516   41,186,004   41,061,384   40,925,976 
+        48  40,492,700   40,287,656   40,185,044   40,133,288*         —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=48, TN=32  →  40,133,288 cycles  (T/MNK=3.1895)
+
+  C-stat col-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  315,864,384   315,622,176   315,501,072   315,469,320   315,500,424 
+         8  315,835,584   315,607,776   315,493,872   315,480,120   315,540,024 
+        16  315,821,184   315,600,576   315,490,272   315,485,520   315,531,024 
+        24  316,019,904   315,804,696   315,698,352   315,609,720   315,506,544 
+        32  315,818,484   315,596,976   315,486,672   315,481,020   315,526,524 
+        48  316,156,884   315,941,316   315,833,172   315,807,540          —
+        64  315,957,444   315,622,356   315,454,812   315,441,780*         —
+        96  316,462,164   315,799,476   315,468,132          —         —
+    Best: TM=64, TN=32  →  315,441,780 cycles  (T/MNK=25.0691)
+
+  ▶ Winner: B-stationary  (7.860× faster)
+
+
+════════════════════════════════════════════════════════════════════════
+SUMMARY — winner and speedup at each (L1, gc)
+════════════════════════════════════════════════════════════════════════
+      L1                    gc=0                   gc=10                  gc=100
+  ────────────────────────────────────────────────────────────────────────────────
+     16KB  C-cmaj 1.99× TM=4,TN=64  C-cmaj 1.30× TM=16,TN=32  B-stat 7.50× TM=32,TN=64
+     32KB  C-cmaj 1.93× TM=4,TN=64  C-cmaj 1.26× TM=64,TN=32  B-stat 7.50× TM=32,TN=64
+     64KB  C-cmaj 1.91× TM=4,TN=64  C-cmaj 1.24× TM=64,TN=32  B-stat 7.86× TM=48,TN=32
+
+=== Experiment 3: B-stat pipelined vs C-stat col-major pipelined ===
+========================================================================
+Pipelined B-stationary vs pipelined C-stationary col-major FIFO
+Empirical TM×TN sweep — L1 size and generation cost
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, LINE=64B, FIFO_CAP=16384
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,906,242   45,889,442   45,881,042   45,876,842   45,874,922 
+         8  42,774,134   42,748,454   42,735,614   42,729,194   42,728,234 
+        16  76,156,430   58,388,750   49,504,910   45,060,110   42,833,390 
+        24  75,582,062   57,838,702   48,967,022   44,526,862   42,300,302 
+        32  75,294,158   57,562,958   48,697,358   44,258,798   42,030,878*
+        48  75,004,814   57,285,774   48,426,254   43,987,854          —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=32, TN=64  →  42,030,878 cycles  (T/MNK=3.3403)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,133,634   21,116,834   21,108,434   21,104,234   21,102,314*
+         8  21,162,614   21,129,254   21,112,574   21,104,234   21,102,314*
+        16  56,004,674   38,285,954   29,426,594   25,061,894   22,938,854 
+        24  58,395,074   39,204,674   29,609,474   25,223,174   23,120,294 
+        32  59,590,274   39,664,034   29,700,914   25,347,014   23,202,374 
+        48  60,232,514   39,939,074   29,792,354   25,430,534          —
+        64  60,795,554   40,180,274   29,872,634   25,480,934          —
+        96  61,036,034   40,283,234   29,906,834          —         —
+    Best: TM=4, TN=64  →  21,102,314 cycles  (T/MNK=1.6771)
+
+  ▶ Winner: C-cmaj pipelined  (1.992× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,883,202   45,866,402   45,858,002   45,853,802   45,851,882 
+         8  42,722,114   42,712,994   42,708,434   42,706,154   42,705,194 
+        16  41,155,430   41,142,230   41,135,630   41,132,330   41,131,850 
+        24  40,646,942   40,638,442   40,634,102   40,630,762*  42,185,462 
+        32  75,294,158   57,562,958   48,697,358   44,258,798   42,030,878 
+        48  75,004,814   57,285,774   48,426,254   43,987,854          —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=24, TN=32  →  40,630,762 cycles  (T/MNK=3.2290)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,110,594   21,093,794   21,085,394   21,081,194   21,079,274*
+         8  21,110,594   21,093,794   21,085,394   21,081,194   21,079,274*
+        16  21,124,454   21,099,734   21,087,374   21,081,194   21,079,274*
+        24  21,142,814   21,121,514   21,110,774   21,104,234   22,208,234 
+        32  55,993,154   38,278,754   29,421,554   25,064,774   22,917,254 
+        48  58,386,434   39,198,914   29,605,154   25,240,454          —
+        64  59,824,994   39,762,674   29,731,514   25,336,934          —
+        96  60,388,034   40,003,874   29,811,794          —         —
+    Best: TM=4, TN=64  →  21,079,274 cycles  (T/MNK=1.6752)
+
+  ▶ Winner: C-cmaj pipelined  (1.928× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,837,122   45,820,322   45,811,922   45,807,722   45,805,802 
+         8  42,676,034   42,666,914   42,662,354   42,660,074   42,659,114 
+        16  41,095,490   41,090,210   41,087,570   41,086,250   41,085,770 
+        24  40,594,742   40,586,422   40,581,002   40,575,862   40,566,902 
+        32  40,311,518   40,304,558   40,301,078   40,299,338   40,299,098 
+        48  40,091,294   40,086,954   40,084,694   40,083,114*         —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=48, TN=32  →  40,083,114 cycles  (T/MNK=3.1855)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,064,514   21,047,714   21,039,314   21,035,114   21,033,194*
+         8  21,064,514   21,047,714   21,039,314   21,035,114   21,033,194*
+        16  21,064,514   21,047,714   21,039,314   21,035,114   21,033,194*
+        24  21,090,794   21,069,674   21,059,114   21,052,934   21,046,694 
+        32  21,070,814   21,050,414   21,039,314   21,035,114   21,033,194*
+        48  21,114,014   21,095,594   21,086,294   21,081,194          —
+        64  56,432,534   38,443,814   29,449,454   25,050,374          —
+        96  58,677,494   39,307,094   29,621,894          —         —
+    Best: TM=4, TN=64  →  21,033,194 cycles  (T/MNK=1.6716)
+
+  ▶ Winner: C-cmaj pipelined  (1.906× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,906,242   45,889,442   45,881,042   45,876,842   45,874,922 
+         8  42,774,134   42,748,454   42,735,614   42,729,194   42,728,234 
+        16  76,156,430   58,388,750   49,504,910   45,060,110   42,833,390 
+        24  75,582,062   57,838,702   48,967,022   44,526,862   42,300,302 
+        32  75,294,158   57,562,958   48,697,358   44,258,798   42,030,878*
+        48  75,004,814   57,285,774   48,426,254   43,987,854          —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=32, TN=64  →  42,030,878 cycles  (T/MNK=3.3403)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,133,634   21,116,834   21,111,928*  21,122,624   21,150,496 
+         8  21,162,614   21,129,254   21,115,092   21,120,672   21,146,592 
+        16  56,004,674   38,285,954   29,427,160   25,074,428   22,975,324 
+        24  58,395,074   39,204,674   29,609,474   25,231,804   23,148,956 
+        32  59,590,274   39,664,034   29,700,914   25,351,740   23,223,228 
+        48  60,232,514   39,939,074   29,792,354   25,430,534          —
+        64  60,795,554   40,180,274   29,872,634   25,480,934          —
+        96  61,036,034   40,283,234   29,906,834          —         —
+    Best: TM=4, TN=16  →  21,111,928 cycles  (T/MNK=1.6778)
+
+  ▶ Winner: C-cmaj pipelined  (1.991× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,883,202   45,866,402   45,858,002   45,853,802   45,851,882 
+         8  42,722,114   42,712,994   42,708,434   42,706,154   42,705,194 
+        16  41,155,430   41,142,230   41,135,630   41,132,330   41,131,850 
+        24  40,646,942   40,638,442   40,634,102   40,630,762*  42,185,462 
+        32  75,294,158   57,562,958   48,697,358   44,258,798   42,030,878 
+        48  75,004,814   57,285,774   48,426,254   43,987,854          —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=24, TN=32  →  40,630,762 cycles  (T/MNK=3.2290)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,110,594   21,093,794   21,088,888   21,099,584   21,127,456 
+         8  21,110,594   21,093,794   21,087,912*  21,097,632   21,123,552 
+        16  21,124,454   21,099,734   21,087,940   21,093,728   21,115,744 
+        24  21,142,814   21,121,514   21,110,774   21,112,864   22,236,896 
+        32  55,993,154   38,278,754   29,421,554   25,069,500   22,938,108 
+        48  58,386,434   39,198,914   29,605,154   25,240,454          —
+        64  59,824,994   39,762,674   29,731,514   25,336,934          —
+        96  60,388,034   40,003,874   29,811,794          —         —
+    Best: TM=8, TN=16  →  21,087,912 cycles  (T/MNK=1.6759)
+
+  ▶ Winner: C-cmaj pipelined  (1.927× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,837,122   45,820,322   45,811,922   45,807,722   45,805,802 
+         8  42,676,034   42,666,914   42,662,354   42,660,074   42,659,114 
+        16  41,095,490   41,090,210   41,087,570   41,086,250   41,085,770 
+        24  40,594,742   40,586,422   40,581,002   40,575,862   40,566,902 
+        32  40,311,518   40,304,558   40,301,078   40,299,338   40,299,098 
+        48  40,091,294   40,086,954   40,084,694   40,083,114*         —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=48, TN=32  →  40,083,114 cycles  (T/MNK=3.1855)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,064,514   21,047,714   21,042,808   21,053,504   21,081,376 
+         8  21,064,514   21,047,714   21,041,832   21,051,552   21,077,472 
+        16  21,064,514   21,047,714   21,039,880   21,047,648   21,069,664 
+        24  21,090,794   21,069,674   21,059,114   21,061,564   21,075,356 
+        32  21,070,814   21,050,414   21,039,314*  21,039,840   21,054,048 
+        48  21,114,014   21,095,594   21,086,294   21,081,194          —
+        64  56,432,534   38,443,814   29,449,454   25,050,374          —
+        96  58,677,494   39,307,094   29,621,894          —         —
+    Best: TM=32, TN=16  →  21,039,314 cycles  (T/MNK=1.6721)
+
+  ▶ Winner: C-cmaj pipelined  (1.905× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  157,612,522   157,471,066   157,423,378   157,442,914   157,541,422 
+         8  79,007,114   78,861,150   78,832,878   78,899,730   79,100,414 
+        16  76,159,652   58,442,436   49,660,484   45,416,580   43,591,652 
+        24  75,582,062   57,838,702   48,999,684   44,660,164   42,634,884 
+        32  75,294,158   57,562,958   48,697,358   44,258,798   42,030,878*
+        48  75,004,814   57,285,774   48,426,254   43,987,854          —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=32, TN=64  →  42,030,878 cycles  (T/MNK=3.3403)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  158,289,294   158,155,742   157,789,674*  157,804,466   157,907,634 
+         8  158,365,150   158,248,030   158,198,686   158,240,686   158,373,070 
+        16  158,262,782   158,162,814   158,121,854   158,117,982   158,285,522 
+        24  158,815,614   158,346,878   158,121,342   158,206,238   158,260,794 
+        32  159,090,526   158,437,342   158,119,390   158,179,294   158,268,286 
+        48  159,380,790   158,540,150   158,128,086   158,148,446          —
+        64  159,740,174   158,671,758   158,145,422   158,162,238          —
+        96  159,791,502   158,676,494   158,126,094          —         —
+    Best: TM=4, TN=16  →  157,789,674 cycles  (T/MNK=12.5400)
+
+  ▶ Winner: B-stat pipelined  (3.754× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  157,612,522   157,471,066   157,423,378   157,442,914   157,541,422 
+         8  78,973,994   78,848,730   78,828,746   78,899,730   79,100,414 
+        16  41,205,892   41,195,916   41,291,204   41,488,800   41,890,112 
+        24  40,646,942   40,638,442*  40,666,764   40,764,064   42,520,044 
+        32  75,294,158   57,562,958   48,697,358   44,258,798   42,030,878 
+        48  75,004,814   57,285,774   48,426,254   43,987,854          —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=24, TN=8  →  40,638,442 cycles  (T/MNK=3.2297)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  158,283,534   158,151,422   157,787,514*  157,801,586   157,901,874 
+         8  158,360,830   158,244,430   158,195,446   158,235,466   158,363,530 
+        16  158,343,422   158,234,814   158,189,534   158,237,502   158,345,822 
+        24  158,666,034   158,568,818   158,528,862   158,558,318   158,338,194 
+        32  158,285,206   158,180,662   158,137,030   158,178,034   158,268,286 
+        48  158,856,270   158,387,150   158,160,846   158,193,086          —
+        64  159,325,454   158,533,518   158,145,422   158,162,238          —
+        96  159,515,022   158,584,334   158,126,094          —         —
+    Best: TM=4, TN=16  →  157,787,514 cycles  (T/MNK=12.5398)
+
+  ▶ Winner: B-stat pipelined  (3.883× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stat pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+  Running C-cmaj pipelined…
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/8] running    {'TILE_M': 4}
+  [2/8] running    {'TILE_M': 8}
+  [3/8] running    {'TILE_M': 16}
+  [4/8] running    {'TILE_M': 24}
+  [5/8] running    {'TILE_M': 32}
+  [6/8] running    {'TILE_M': 48}
+  [7/8] running    {'TILE_M': 64}
+  [8/8] running    {'TILE_M': 96}
+  done: 0 cached, 8 ran
+  [1/7] running    {'TILE_M': 4}
+  [2/7] running    {'TILE_M': 8}
+  [3/7] running    {'TILE_M': 16}
+  [4/7] running    {'TILE_M': 24}
+  [5/7] running    {'TILE_M': 32}
+  [6/7] running    {'TILE_M': 48}
+  [7/7] running    {'TILE_M': 64}
+  done: 0 cached, 7 ran
+  [1/5] running    {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] running    {'TILE_M': 16}
+  [4/5] running    {'TILE_M': 24}
+  [5/5] running    {'TILE_M': 32}
+  done: 0 cached, 5 ran
+
+  B-stat pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  157,612,522   157,471,066   157,423,378   157,442,914   157,541,422 
+         8  78,973,994   78,848,730   78,828,746   78,899,730   79,100,414 
+        16  41,145,952   41,143,896   41,243,144   41,442,720   41,844,032 
+        24  40,594,742   40,586,422   40,613,664   40,709,164   40,901,484 
+        32  40,311,518   40,304,558   40,301,078   40,299,338   40,299,098 
+        48  40,091,294   40,086,954   40,084,694   40,083,114*         —
+        64  74,858,702   57,145,742   48,289,262   43,849,502          —
+        96  74,709,710   57,002,830   48,149,390          —         —
+    Best: TM=48, TN=32  →  40,083,114 cycles  (T/MNK=3.1855)
+
+  C-cmaj pipelined
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  158,272,014   158,142,782   157,783,194*  157,795,826   157,890,354 
+         8  158,352,190   158,237,230   158,188,966   158,225,026   158,344,450 
+        16  158,336,222   158,228,334   158,183,414   158,226,522   158,327,642 
+        24  158,520,774   158,425,718   158,389,542   158,346,818   158,295,354 
+        32  158,324,086   158,219,542   158,175,910   158,214,214   158,307,526 
+        48  158,657,190   158,558,150   158,516,166   158,532,926          —
+        64  158,456,954   158,237,418   158,135,522   158,162,238          —
+        96  158,958,822   158,409,734   158,142,294          —         —
+    Best: TM=4, TN=16  →  157,783,194 cycles  (T/MNK=12.5395)
+
+  ▶ Winner: B-stat pipelined  (3.936× faster)
+
+
+════════════════════════════════════════════════════════════════════════
+SUMMARY — winner and speedup at each (L1, gc)
+════════════════════════════════════════════════════════════════════════
+      L1                      gc=0                     gc=10                    gc=100
+  ──────────────────────────────────────────────────────────────────────────────────────
+     16KB   C-pipe 1.99× TM=4,TN=64   C-pipe 1.99× TM=4,TN=16  B-pipe 3.75× TM=32,TN=64
+     32KB   C-pipe 1.93× TM=4,TN=64   C-pipe 1.93× TM=8,TN=16   B-pipe 3.88× TM=24,TN=8
+     64KB   C-pipe 1.91× TM=4,TN=64  C-pipe 1.91× TM=32,TN=16  B-pipe 3.94× TM=48,TN=32
+
+ALL DONE
+========================================================================
+B-stationary vs C-stationary row-major FIFO
+Empirical TM×TN sweep — L1 size and generation cost
+========================================================================
+M=192, N=K=256, TK=256, A_P=B_P=4B, LINE=64B, FIFO_CAP=16384
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] running    {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 4 cached, 1 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,906,240   45,889,440   45,881,040   45,876,840   45,874,920 
+         8  42,778,272   42,748,452   42,735,612   42,729,192   42,728,232 
+        16  76,156,608   58,388,928   49,505,088   45,060,288   42,833,568 
+        24  75,582,240   57,838,880   48,967,200   44,527,040   42,300,480 
+        32  75,294,336   57,563,136   48,697,536   44,258,976   42,031,056*
+        48  75,004,992   57,285,952   48,426,432   43,988,032          —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=32, TN=64  →  42,031,056 cycles  (T/MNK=3.3403)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,133,632*  27,423,648   40,005,840   65,171,304   115,502,952 
+         8  21,166,752   27,436,068   40,009,980   65,171,304   115,502,952 
+        16  56,004,672   44,592,768   48,324,000   69,128,964   117,339,492 
+        24  58,395,072   45,511,488   48,506,880   69,290,244   117,520,932 
+        32  59,590,272   45,970,848   48,598,320   69,414,084   117,603,012 
+        48  60,232,512   46,245,888   48,689,760   69,497,604          —
+        64  60,795,552   46,487,088   48,770,040   69,548,004          —
+        96  61,036,032   46,590,048   48,804,240          —         —
+    Best: TM=4, TN=4  →  21,133,632 cycles  (T/MNK=1.6796)
+
+  ▶ Winner: C-stat row-maj  (1.989× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,883,200   45,866,400   45,858,000   45,853,800   45,851,880 
+         8  42,722,112   42,712,992   42,708,432   42,706,152   42,705,192 
+        16  41,157,408   41,142,228   41,135,628   41,132,328   41,131,848 
+        24  40,646,940   40,638,440   40,634,100   40,630,760*  42,191,220 
+        32  75,294,336   57,563,136   48,697,536   44,258,976   42,031,056 
+        48  75,004,992   57,285,952   48,426,432   43,988,032          —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=24, TN=32  →  40,630,760 cycles  (T/MNK=3.2290)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,110,592*  27,400,608   39,982,800   65,148,264   115,479,912 
+         8  21,110,592*  27,400,608   39,982,800   65,148,264   115,479,912 
+        16  21,124,452   27,406,548   39,982,800   65,148,264   115,479,912 
+        24  21,142,812   27,428,328   40,008,180   65,171,304   116,608,872 
+        32  55,993,152   44,585,568   48,318,960   69,131,844   117,317,892 
+        48  58,386,432   45,505,728   48,502,560   69,307,524          —
+        64  59,824,992   46,069,488   48,628,920   69,404,004          —
+        96  60,388,032   46,310,688   48,709,200          —         —
+    Best: TM=4, TN=4  →  21,110,592 cycles  (T/MNK=1.6777)
+
+  ▶ Winner: C-stat row-maj  (1.925× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=0 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  45,837,120   45,820,320   45,811,920   45,807,720   45,805,800 
+         8  42,676,032   42,666,912   42,662,352   42,660,072   42,659,112 
+        16  41,095,488   41,090,208   41,087,568   41,086,248   41,085,768 
+        24  40,594,740   40,586,420   40,581,000   40,575,860   40,566,900 
+        32  40,312,416   40,304,556   40,301,076   40,299,336   40,299,096 
+        48  40,091,292   40,086,952   40,084,692   40,083,112*         —
+        64  74,858,880   57,145,920   48,289,440   43,849,680          —
+        96  74,709,888   57,003,008   48,149,568          —         —
+    Best: TM=48, TN=32  →  40,083,112 cycles  (T/MNK=3.1855)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  21,064,512*  27,354,528   39,936,720   65,102,184   115,433,832 
+         8  21,064,512*  27,354,528   39,936,720   65,102,184   115,433,832 
+        16  21,064,512*  27,354,528   39,936,720   65,102,184   115,433,832 
+        24  21,090,792   27,376,488   39,956,520   65,120,004   115,447,332 
+        32  21,070,812   27,356,328   39,936,720   65,102,184   115,433,832 
+        48  21,114,012   27,402,408   39,983,700   65,148,264          —
+        64  56,432,532   44,750,628   48,346,860   69,117,444          —
+        96  58,677,492   45,613,908   48,519,300          —         —
+    Best: TM=4, TN=4  →  21,064,512 cycles  (T/MNK=1.6741)
+
+  ▶ Winner: C-stat row-maj  (1.903× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,299,456   46,086,048   45,979,344   45,925,992   45,899,496 
+         8  42,974,880   42,846,756   42,784,764   42,753,768   42,740,520 
+        16  76,254,912   58,438,080   49,529,664   45,072,576   42,839,712 
+        24  75,647,776   57,871,648   48,983,584   44,535,232   42,304,576 
+        32  75,343,488   57,587,712   48,709,824   44,265,120   42,034,128*
+        48  75,037,760   57,302,336   48,434,624   43,992,128          —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=32, TN=64  →  42,034,128 cycles  (T/MNK=3.3406)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,719,616*  64,688,448   127,135,296   252,964,320   504,676,512 
+         8  33,752,736   64,700,868   127,131,156   252,976,740   504,722,052 
+        16  56,397,888   64,629,600   127,056,096   252,925,620   504,801,972 
+        24  58,788,288   65,419,680   127,238,976   253,177,620   504,965,232 
+        32  59,983,488   65,833,344   127,330,416   253,278,420   505,062,612 
+        48  60,625,728   66,092,424   127,434,456   253,338,900          —
+        64  61,188,768   66,456,144   127,535,976   253,410,900          —
+        96  61,429,248   66,502,656   127,558,656          —         —
+    Best: TM=4, TN=4  →  33,719,616 cycles  (T/MNK=2.6798)
+
+  ▶ Winner: C-stat row-maj  (1.247× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,276,416   46,063,008   45,956,304   45,902,952   45,876,456 
+         8  42,918,720   42,811,296   42,757,584   42,730,728   42,717,480 
+        16  41,255,712   41,191,380   41,160,204   41,144,616   41,137,992 
+        24  40,712,476   40,671,208   40,650,484   40,638,952*  42,195,316 
+        32  75,343,488   57,587,712   48,709,824   44,265,120   42,034,128 
+        48  75,037,760   57,302,336   48,434,624   43,992,128          —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=24, TN=32  →  40,638,952 cycles  (T/MNK=3.2297)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,696,576*  64,666,848   127,131,696   252,959,640   504,668,952 
+         8  33,696,576*  64,666,848   127,123,776   252,971,520   504,712,512 
+        16  33,710,436   64,672,788   127,119,816   252,977,460   504,702,612 
+        24  33,728,796   64,702,056   127,466,316   253,302,180   504,702,792 
+        32  56,386,368   64,430,568   127,073,016   253,001,940   504,786,132 
+        48  58,779,648   65,346,408   127,282,896   253,222,260          —
+        64  60,218,208   65,915,184   127,397,736   253,307,220          —
+        96  60,781,248   65,995,488   127,466,496          —         —
+    Best: TM=4, TN=4  →  33,696,576 cycles  (T/MNK=2.6780)
+
+  ▶ Winner: C-stat row-maj  (1.206× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=10 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  46,230,336   46,016,928   45,910,224   45,856,872   45,830,376 
+         8  42,872,640   42,765,216   42,711,504   42,684,648   42,671,400 
+        16  41,193,792   41,139,360   41,112,144   41,098,536   41,091,912 
+        24  40,660,276   40,619,188   40,597,384   40,584,052   40,570,996 
+        32  40,361,568   40,329,132   40,313,364   40,305,480   40,302,168 
+        48  40,124,060   40,103,336   40,092,884   40,087,208*         —
+        64  74,883,456   57,158,208   48,295,584   43,852,752          —
+        96  74,726,272   57,011,200   48,153,664          —         —
+    Best: TM=48, TN=32  →  40,087,208 cycles  (T/MNK=3.1858)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  33,650,496*  64,623,648   127,124,496   252,950,280   504,653,832 
+         8  33,650,496*  64,623,648   127,117,296   252,961,080   504,693,432 
+        16  33,650,496*  64,623,648   127,113,696   252,966,480   504,684,432 
+        24  33,676,776   64,654,248   127,321,776   253,090,680   504,659,952 
+        32  33,656,796   64,629,048   127,110,096   252,961,980   504,679,932 
+        48  33,699,996   64,688,664   127,456,596   253,288,500          —
+        64  56,825,748   64,755,108   127,112,796   252,996,180          —
+        96  59,070,708   65,705,100   127,437,156          —         —
+    Best: TM=4, TN=4  →  33,650,496 cycles  (T/MNK=2.6743)
+
+  ▶ Winner: C-stat row-maj  (1.191× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=16KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,078,272   315,733,440   315,561,024   315,541,056   315,634,752 
+         8  158,776,512   158,435,220   158,266,644   158,248,596   158,343,252 
+        16  80,924,992   79,760,640   79,576,704   79,484,736   79,438,752 
+        24  76,385,056   58,240,288   53,350,144   53,264,256   53,221,312 
+        32  75,896,448   57,864,192   48,848,064   44,334,240   42,068,688*
+        48  75,406,400   57,486,656   48,526,784   44,038,208          —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=32, TN=64  →  42,068,688 cycles  (T/MNK=3.3433)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,078,272   630,518,208   1,259,597,376   2,517,888,480   5,034,524,832 
+         8  316,078,272   630,514,068   1,259,593,236   2,517,900,900   5,034,570,372 
+        16  315,960,192*  630,426,048   1,259,518,176   2,517,849,780   5,034,650,292 
+        24  317,244,672   630,976,128   1,259,701,056   2,518,101,780   5,034,813,552 
+        32  317,886,912   631,251,168   1,259,792,496   2,518,202,580   5,034,910,932 
+        48  318,546,072   631,540,248   1,259,896,536   2,518,263,060          —
+        64  319,229,712   631,835,808   1,259,998,056   2,518,335,060          —
+        96  319,424,112   631,915,728   1,260,020,736          —         —
+    Best: TM=16, TN=4  →  315,960,192 cycles  (T/MNK=25.1103)
+
+  ▶ Winner: B-stationary  (7.511× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=32KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,072,512   315,729,120   315,557,424   315,534,936   315,622,872 
+         8  158,739,072   158,419,200   158,259,264   158,242,656   158,331,552 
+        16  80,468,832   79,770,180   79,612,164   79,596,516   79,685,892 
+        24  54,658,588   54,142,184   53,761,804   53,743,956   53,369,812 
+        32  75,896,448   57,864,192   48,848,064   44,334,240   42,068,688*
+        48  75,406,400   57,486,656   48,526,784   44,038,208          —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=32, TN=64  →  42,068,688 cycles  (T/MNK=3.3433)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,072,512   630,513,888   1,259,593,776   2,517,883,800   5,034,517,272 
+         8  316,040,832   630,498,048   1,259,585,856   2,517,895,680   5,034,560,832 
+        16  316,038,852   630,496,068   1,259,581,896   2,517,901,620   5,034,550,932 
+        24  316,368,972   630,836,268   1,259,928,396   2,518,226,340   5,034,551,112 
+        32  315,977,112*  630,442,968   1,259,535,096   2,517,926,100   5,034,634,452 
+        48  317,284,272   631,018,608   1,259,744,976   2,518,146,420          —
+        64  318,262,032   631,421,088   1,259,859,816   2,518,231,380          —
+        96  318,778,992   631,639,248   1,259,928,576          —         —
+    Best: TM=32, TN=4  →  315,977,112 cycles  (T/MNK=25.1116)
+
+  ▶ Winner: B-stationary  (7.511× faster)
+
+
+────────────────────────────────────────────────────────────────────────
+gc=100 cy/elem   L1=64KB
+────────────────────────────────────────────────────────────────────────
+
+  Running B-stationary…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+  Running C-stat row-maj…
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/8] cache hit  {'TILE_M': 4}
+  [2/8] cache hit  {'TILE_M': 8}
+  [3/8] cache hit  {'TILE_M': 16}
+  [4/8] cache hit  {'TILE_M': 24}
+  [5/8] cache hit  {'TILE_M': 32}
+  [6/8] cache hit  {'TILE_M': 48}
+  [7/8] cache hit  {'TILE_M': 64}
+  [8/8] cache hit  {'TILE_M': 96}
+  done: 8 cached, 0 ran
+  [1/7] cache hit  {'TILE_M': 4}
+  [2/7] cache hit  {'TILE_M': 8}
+  [3/7] cache hit  {'TILE_M': 16}
+  [4/7] cache hit  {'TILE_M': 24}
+  [5/7] cache hit  {'TILE_M': 32}
+  [6/7] cache hit  {'TILE_M': 48}
+  [7/7] cache hit  {'TILE_M': 64}
+  done: 7 cached, 0 ran
+  [1/5] cache hit  {'TILE_M': 4}
+  [2/5] cache hit  {'TILE_M': 8}
+  [3/5] cache hit  {'TILE_M': 16}
+  [4/5] cache hit  {'TILE_M': 24}
+  [5/5] cache hit  {'TILE_M': 32}
+  done: 5 cached, 0 ran
+
+  B-stationary
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,060,992   315,720,480   315,550,224   315,522,696   315,599,112 
+         8  158,730,432   158,412,000   158,252,784   158,230,776   158,308,152 
+        16  80,411,712   79,757,760   79,604,064   79,584,816   79,662,672 
+        24  54,606,388   54,090,164   53,678,688   53,453,256   53,295,112 
+        32  41,676,576   41,361,516   41,186,004   41,061,384   40,925,976 
+        48  40,492,700   40,287,656   40,185,044   40,133,288*         —
+        64  75,159,936   57,296,448   48,364,704   43,887,312          —
+        96  74,910,592   57,103,360   48,199,744          —         —
+    Best: TM=48, TN=32  →  40,133,288 cycles  (T/MNK=3.1895)
+
+  C-stat row-maj
+     TM\TN         4         8        16        32        64
+    ────────────────────────────────────────────────────────
+         4  316,060,992   630,505,248   1,259,586,576   2,517,874,440   5,034,502,152 
+         8  316,032,192   630,490,848   1,259,579,376   2,517,885,240   5,034,541,752 
+        16  316,017,792   630,483,648   1,259,575,776   2,517,890,640   5,034,532,752 
+        24  316,216,512   630,687,768   1,259,783,856   2,518,014,840   5,034,508,272 
+        32  316,015,092*  630,480,048   1,259,572,176   2,517,886,140   5,034,528,252 
+        48  316,353,492   630,824,388   1,259,918,676   2,518,212,660          —
+        64  316,370,052   630,600,468   1,259,574,876   2,517,920,340          —
+        96  318,093,012   631,391,028   1,259,899,236          —         —
+    Best: TM=32, TN=4  →  316,015,092 cycles  (T/MNK=25.1146)
+
+  ▶ Winner: B-stationary  (7.874× faster)
+
+
+════════════════════════════════════════════════════════════════════════
+SUMMARY — winner and speedup at each (L1, gc)
+════════════════════════════════════════════════════════════════════════
+      L1                    gc=0                   gc=10                  gc=100
+  ────────────────────────────────────────────────────────────────────────────────
+     16KB  C-rmaj 1.99× TM=4,TN=4  C-rmaj 1.25× TM=4,TN=4  B-stat 7.51× TM=32,TN=64
+     32KB  C-rmaj 1.92× TM=4,TN=4  C-rmaj 1.21× TM=4,TN=4  B-stat 7.51× TM=32,TN=64
+     64KB  C-rmaj 1.90× TM=4,TN=4  C-rmaj 1.19× TM=4,TN=4  B-stat 7.87× TM=48,TN=32
