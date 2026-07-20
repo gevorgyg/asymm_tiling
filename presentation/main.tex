@@ -578,7 +578,7 @@
     % ── Left: hardware pipeline diagram ─────────────────────────────────────
     \begin{center}
         \huge
-        Runtime = whicheven is slower
+        Runtime = whichever is slower
     \end{center}
 
 \end{frame}
@@ -999,7 +999,7 @@
           A tile overflows L1
           {\small\color{gray}($T_N{=}4$ at $T_M{=}32$)}
         \item Large $T_N$: $\alpha$ stays low until\\
-          the A tile is too large for L1
+          the C tile overflows L1
           {\small\color{gray}($T_N{=}32$ at $T_M{=}96$)}
         \item $\alpha$ decreases with $T_N$\\
           (more column reuse)
