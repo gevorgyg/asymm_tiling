@@ -12,7 +12,9 @@ It turns out the answer changes quite a bit depending on your hardware, and toda
 
 ## Slide 2 — Matrix Multiply is Memory-Bound
 
-Let's start with why this matters. A naively implemented matrix multiply reads A and B from RAM on every pass through the inner loop. For a 256×256 float32 matrix, just the inputs are around 0.5 MB — which is 8 to 32 times larger than a typical L1 cache.
+Let's start with why this matters. A naively implemented matrix multiply reads A and B from RAM on every pass through the inner loop. For a 256×256 fp64 matrix, one input is around 0.5 MB — which is 8 to 32 times larger than a typical L1 cache.
+
+> **[Note — slide says fp64]** The slide uses fp64 as the example (256×256×8B = 0.5MB). Script was originally written with float32 (which would be 0.25MB per matrix). Stick with fp64 when presenting.
 
 The standard fix is tiling: instead of sweeping the whole matrix, we pick a small tile of C and keep it resident in L1 while we accumulate into it. That's what we'll be working with.
 
@@ -30,19 +32,17 @@ Let me walk through how this works. We have matrices A, B, and C — all too lar
 
 ---
 
-## Slide 4 — Standard Assumption: Square Tiles
+## ~~Slide 4 — Standard Assumption: Square Tiles~~ [REMOVED]
 
-This reuse argument leads directly to the standard model. Each A element is reused TN times, so its effective cost is A_P/TN per output. Each B element is reused TM times, so it's B_P/TM. Total traffic is MNK times the sum of these two terms.
-
-When precisions are equal — both fp32, say — the two terms are symmetric, and you minimize their sum under a fixed cache budget by equating them. That gives you square tiles: TM* equals TN*.
+> This slide was cut from the presentation. The Asymmetric Precision slide now presents the general formula directly without the symmetric warm-up. If asked why square tiles are the standard, point back to slide 3: the C-stationary tiling step shows A reused TN times and B reused TM times — equal precisions means equal costs, balanced by equal tile dimensions.
 
 ---
 
-## Slide 5 — Asymmetric Precision → Asymmetric Tiles
+## Slide 4 — Asymmetric Precision → Asymmetric Tiles
 
-But what if the precisions aren't equal? This is what the paper we're building on addresses. Let ρ be the ratio B_P over A_P. If B is cheaper per element — say fp8 vs fp32, so ρ = 1/4 — then B's traffic term is smaller, and you should reuse A more aggressively relative to B.
+The slide shows the general traffic formula: T = MNK × (A_P/TN + B_P/TM). A is reused TN times, B is reused TM times. Setting the two terms equal gives TN*/TM* = A_P/B_P = 1/ρ.
 
-Balancing the two traffic terms gives the condition TN*/TM* equals 1/ρ. In the extreme case of fp32 by fp8, the optimal tile is 8 times wider than it is tall. Same cache budget, very different shape.
+When ρ=1 (equal precisions) you get a square tile. When ρ=1/4 — fp32 input, fp8 weights — the optimal tile is 4× wider than tall. The diagram shows both. Same cache budget, very different shape.
 
 ---
 
@@ -114,7 +114,19 @@ This completely changes the model. The B_P/TM traffic term simply vanishes — t
 
 Here's what the hardware looks like. A comes through the normal memory hierarchy — DRAM, L2, L1, registers. B takes a completely separate path: the PRNG generates it, the FIFO buffers it, and it goes straight to the MAC unit, bypassing the cache entirely.
 
-This gives us two independent bottlenecks. One is A-loading from memory. The other is waiting for the PRNG to produce B at g_c cycles per element. The runtime is whichever one is slower — they can run in parallel.
+Two independent bottlenecks: A-loading from memory, and waiting for the PRNG at g_c cycles per element.
+
+---
+
+## Slide 11b — Runtime = ?
+
+[Pause. Let the question land.]
+
+---
+
+## Slide 11c — Runtime = whichever is slower
+
+They run in parallel. The runtime is determined by whichever finishes last: A-loading or B-generation. This is the key insight the whole model rests on.
 
 ---
 
@@ -130,11 +142,9 @@ C-stationary row-major pays g_c times TN per element — badly wasteful. C-stati
 
 ## Slide 13 — C-Stationary Row-Major: Ghost Read Problem
 
-Here's why C-stationary row-major is so bad. The C tile is fixed in registers. For each step in K, the FIFO generates B in row-major order — it produces all N/TN column groups before moving to the next K step.
+Here's why C-stationary row-major is so bad. The C tile is fixed. For each step in K, the FIFO generates B in row-major order — all N/TN column groups before moving to the next K step.
 
-But a given C tile at column j only needs the j-th group per K step. The FIFO has already generated groups 0 through j-1, which are useless. These are ghost reads — the hardware pulls elements out of the FIFO just to discard them.
-
-The numbers show this clearly. At g_c=0, C-stationary is 2× faster than B-stationary because its α is lower. But at g_c=10 it's already 1.25× slower, and at g_c=100 it's 7.5× slower. The ghost read penalty grows with g_c.
+But C_ij at column j only needs the j-th group. Everything else is a ghost read — pulled from the FIFO and discarded. The diagram shows three K steps: in each row the needed group is blue, the rest is waste.
 
 ---
 
@@ -161,11 +171,9 @@ So ghost reads were not the real bottleneck. The real problem is deeper: C-stati
 
 ## Slide 15 — B-Stationary: TM-Fold Register Reuse
 
-So in B-stationary, the generation cost per MAC is g_c times N_B divided by TM times N_B — the N_B cancels, and you get g_c over TM regardless of block size.
+Loop order: B outer, A inner. One B block is fetched once, then all TM A-rows sweep through it. Each B element is reused TM times — generation cost amortized to g_c/TM per MAC.
 
-At TM=32 and g_c=100, that's about 3 cycles per MAC. C-stationary pays the full 100. That's where the 7.5× gap comes from at g_c=100.
-
-The practical rule: use B-stationary for any g_c above about 20. C-stationary only wins at very low g_c, where its lower α compensates for the generation cost.
+The table on the slide shows the numbers directly: at g_c=0 C-stationary is 2× faster (lower α, no B cost). By g_c=10 C-stationary is already 1.25-1.28× slower. At g_c=100 it's 7.5× slower. The crossover happens fast because the ghost-read and lack-of-amortization penalties scale with g_c.
 
 > **[Note — why B-stationary wins by such a large margin]**
 >
@@ -348,29 +356,44 @@ The table shows the model's predicted (TM*, TN*) versus the empirical best tile 
 
 ## Slide 24 — Why TN* Fails at High g_c: Gen-Bound Regime
 
-Here's why. When g_c/TM is much larger than α for all TN values, the max collapses to just g_c/TM — which doesn't depend on TN at all. The model predicts the same cost for every TN, so it can't distinguish between them.
+[This slide — best_shape_per_gc.png — shows TM* and TN* as step functions of g_c.]
 
-TM* is always right because g_c/TM still depends on TM — the model correctly identifies which row-tile size minimizes the gen-bound cost. It's only TN* that becomes arbitrary.
+The graph shows the model's globally optimal (TM*, TN*) trajectory as g_c increases. TM* steps up (12 → 32 → 64 → 96) and TN* steps down (32 → 64 → 32 → 16).
 
-Empirically, TN=16 is best in the gen-bound regime due to register pipeline effects, but the model doesn't know that. The crossover point is roughly g_c equals TM times α — for TM=96 and α around 3.8, that's about g_c=370.
+> **[Note — why TM* goes up and TN* goes down as g_c increases]**
+>
+> **TM* goes up:** The model cost is max(α(TM,TN), g_c/TM). The gen-bound term g_c/TM grows with g_c. To stay A-load bound (or minimize gen-cost), we want TM as large as possible. The breakeven is at α ≈ g_c/TM → TM* ≈ g_c/α. As g_c doubles, TM* roughly doubles too.
+>
+> **TN* goes down:** As TM* grows, the C tile (TM×TN partial sums) grows. The ws_lines constraint limits TN based on TM: from TM×TN/8 + TM/4 − 2 < 300, the max safe TN ≈ 2400/TM. Concretely:
+> - TM=32: max TN = 2400/32 = 75 → TN=64 ✓
+> - TM=64: max TN = 2400/64 = 37.5 → TN=32 ✓
+> - TM=96: max TN = 2400/96 = 25 → TN=16 ✓ (TN=32 would give ws=406 > 300)
+>
+> So TN* is forced down by the register/cache constraint as TM* grows. It's not that small TN is intrinsically better at high g_c — it's that large TM forces small TN as the only safe option.
 
 ---
 
-## Slide 25 — Impact of Tile Selection: Optimal vs. Square
+## Slide 25 — Impact of Tile Selection: Numbers
 
-So does choosing the right tile actually matter? This is the bottom line. The left panel compares the best asymmetric tile against the best square tile for each g_c. The right panel shows the percentage speedup.
+Does choosing the right tile actually matter? The numbers:
+- At g_c=100: 20–60% faster depending on TN.
+- At g_c=250: ~85% faster.
+- At g_c=400: up to 90% faster.
 
-At g_c=100, asymmetric tiling is 20 to 40% faster depending on TN. At g_c=250 it's around 75% faster. At g_c=400 it's up to 85% faster. The gain grows with g_c because the generation bottleneck is the one that the tile shape can most directly control.
+The gain grows with g_c because the generation bottleneck is what the tile shape can most directly control — larger TM amortizes g_c, and the model tells you exactly which TM to use.
+
+> **[Note — per-TN actual numbers if asked]**
+> - gc=100: TN=8→64%, TN=16→39%, TN=32→1%, TN=64→62%
+> - gc=250: TN=8→85.5%, TN=16→75.6%, TN=32→49.3%, TN=64→40.2%
+> - gc=400: TN=8→90.9%, TN=16→83.1%, TN=32→49.6%, TN=64→5.2%
+>
+> The slide's "20–60%" at gc=100 covers TN=16 (39%) through TN=8 (64%). TN=32 is nearly 0% (square is also DRAM-bound at low gc). TN=64 is 62% because the square tile (TM=64,TN=64) already overflows L1 even without gc pressure.
+
+---
+
+## Slide 26 — Impact of Tile Selection: Graph
 
 The model we built tells you where that optimal shape is, from a single calibration run at g_c=0. Thanks for listening.
-
-> **[Note — correct speedup numbers if asked]**
-> The slide's numbers are approximate and anchored to TN=16:
-> - gc=100: TN=8→64%, TN=16→39%, TN=32→1%, TN=64→62% (range: 1–64%, slide says "20–40%")
-> - gc=250: TN=8→85%, TN=16→76%, TN=32→49%, TN=64→40% (slide says "~75%" matching TN=16)
-> - gc=400: TN=8→91%, TN=16→83%, TN=32→50%, TN=64→5% (slide says "up to 85%", actual max is 91%)
-> 
-> The "20–40% at gc=100" is specific to TN=16 only. TN=8 and TN=64 are both much higher at gc=100 for different reasons (see notes below). A more accurate summary: "20–90% depending on TN" at gc=100.
 
 > **[Note — why TN=64 (red line) is flat in performance and its SPEEDUP drops at high gc]**
 >
