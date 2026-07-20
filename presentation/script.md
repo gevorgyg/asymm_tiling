@@ -62,6 +62,12 @@ With the simulator in hand, we can validate the paper's formula. Each panel here
 
 For all four values of ρ, the empirical minimum falls exactly on the predicted aspect ratio. The simulation matches the formula to within about 2%.
 
+> **[Config — fa_reads.png]**
+> Source: `experiments/v5-results/paper-model/paper-traffic-model/`
+> M=N=K=256, A_P=8B (fp64), B_P varies by ρ: 8B(ρ=1), 4B(ρ=0.5), 2B(ρ=0.25), 1B(ρ=0.125)
+> L1=16KB, fully associative, no L2. C-stationary, B from memory (no FIFO).
+> x-axis: log2(TN/TM) at constant tile area (TM×TN fixed word count).
+
 ---
 
 ## Slide 8 — B/A Balance: Exact Confirmation
@@ -71,6 +77,12 @@ We can look at this even more directly. Instead of plotting total traffic, this 
 And it does, exactly, for every ρ. The vertical dashed lines mark the predictions, and every curve crosses 1 right there. When ρ is 1/8, the traffic savings versus a square tile is 36%.
 
 One thing worth noting: the blue line for ρ=1 shows a small bump at the far left, around log2(TN/TM) ≈ −4. This is a cache-line granularity artifact — when TN is so small that a single row of B fits in less than one cache line, loading it still pulls in a full 64-byte line. That inflates B traffic slightly above the theoretical prediction. The effect disappears as TN grows large enough to fill a line, and it doesn't affect the location of the minimum.
+
+> **[Config — fa_balance.png]**
+> Source: `experiments/v5-results/paper-model/paper-per-matrix-balance/`
+> M=N=K=128, A_P=8B (fp64), B_P varies by ρ: same four values as slide 7.
+> L1=16KB, fully associative, no L2. C-stationary, B from memory (no FIFO).
+> Note: different matrix size from slide 7 (128 vs 256) — same hardware setup.
 
 > **[Note — why the bump appears at the left of the graph]**
 >
@@ -237,6 +249,12 @@ Two things stand out. First, small TN values like TN=4 cause α to spike at mode
 
 α decreases with TN because more column reuse means fewer A reloads per output. The cache boundary shifts with TM.
 
+> **[Config — alpha_vs_tm.png]**
+> Source: `presentation/graphs/gen_charts.py` → data from E6-nol2 (`experiments/v5-results/math-model-no-l2/e6-tn-independence/results.json`)
+> M=192, N=K=256, A_P=B_P=4B (fp32). L1=16KB, no L2. B-stationary, gc=0.
+> TM swept: 8, 12, 16, 24, 32, 48, 64, 96. Five TN curves: 4, 8, 16, 32, 64.
+> Dashed segments = C-tile eviction zone (ws_lines ≥ 300).
+
 > **[Note — why the graph has two cliffs]**
 >
 > The three regimes in the graph correspond to what fits in L1. There are two transitions:
@@ -271,6 +289,11 @@ Two things stand out. First, small TN values like TN=4 cause α to spike at mode
 Once we have α measured, using it is straightforward. For any new g_c, we evaluate max{ α(TM, TN), g_c/TM } at every valid tile shape and take the argmin. No new experiments — just table lookup and arithmetic.
 
 The diagram shows why this works geometrically. α is roughly flat in the A-load-bound region, then rises when the A tile overflows L1. g_c/TM is a decreasing curve. They cross at the optimal TM*. The optimal TN* is the one that minimizes α at that TM — typically the largest TN that still fits the FIFO.
+
+> **[Config — model_intuition.png]**
+> Source: `presentation/graphs/gen_charts.py` → α data from E6-nol2, TN=32 slice.
+> M=192, N=K=256, A_P=B_P=4B (fp32). L1=16KB, no L2. TN=32 fixed.
+> α(TM) curve measured at gc=0. Two gc/TM hyperbolas shown: gc=50 and gc=200.
 
 ---
 
@@ -372,6 +395,12 @@ We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept
 
 [This slide — best_shape_per_gc.png — shows TM* and TN* as step functions of g_c.]
 
+> **[Config — best_shape_per_gc.png]**
+> Source: `experiments/v5-results/math-model-no-l2/e8-gc-boundary-sweep/results.json` via `plot_all.py:plot_e8_best_shape()`
+> M=192, N=K=256, A_P=B_P=4B (fp32). L1=16KB, fully associative, no L2. B-stationary. FIFO_CAP=16384 elements.
+> gc swept: 15, 30, 38, 42, 47, 50, 52, 57, 68, 74, 100, 150, 250, 400.
+> TM range: 8–96. TN range: 4–64. Empirical globally best (TM*,TN*) at each gc — no safe() filter needed; broken tiles naturally lose.
+
 The graph shows the model's globally optimal (TM*, TN*) trajectory as g_c increases. TM* steps up (12 → 32 → 64 → 96) and TN* steps down (32 → 64 → 32 → 16).
 
 > **[Note — why TM* goes up and TN* goes down as g_c increases]**
@@ -408,6 +437,12 @@ The gain grows with g_c because the generation bottleneck is what the tile shape
 ## Slide 26 — Impact of Tile Selection: Graph
 
 The model we built tells you where that optimal shape is, from a single calibration run at g_c=0. Thanks for listening.
+
+> **[Config — optimal_vs_square.png]**
+> Source: same `e8-gc-boundary-sweep/results.json` via `plot_all.py:plot_e8_vs_square()`
+> M=192, N=K=256, A_P=B_P=4B (fp32). L1=16KB, fully associative, no L2. B-stationary. FIFO_CAP=16384 elements.
+> Four TN values plotted: 8, 16, 32, 64 (TN=4 excluded). Same gc sweep as slide 24.
+> Left panel: cycles/MNK for optimal TM* vs square TM=TN, per (TN, gc). Right panel: speedup %.
 
 > **[Note — why TN=64 (red line) is flat in performance and its SPEEDUP drops at high gc]**
 >
