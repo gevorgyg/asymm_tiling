@@ -88,18 +88,17 @@
 
     % Right: problem + fix (short)
     \begin{column}{0.44\textwidth}
-      \textbf{Problem:} naive loop reads $A$ and $B$ from RAM on every pass.
-
       \medskip
       \renewcommand{\arraystretch}{1.3}
       \begin{tabular}{@{}ll@{}}
+        for example:\\
         $256{\times}256$ fp64: & ${\approx}0.5\,\text{MB}$ \\
         Typical L1 cache:      & $16$--$64\,\text{KB}$ \\
       \end{tabular}\\[4pt]
       \quad$\Rightarrow$ \textbf{$8{\times}$--$32{\times}$ larger than L1}
 
       \bigskip
-      \textbf{Fix:} \emph{tile} the loop --- keep one $C$ tile resident in L1.
+      \textbf{Fix:} \emph{tile} the loop --- bring in one smaller $C$ tile and keep it resident in L1.
     \end{column}
 
   \end{columns}
@@ -249,63 +248,10 @@
     \only<4>{%
       $C_{ij}$ done --- move to B col $j{+}1$.\\[8pt]
       \textbf{A row-band stays in L1.}\\[4pt]
-      No reload needed.
     }
   \end{column}
 
 \end{columns}
-\end{frame}
-
-% ==============================================================================
-\section{Square Tiles}
-% ==============================================================================
-
-\begin{frame}{Standard Assumption: Square Tiles}
-  \begin{columns}[c]
-
-    \begin{column}{0.50\textwidth}
-      Each A element is reused $T_N$ times (once per C column).\\
-      Each B element is reused $T_M$ times (once per C row).
-
-      \bigskip
-      \[
-        T = MNK\!\left(\frac{A_P}{T_N} + \frac{B_P}{T_M}\right)
-      \]
-
-      \bigskip
-      For equal precision ($A_P = B_P$), minimize $\tfrac{1}{T_M}+\tfrac{1}{T_N}$
-      subject to $T_M T_N \le S$:
-
-      \medskip
-      \[
-        \boxed{T_M^{*} = T_N^{*} \quad (\text{square tiles})}
-      \]
-    \end{column}
-
-    \begin{column}{0.44\textwidth}
-      \centering
-      \begin{tikzpicture}[scale=1.05]
-        % C tile
-        \fill[matC!15] (0,0) rectangle (2.2, 2.2);
-        \draw[matC, very thick] (0,0) rectangle (2.2, 2.2);
-        \node[matC, font=\bfseries] at (1.1, 1.1) {$C_{ij}$};
-
-        % TM (height) — B cost
-        \draw[matB, <->, thin] (-0.4, 0) -- (-0.4, 2.2);
-        \node[matB, left=3pt, font=\scriptsize, align=right] at (-0.4, 1.1)
-          {$T_M$\\[3pt]B cost: $\dfrac{B_P}{T_M}$};
-
-        % TN (width) — A cost
-        \draw[matA, <->, thin] (0, -0.4) -- (2.2, -0.4);
-        \node[matA, below=3pt, font=\scriptsize, align=center] at (1.1, -0.4)
-          {$T_N$ \quad A cost: $\dfrac{A_P}{T_N}$};
-      \end{tikzpicture}
-
-      \vspace{10pt}
-      {\small\color{gray} For $A_P{=}B_P$: both costs equal at $T_M{=}T_N$.}
-    \end{column}
-
-  \end{columns}
 \end{frame}
 
 % ==============================================================================
@@ -316,53 +262,61 @@
   \begin{columns}[c]
 
     \begin{column}{0.50\textwidth}
-      Let $\rho = B_P / A_P$ \quad (bytes per element).\\[4pt]
-      When $B_P < A_P$: B is cheaper to load $\Rightarrow$ use wider tiles.
+      \\
+      \medskip
+
+      $\#A \; Bytes = T_M \cdot k \cdot A_p$\\
+      $\#B \; Bytes = T_N \cdot k \cdot B_p$\\
 
       \medskip
+
+      $\Rightarrow T = \frac{MN}{T_MT_N}\!\left(T_M \cdot k \cdot A_p + T_N \cdot k \cdot B_p\right)$\\
+
+      \medskip
+      
       \[
-        T = MNK\!\left(\frac{A_P}{T_N} + \frac{B_P}{T_M}\right)
+          \boxed{T = MNK\!\left(\frac{A_P}{T_N} + \frac{B_P}{T_M}\right)}
       \]
 
-      Balance A and B traffic:
+      \medskip
+
+      Find best ratio:
       \[
-        \frac{A_P}{T_N} = \frac{B_P}{T_M}
         \;\;\Rightarrow\;\;
-        \boxed{\frac{T_N^*}{T_M^*} = \frac{A_P}{B_P} = \frac{1}{\rho}}
-      \]
-
-      \medskip
-      \textbf{Example:} fp32 $\times$ fp4 ($\rho = \tfrac{1}{8}$):
-      \[
-        T_N^* = 8\, T_M^*
+        \frac{T_N^*}{T_M^*} = \frac{A_P}{B_P} = \frac{1}{\rho}
       \]
     \end{column}
 
     \begin{column}{0.44\textwidth}
       \centering
-      \begin{tikzpicture}[scale=0.95]
-        % Symmetric tile (rho=1)
-        \node[font=\small, gray] at (1.1, 3.55) {$\rho=1$\ (fp32 $\times$ fp32)};
-        \fill[matC!15] (0, 2.4) rectangle (2.2, 3.4);
-        \draw[matC, thick] (0, 2.4) rectangle (2.2, 3.4);
-        \node[matC, font=\scriptsize] at (1.1, 2.9) {$T_M = T_N$};
-        \draw[matC!60, <->, thin] (-0.25, 2.4) -- (-0.25, 3.4);
-        \draw[matC!60, <->, thin] (0, 2.15) -- (2.2, 2.15);
+      \begin{tikzpicture}[scale=0.90]
+        % Both tiles share the same TM height = 1.2
+        \def\tmH{1.2}
 
-        % Asymmetric tile (rho=1/4, 4x wider)
-        \node[font=\small, gray] at (2.2, 1.85) {$\rho=\tfrac{1}{4}$\ (fp32 $\times$ fp8)};
-        \fill[matC!25] (0, 0.75) rectangle (4.4, 1.75);
-        \draw[matC, thick] (0, 0.75) rectangle (4.4, 1.75);
-        \node[matC, font=\scriptsize] at (2.2, 1.25) {$T_N = 4\,T_M$};
-        \draw[matC!60, <->, thin] (-0.25, 0.75) -- (-0.25, 1.75);
-        \draw[matC!60, <->, thin] (0, 0.5) -- (4.4, 0.5);
+        % === ρ=1: square tile (TN = TM → width = height) ===
+        \node[font=\small, gray] at (0.6, 5.65) {$\rho=1$\ (fp32 $\times$ fp32)};
+        \fill[matC!15] (0, 4.2) rectangle (1.2, 4.2+\tmH);
+        \draw[matC, thick] (0, 4.2) rectangle (1.2, 4.2+\tmH);
+        \node[matC, font=\scriptsize] at (0.6, 4.8) {$T_M = T_N$};
+        % TN arrow below square
+        \draw[matC!60, <->, thin] (0, 3.95) -- (1.2, 3.95);
+        \node[matC!70, below=3pt, font=\scriptsize] at (0.6, 3.95) {$T_N$};
 
-        % Axis labels
-        \node[matC!70, left=6pt, font=\scriptsize] at (-0.25, 1.75) {$T_M$};
-        \node[matC!70, below=4pt, font=\scriptsize] at (4.4, 0.5) {$T_N$};
+        % === ρ = 1/4: asymmetric tile (TN = 4·TM → 4× wider) ===
+        \node[font=\small, gray] at (2.4, 3.2) {$\rho=\tfrac{1}{4}$\ (fp32 $\times$ fp8)};
+        \fill[matC!25] (0, 1.6) rectangle (4.8, 1.6+\tmH);
+        \draw[matC, thick] (0, 1.6) rectangle (4.8, 1.6+\tmH);
+        \node[matC, font=\scriptsize] at (2.4, 2.2) {$T_N = 4\,T_M$};
+        % TN arrow below asymmetric
+        \draw[matC!60, <->, thin] (0, 1.35) -- (4.8, 1.35);
+        \node[matC!70, below=3pt, font=\scriptsize] at (4.8, 1.35) {$T_N$};
+
+        % === shared TM arrow (left, spanning both tiles) ===
+        \draw[matC!60, <->, thin] (-0.3, 1.6) -- (-0.3, 2.8);
+        \node[matC!70, left=3pt, font=\scriptsize] at (-0.3, 2.2) {$T_M$};
       \end{tikzpicture}
 
-      \vspace{4pt}
+      \vspace{2pt}
       {\small\color{gray} Same cache budget $S$ — wider tile, better B reuse.}
     \end{column}
 
@@ -372,6 +326,74 @@
 % ==============================================================================
 \section{Paper Validation}
 % ==============================================================================
+
+% ── Simulator architecture ────────────────────────────────────────────────────
+\begin{frame}{The Simulator We Built}
+
+  \begin{columns}[c]
+
+    \begin{column}{0.38\textwidth}
+      \medskip
+      \textbf{Three main components:}
+      \begin{itemize}
+        \item \textbf{InstGenerator} — compiles tile ops to a text ISA (\texttt{ltea}/\texttt{tmulac}/\texttt{tmov})
+        \item \textbf{Interpreter} — dispatches instructions, counts cycles per access
+        \item \textbf{MemoryHierarchy} — configurable L1/L2/DRAM with per-access tracing
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.58\textwidth}
+      \centering
+      \begin{tikzpicture}[
+        mbox/.style={draw=TechBlue!60, fill=TechBlue!8, rounded corners=3pt,
+                     font=\scriptsize, minimum width=2.8cm, minimum height=0.5cm,
+                     align=center, inner sep=3pt},
+        sbox/.style={draw=gray!45, fill=gray!6, rounded corners=3pt,
+                     font=\tiny, minimum width=2.8cm, minimum height=0.44cm,
+                     align=center, inner sep=2pt},
+        bfbox/.style={draw=matB!60, fill=matB!10, rounded corners=3pt,
+                      font=\scriptsize, minimum width=2.0cm, minimum height=0.5cm,
+                      align=center, inner sep=3pt},
+        arr/.style={-{Stealth[length=4pt]}, TechBlue!70, thick},
+        barr/.style={-{Stealth[length=4pt]}, matB!70, thick},
+        lbl/.style={font=\tiny, text=gray},
+      ]
+        % Pipeline (vertical)
+        \node[sbox]  (cfg)    at (2.2, 7.0) {Config (dims, cache, $g_c$)};
+        \node[mbox]  (igen)   at (2.2, 5.9) {InstGenerator\\[1pt]{\tiny\texttt{ltea}/\texttt{tmulac}/\texttt{tmov}}};
+        \node[sbox]  (isa)    at (2.2, 4.8) {\texttt{matmul.matv} --- text ISA};
+        \node[mbox]  (interp) at (2.2, 3.7) {Interpreter::run()\\[1pt]{\tiny dispatch + cycle count}};
+        \node[mbox]  (mem)    at (2.2, 2.55){MemoryHierarchy::access};
+
+        \draw[arr] (cfg)    -- (igen);
+        \draw[arr] (igen)   -- (isa);
+        \draw[arr] (isa)    -- (interp);
+        \draw[arr] (interp) -- (mem);
+
+        % Two branches
+        \node[bfbox] (fifo)  at (0.65, 1.1) {PRNG FifoDev\\[1pt]{\tiny MMIO bypass}};
+        \node[mbox]  (l1)    at (3.5,  1.1) {L1 Cache};
+        \node[sbox]  (l2)    at (3.5,  0.1) {L2 $\to$ DRAM};
+
+        % B branch
+        \draw[barr] (mem.south) -- ++(0,-0.25) -| (fifo.north);
+        \node[lbl] at (0.5, 2.0) {B};
+
+        % A,C branch
+        \draw[arr] (mem.south) -- ++(0,-0.25) -| (l1.north);
+        \node[lbl] at (3.6, 2.0) {A,C};
+
+        \draw[arr] (l1) -- (l2) node[midway, right, lbl] {miss};
+
+        % Output
+        \node[sbox, minimum width=1.8cm] (out) at (5.0, 3.7) {stats\\cycles};
+        \draw[arr, gray!50] (interp.east) -- (out.west);
+      \end{tikzpicture}
+    \end{column}
+
+  \end{columns}
+
+\end{frame}
 
 % ── Slide 4a: L1 reads vs tile aspect ratio ───────────────────────────────────
 \begin{frame}{Traffic Minimum at the Predicted Tile}
@@ -386,12 +408,6 @@
       \medskip
       \textbf{Dashed line}: paper's prediction $T_N/T_M = 1/\rho$.
 
-      \medskip
-      The measured minimum lands \textbf{exactly} at the predicted optimum
-      for all four $\rho$ values.
-
-      \medskip
-      {\small\color{gray} Simulation matches formula within $\sim$2\%.}
     \end{column}
   \end{columns}
 \end{frame}
@@ -405,9 +421,6 @@
     \end{column}
     \begin{column}{0.42\textwidth}
       Each curve is the ratio of B reads to A reads as $T_N/T_M$ varies.
-
-      \medskip
-      At the paper's predicted tile, every curve crosses $B/A = 1$ \textbf{exactly}.
 
       \medskip
       \textbf{Traffic saved vs.\ square tile:}
@@ -434,20 +447,27 @@
 
 \begin{frame}{Traffic $\neq$ Time}
 
+
+\begin{center}
+  The paper minimizes \emph{bytes transferred}:\\
+  \medskip
+  \[
+    T_{\text{traffic}} = MNK\!\left(\frac{A_P}{T_N} + \frac{B_P}{T_M}\right)
+  \]
+
+  \bigskip
+  \textbf{But cycles $\neq$ bytes.}
+
+  \medskip
+  We need a \emph{cycle-accurate} model.
+\end{center}
+
+\end{frame}
+
+
+\begin{frame}{Enter the PRNG FIFO}
+
   \begin{columns}[c]
-
-    \begin{column}{0.46\textwidth}
-      The paper minimizes \emph{bytes transferred}:
-      \[
-        T_{\text{traffic}} = MNK\!\left(\frac{A_P}{T_N} + \frac{B_P}{T_M}\right)
-      \]
-      \textbf{But cycles $\neq$ bytes.}\\[6pt]
-      Cache latency, bandwidth limits, and prefetch behavior all
-      break the proportionality between traffic and runtime.
-
-      \medskip
-      We need a \emph{cycle-accurate} model.
-    \end{column}
 
     \begin{column}{0.50\textwidth}
       \begin{block}{Enter the PRNG FIFO}
@@ -456,14 +476,14 @@
         \textbf{B never touches the cache.}\\
         \textbf{B has no memory address.}
       \end{block}
+    \end{column}
 
-      \medskip
-      The $B_P / T_M$ traffic term \textbf{vanishes}.\\[6pt]
-      Instead, B introduces a new cost: on-chip \emph{generation time}.\\[6pt]
+    \begin{column}{0.46\textwidth}
+      The $B_P / T_M$ traffic term \textbf{vanishes}.\\[8pt]
+      Instead, B introduces a new cost: on-chip \emph{generation time}.
       \[
         \text{generation cost} = g_c \;\text{cycles / element}
       \]
-      Our model must account for $g_c$, not $B_P$.
     \end{column}
 
   \end{columns}
@@ -523,15 +543,11 @@
     % ── Right: explanation ───────────────────────────────────────────────────
     \begin{column}{0.44\textwidth}
       \textbf{Random matmul:} $C = A \cdot B$ where $B$ is a pseudo-random
-      matrix generated on-chip --- too large to store in memory.
+      matrix generated on-chip.
 
       \smallskip
       \textbf{Use cases:} random projections, privacy-preserving ML,
       approximate algorithms.
-
-      \smallskip
-      \textbf{$g_c$:} cycles to produce one B element.\\
-      The only B-related cost --- no cache misses, no bandwidth.
 
       \smallskip
       \begin{block}{Two independent bottlenecks}
@@ -540,11 +556,30 @@
           A-bound: & load A from memory \\[2pt]
           B-bound: & wait for PRNG ($g_c$ cy/elem) \\
         \end{tabular}\\[4pt]
-        Runtime $=$ whichever is slower.
       \end{block}
     \end{column}
 
   \end{columns}
+
+\end{frame}
+
+\begin{frame}{The PRNG FIFO: B Without Memory}
+
+    % ── Left: hardware pipeline diagram ─────────────────────────────────────
+    \begin{center}
+        \huge
+        Runtime = ?
+    \end{center}
+
+\end{frame}
+
+\begin{frame}{The PRNG FIFO: B Without Memory}
+
+    % ── Left: hardware pipeline diagram ─────────────────────────────────────
+    \begin{center}
+        \huge
+        Runtime = whicheven is slower
+    \end{center}
 
 \end{frame}
 
@@ -559,8 +594,8 @@
 
     % ── Left: comparison table ────────────────────────────────────────────────
     \begin{column}{0.55\textwidth}
-      B elements emerge from the PRNG in a \textbf{fixed order}\\
-      --- you cannot skip or replay elements.
+        \textbf{Problem:} B elements emerge from the PRNG\\
+        in a \textbf{fixed order} --- you cannot skip or replay elements.
 
       \medskip
       Three loop structures are possible:
@@ -573,15 +608,9 @@
         \midrule
         C-stat row-maj  & $C_{ij}$ tile & $g_c \times T_N$ (waste) \\[2pt]
         C-stat col-maj  & $C_{ij}$ tile & $g_c$ \\[2pt]
-        B-stationary    & B block (outer) & $\boldsymbol{g_c / T_M}$ \\
+        B-stationary    & $B_{ij}$ tile & $\boldsymbol{g_c / T_M}$ \\
         \bottomrule
       \end{tabular}
-
-      \medskip
-      {\small\color{gray}
-        Only B-stationary amortizes generation cost\\
-        across the $T_M$ output rows.
-      }
     \end{column}
 
     % ── Right: register-file diagram ──────────────────────────────────────────
@@ -634,42 +663,9 @@
 % ── Slide 8: C-stationary row-major ghost read problem ───────────────────────
 \begin{frame}{C-Stationary Row-Major: Ghost Read Problem}
 
-  \begin{columns}[c]
-
-    \begin{column}{0.47\textwidth}
-      C tile fixed in registers;
-      inner $K$-loop streams A rows and B sub-columns through it.
-
-      \medskip
-      \textbf{Problem:} the FIFO generates B in \emph{row-major} order ---
-      all $N/T_N$ column groups of row $k$ before row $k{+}1$.
-
-      \smallskip
-      C tile at column $j$ needs \emph{one} group per $k$ step.\\
-      The other $N/T_N - 1$ groups are generated and discarded
-      --- \textbf{ghost reads}.
-
-      \bigskip
-      \renewcommand{\arraystretch}{1.3}
-      \begin{tabular}{@{}lccc@{}}
-        \toprule
-         & $g_c{=}0$ & $g_c{=}10$ & $g_c{=}100$ \\
-        \midrule
-        B-stat (ref)    & ref    & ref    & ref \\
-        C-stat row-maj  & 2$\times$ faster & 1.25$\times$ faster & \textbf{7.5$\times$ slower} \\
-        \bottomrule
-      \end{tabular}
-
-      \medskip
-      {\small\color{gray}
-        At $g_c{=}0$: ghost reads are free --- C-stat wins\\
-        because it has lower $\alpha$ for A-loading.
-      }
-    \end{column}
-
-    \begin{column}{0.49\textwidth}
+    \begin{center}
     \centering
-    \begin{tikzpicture}[scale=0.92]
+    \begin{tikzpicture}[scale=1.30]
 
       % 3 rows (k=0,1,2) x 3 column groups:
       %   j=0 (left ghost), j=j* (needed), j>j* (right ghost, wider)
@@ -739,28 +735,24 @@
         {$N/T_N$ groups generated per $k$ step; only 1 is useful};
 
     \end{tikzpicture}
-    \end{column}
+    \end{center}
 
-  \end{columns}
 
 \end{frame}
 
 % ── Slide 9: C-stationary col-major — ghost reads gone, problem remains ───────
 \begin{frame}{C-Stationary Col-Major: Ghost Reads Gone, Problem Remains}
 
-  \begin{columns}[c]
 
-    \begin{column}{0.50\textwidth}
-      \textbf{Fix:} generate B in col-major order --- all $K$ values of
-      column $j$ before column $j{+}1$.
+    \begin{center}
+      \textbf{Fix:} generate B in col-major order.
 
       \smallskip
-      The FIFO output now matches C-stationary's consumption order.
-      No ghost reads --- all generated elements are used.
+      The FIFO output now matches C-stationary's consumption order $\rightarrow$ No ghost reads.
 
       \medskip
       \centering
-      \begin{tikzpicture}[scale=0.85]
+      \begin{tikzpicture}[scale=1.50]
         % ── Shared geometry (precomputed) ───────────────────────────────────
         \pgfmathsetmacro{\cw}{0.52}    % cell width
         \pgfmathsetmacro{\ch}{0.46}    % cell height
@@ -839,48 +831,7 @@
           (\ColOneX,  \connY) -- ++(0,-0.18) -| (\ColTwoX, \arrtop);
 
       \end{tikzpicture}
-
-      \flushleft\smallskip
-      At $g_c{=}100$: still \textbf{7.5$\times$ slower} than B-stationary.\\
-      Ghost reads were not the real bottleneck.
-    \end{column}
-
-    \begin{column}{0.46\textwidth}
-      \renewcommand{\arraystretch}{1.3}
-      \begin{tabular}{@{}lccc@{}}
-        \toprule
-        & $g_c{=}0$ & $g_c{=}10$ & $g_c{=}100$ \\
-        \midrule
-        B-stat        & ref & ref & ref \\
-        C row-maj & 2$\times$ fstr & 1.25$\times$ fstr & 7.5$\times$ slwr \\
-        C col-maj & 2$\times$ fstr & 1.28$\times$ fstr & \textbf{7.5$\times$ slwr} \\
-        \bottomrule
-      \end{tabular}
-
-      \medskip
-      \textbf{The real bottleneck:} C-stationary cannot
-      amortize B generation across $T_M$ A-rows.
-
-      \medskip
-      B-stationary: loop order is B outer, A inner.
-      Each B block is fetched once; all $T_M$ A-rows sweep through it.
-      Each B element used $T_M$ times $\Rightarrow$ cost $g_c / T_M$ per MAC.
-
-      \smallskip
-      C-stationary: B is consumed once per C-row pass.
-      No $T_M$-fold amortization $\Rightarrow$ cost $\sim g_c$ per MAC.
-
-      \medskip
-      {\small\color{gray}
-        $g_c{=}100,\; T_M{=}32$:\quad
-        B-stat $\approx 3.1$ cy/MAC\\
-        \hphantom{$g_c{=}100,\; T_M{=}32$:\quad}
-        C-stat $\approx 25$ cy/MAC
-      }
-    \end{column}
-
-  \end{columns}
-
+    \end{center}
 \end{frame}
 
 % ── Slide 10: B-stationary wins — TM-fold register reuse ─────────────────────
@@ -913,8 +864,6 @@
       \fill[matB!16] (\bL,\bBot) rectangle (\bR,\bTop);
       \draw[matB, very thick] (\bL,\bBot) rectangle (\bR,\bTop);
       \node[matB!85!black, font=\small\bfseries] at (0, 0.55) {$B$ sub-tile};
-      \node[matB!60, font=\scriptsize\itshape, align=center] at (0, -0.15)
-        {stationary while\\$T_M$ rows run};
 
       % ── A-row arrows ─────────────────────────────────────────────────────
       \draw[->, matA, thin] (\aX, \ya) -- (\bL, \ya);
@@ -939,17 +888,10 @@
 
     \begin{column}{0.52\textwidth}
       \textbf{Loop order}: B outer, A inner.
-      Each B block is fetched \emph{once}; all $T_M$ A-rows sweep through it.
-      Each B element is used $T_M$ times --- generation cost amortized:
+      Each B block is fetched \emph{once}.
+      $\rightarrow$ Each B element is used $T_M$ times --- generation cost amortized:
 
-      \medskip
-      \[
-        \text{gen cost per MAC}
-        = \frac{g_c \times N_B}{T_M \times N_B}
-        = \boldsymbol{\frac{g_c}{T_M}}
-      \]
-
-      \medskip
+      \bigskip
       \renewcommand{\arraystretch}{1.3}
       \begin{tabular}{@{}lccc@{}}
         \toprule
@@ -960,17 +902,6 @@
         C row-maj  & 2$\times$ fstr  & 1.25$\times$ fstr & 7.5$\times$ slwr \\
         \bottomrule
       \end{tabular}
-
-      \medskip
-      \textbf{Practical rule:}
-      use B-stationary for $g_c \gtrsim 20$;
-      C-stationary wins only at $g_c \approx 0$ (lower $\alpha$).
-
-      \smallskip
-      {\small\color{gray}
-        Any realistic PRNG has $g_c \gg 0$
-        $\;\Rightarrow\;$ B-stationary is the correct dataflow.
-      }
     \end{column}
 
   \end{columns}
@@ -981,90 +912,23 @@
 \section{Building the Model}
 \begin{frame}{Naive Cycle Model: Two Cost Terms}
 
-  \begin{columns}[c]
 
-    \begin{column}{0.50\textwidth}
+    \begin{center}
       Same reuse argument as traffic, but in \textbf{cycles}:
-
-      \medskip
-      \renewcommand{\arraystretch}{1.5}
-      \begin{tabular}{@{}p{3.0cm}l@{}}
-        \toprule
-        Source & Cost per MAC \\
-        \midrule
-        A loaded from L1\newline
-        (reused $T_N$ times) &
-          $\dfrac{C_A}{T_N}$ \\[6pt]
-        B generated by FIFO\newline
-        (reused $T_M$ times) &
-          $\dfrac{g_c}{T_M}$ \\
-        \bottomrule
-      \end{tabular}
 
       \bigskip
       Naively assuming the two costs \textbf{add}:
       \[
         \frac{T}{MNK} = \frac{C_A}{T_N} + \frac{g_c}{T_M}
       \]
-
-      {\small\color{gray}
-        $C_A$ = cycles to load one A element from L1.\\
-        $g_c$ = cycles to generate one B element (FIFO).
-      }
-    \end{column}
-
-    \begin{column}{0.46\textwidth}
-    \centering
-    \begin{tikzpicture}[scale=0.88]
-
-      % Two sequential cost blocks stacked vertically
-      \pgfmathsetmacro{\bw}{3.2}
-      \pgfmathsetmacro{\bh}{0.72}
-      \pgfmathsetmacro{\gap}{0.22}
-
-      % A-load block (top)
-      \pgfmathsetmacro{\Ay}{0}
-      \pgfmathsetmacro{\Abot}{\Ay-\bh}
-      \fill[matA!18] (0,\Abot) rectangle (\bw, \Ay);
-      \draw[matA, thin] (0,\Abot) rectangle (\bw, \Ay);
-      \node[matA!80!black, font=\small] at (\bw/2, \Ay-\bh/2)
-        {A load: $C_A / T_N$ cy/MAC};
-
-      % + label between
-      \pgfmathsetmacro{\Bstart}{\Abot-\gap}
-      \node[font=\normalsize, gray!70] at (-0.28, \Abot-\gap/2) {$+$};
-
-      % B-gen block (bottom)
-      \pgfmathsetmacro{\Bbot}{\Bstart-\bh}
-      \fill[matB!18] (0,\Bbot) rectangle (\bw, \Bstart);
-      \draw[matB, thin] (0,\Bbot) rectangle (\bw, \Bstart);
-      \node[matB!80!black, font=\small] at (\bw/2, \Bstart-\bh/2)
-        {B gen: $g_c / T_M$ cy/MAC};
-
-      % = label and total
-      \pgfmathsetmacro{\totaly}{\Bbot-0.42}
-      \node[font=\normalsize, gray!70] at (-0.28, \totaly+0.1) {$=$};
-      \node[TechBlue!80!black, font=\small\bfseries, align=center]
-        at (\bw/2, \totaly)
-        {$T\;=\;MNK \times \!\left(\dfrac{C_A}{T_N} + \dfrac{g_c}{T_M}\right)$};
-
-      % "naive: costs add" annotation
-      \node[gray!60, font=\scriptsize\itshape] at (\bw/2, \totaly-0.62)
-        {(assumes sequential execution)};
-
-    \end{tikzpicture}
-    \end{column}
-
-  \end{columns}
-
+    \end{center}
 \end{frame}
 
 % ── Slide 12: FIFO is async → max not sum ────────────────────────────────────
 \begin{frame}{FIFO is Async: Two Costs in Parallel}
 
-  \begin{columns}[c]
 
-    \begin{column}{0.44\textwidth}
+    \begin{center}
       The FIFO generates B \textbf{in the background}\\
       while the core loads A from L1.
 
@@ -1077,218 +941,42 @@
       \]
 
       \medskip
-      \textbf{Two regimes:}
-      \begin{itemize}
-        \item $g_c/T_M < C_A/T_N$:\; A-load bound
-        \item $g_c/T_M > C_A/T_N$:\; B-gen bound
-      \end{itemize}
-
-      \smallskip
-      {\small\color{gray}
-        Choose $(T_M, T_N)$ to balance both terms\\
-        and minimize the dominant bottleneck.
-      }
-    \end{column}
-
-    \begin{column}{0.52\textwidth}
-    \centering
-    \begin{tikzpicture}[scale=0.88]
-
-      % ── Geometry ─────────────────────────────────────────────────────────
-      \pgfmathsetmacro{\plong}{3.20}
-      \pgfmathsetmacro{\pshort}{1.95}
-      \pgfmathsetmacro{\pbarh}{0.40}
-      \pgfmathsetmacro{\pgap}{0.14}
-
-      % Case 1 y-positions (A-bound): prefix 'p' for parallel case
-      \pgfmathsetmacro{\piatop}{1.90}
-      \pgfmathsetmacro{\piabot}{\piatop-\pbarh}
-      \pgfmathsetmacro{\pibtop}{\piabot-\pgap}
-      \pgfmathsetmacro{\pibbot}{\pibtop-\pbarh}
-      \pgfmathsetmacro{\piam}{\piatop-\pbarh/2}
-      \pgfmathsetmacro{\pibm}{\pibtop-\pbarh/2}
-      \pgfmathsetmacro{\pibrk}{\pibbot-0.22}
-
-      % Case 2 y-positions (B-bound)
-      \pgfmathsetmacro{\piiatop}{\pibrk-0.72}
-      \pgfmathsetmacro{\piiabot}{\piiatop-\pbarh}
-      \pgfmathsetmacro{\piibtop}{\piiabot-\pgap}
-      \pgfmathsetmacro{\piibbot}{\piibtop-\pbarh}
-      \pgfmathsetmacro{\piiam}{\piiatop-\pbarh/2}
-      \pgfmathsetmacro{\piibm}{\piibtop-\pbarh/2}
-      \pgfmathsetmacro{\piibrk}{\piibbot-0.22}
-
-      % ── Case 1: A-bound (A bar long, B finishes early) ───────────────────
-      \node[gray!65, font=\scriptsize\itshape] at (\plong/2, \piatop+0.24)
-        {small $g_c$ \textrm{---} A-bound};
-
-      % A bar (full)
-      \fill[matA!18] (0,\piabot) rectangle (\plong,\piatop);
-      \draw[matA,thin] (0,\piabot) rectangle (\plong,\piatop);
-      \node[left, matA!80!black, font=\scriptsize\bfseries] at (-0.10,\piam) {A};
-      \node[matA!75!black, font=\tiny] at (\plong/2,\piam) {$C_A/T_N$};
-
-      % B bar (short) + dashed remainder
-      \fill[matB!18] (0,\pibbot) rectangle (\pshort,\pibtop);
-      \draw[matB,thin] (0,\pibbot) rectangle (\pshort,\pibtop);
-      \draw[matB!35,dashed,thin] (\pshort,\pibbot) -- (\plong,\pibbot);
-      \draw[matB!35,dashed,thin] (\pshort,\pibtop) -- (\plong,\pibtop);
-      \node[left, matB!80!black, font=\scriptsize\bfseries] at (-0.10,\pibm) {B};
-      \node[matB!75!black, font=\tiny] at (\pshort/2,\pibm) {$g_c/T_M$};
-
-      % runtime bracket → C_A/TN
-      \draw[gray!55,thin] (0,\pibrk) -- (\plong,\pibrk);
-      \draw[gray!55,thin] (0,\pibrk) -- (0,\pibrk+0.08);
-      \draw[gray!55,thin] (\plong,\pibrk) -- (\plong,\pibrk+0.08);
-      \node[below, gray!65, font=\tiny\bfseries] at (\plong/2,\pibrk)
-        {runtime $= C_A/T_N$};
-
-      % ── Case 2: B-gen bound (B bar long, A finishes early) ───────────────
-      \node[gray!65, font=\scriptsize\itshape] at (\plong/2, \piiatop+0.24)
-        {large $g_c$ \textrm{---} B-gen bound};
-
-      % A bar (short) + dashed remainder
-      \fill[matA!18] (0,\piiabot) rectangle (\pshort,\piiatop);
-      \draw[matA,thin] (0,\piiabot) rectangle (\pshort,\piiatop);
-      \draw[matA!35,dashed,thin] (\pshort,\piiabot) -- (\plong,\piiabot);
-      \draw[matA!35,dashed,thin] (\pshort,\piiatop) -- (\plong,\piiatop);
-      \node[left, matA!80!black, font=\scriptsize\bfseries] at (-0.10,\piiam) {A};
-      \node[matA!75!black, font=\tiny] at (\pshort/2,\piiam) {$C_A/T_N$};
-
-      % B bar (full)
-      \fill[matB!18] (0,\piibbot) rectangle (\plong,\piibtop);
-      \draw[matB,thin] (0,\piibbot) rectangle (\plong,\piibtop);
-      \node[left, matB!80!black, font=\scriptsize\bfseries] at (-0.10,\piibm) {B};
-      \node[matB!75!black, font=\tiny] at (\plong/2,\piibm) {$g_c/T_M$};
-
-      % runtime bracket → gc/TM
-      \draw[gray!55,thin] (0,\piibrk) -- (\plong,\piibrk);
-      \draw[gray!55,thin] (0,\piibrk) -- (0,\piibrk+0.08);
-      \draw[gray!55,thin] (\plong,\piibrk) -- (\plong,\piibrk+0.08);
-      \node[below, gray!65, font=\tiny\bfseries] at (\plong/2,\piibrk)
-        {runtime $= g_c/T_M$};
-
-    \end{tikzpicture}
-    \end{column}
-
-  \end{columns}
-
+      \textbf{Two regimes:}\\
+      \medskip
+      $g_c/T_M < C_A/T_N$:\; A-load bound\\
+      $g_c/T_M > C_A/T_N$:\; B-gen bound\\
+    \end{center}
 \end{frame}
 
 % ── Slide 13: Replace C_A/TN with measured α(TM,TN) ─────────────────────────
 \begin{frame}{Replacing $C_A/T_N$ with Measured $\alpha(T_M,T_N)$}
+    \begin{center}
+      The $C_A/T_N$ term assumes:\\
+    \medskip
+        $C_A$ = fixed cost per A element from L1\\
+        $T_N$-fold reuse divides it out cleanly\\
 
-  \begin{columns}[c]
-
-    \begin{column}{0.50\textwidth}
-      The $C_A/T_N$ term assumed:
-      \begin{itemize}
-        \item $C_A$ = fixed cost per A element from L1
-        \item $T_N$-fold reuse divides it out cleanly
-      \end{itemize}
-
-      \smallskip
+      \medskip
       \textbf{Problem:} actual cycles/MAC depends on
       tile shape through cache residency, line
       utilization, and access patterns ---
       not a simple constant divided by $T_N$.
 
       \medskip
-      \textbf{Solution:} replace with a measured value.
-      Define $\alpha(T_M, T_N) \;\equiv\; T\,/\,MNK$
-      at $g_c = 0$ (B generation is free):
-
+      \textbf{Solution:} 
       \[
-        \frac{T}{MNK} = \max\!\left\{
+          \boxed{\frac{T}{MNK} = \max\!\left\{
           \alpha(T_M,T_N),\;\frac{g_c}{T_M}
-        \right\}
+          \right\}}
       \]
 
-      {\small\color{gray}
-        $\alpha$ is measured once per hardware config;\\
-        the model then works for any $g_c$.
-      }
-    \end{column}
-
-    \begin{column}{0.46\textwidth}
-    \centering
-    \begin{tikzpicture}[scale=0.85]
-
-      % ── Schematic α heatmap ──────────────────────────────────────────────
-      \pgfmathsetmacro{\hw}{0.88}   % cell width
-      \pgfmathsetmacro{\hh}{0.62}   % cell height
-
-      % (row, col, fill-shade): rows = TM index 0..2, cols = TN index 0..3
-      % shade = fill intensity for TechBlue (higher = darker = larger α)
-      \foreach \rr/\cc/\sh in {
-        0/0/78, 0/1/55, 0/2/37, 0/3/24,
-        1/0/68, 1/1/47, 1/2/31, 1/3/20,
-        2/0/58, 2/1/40, 2/2/26, 2/3/16}{
-
-        \pgfmathsetmacro{\hcx}{\cc*\hw}
-        \pgfmathsetmacro{\hcy}{-\rr*\hh}
-        \pgfmathsetmacro{\hcxr}{\hcx+\hw}
-        \pgfmathsetmacro{\hcyt}{\hcy+\hh}
-        \fill[TechBlue!\sh] (\hcx,\hcy) rectangle (\hcxr,\hcyt);
-        \draw[white, thin] (\hcx,\hcy) rectangle (\hcxr,\hcyt);
-      }
-
-      % outer border
-      \pgfmathsetmacro{\gridW}{4*\hw}
-      \pgfmathsetmacro{\gridH}{-3*\hh}
-      \draw[TechBlue!60, thin] (0,0) rectangle (\gridW,\gridH);
-
-      % TN axis labels (top)
-      \foreach \cc/\tnv in {0/4, 1/8, 2/16, 3/32}{
-        \pgfmathsetmacro{\lx}{\cc*\hw+\hw/2}
-        \node[font=\tiny, gray!80] at (\lx, 0.28) {$T_N{=}\tnv$};
-      }
-
-      % TM axis labels (left)
-      \foreach \rr/\tmv in {0/8, 1/16, 2/32}{
-        \pgfmathsetmacro{\ly}{-\rr*\hh-\hh/2}
-        \node[left, font=\tiny, gray!80] at (-0.10, \ly) {$T_M{=}\tmv$};
-      }
-
-      % legend: dark = large α, light = small α
-      \pgfmathsetmacro{\legy}{\gridH-0.42}
-      \foreach \ii/\sv in {0/72, 1/55, 2/38, 3/22}{
-        \pgfmathsetmacro{\lx}{\ii*0.55+0.30}
-        \fill[TechBlue!\sv] (\lx,\legy) rectangle (\lx+0.50, \legy+0.22);
-        \draw[white,thin] (\lx,\legy) rectangle (\lx+0.50, \legy+0.22);
-      }
-      \node[font=\tiny, gray!70] at (0.08, \legy+0.11) {};
-      \node[left, font=\tiny, gray!65] at (0.28, \legy+0.11) {high $\alpha$};
-      \node[right, font=\tiny, gray!65] at (2.52, \legy+0.11) {low $\alpha$};
-
-      % title
-      \node[font=\scriptsize\itshape, gray!70, align=center]
-        at (\gridW/2, 0.62) {$\alpha(T_M,T_N)$ — schematic};
-
-    \end{tikzpicture}
-
-    \smallskip
-    {\small\color{gray}
-      $\alpha$ decreases with $T_N$ (more column reuse)\\
-      and depends on $T_M$ through cache residency.
-    }
-    \end{column}
-
-  \end{columns}
-
+    \end{center}
 \end{frame}
 
 % ── Slide 14: Measuring α by setting gc=0 ────────────────────────────────────
 \begin{frame}{Isolating $\alpha$: Set $g_c = 0$}
-
-  \begin{columns}[c]
-
-    \begin{column}{0.48\textwidth}
-      $g_c$ is a hardware parameter we fully control.
-
-      \medskip
-      \textbf{Key trick:} set $g_c = 0$ --- B generation
-      becomes instantaneous.
+    \begin{center}
+      \textbf{Key trick:} set $g_c = 0$
 
       \medskip
       The model collapses:
@@ -1296,74 +984,7 @@
         \frac{T}{MNK} = \max\!\left\{\alpha(T_M,T_N),\;\frac{0}{T_M}\right\}
         = \alpha(T_M,T_N)
       \]
-
-      \medskip
-      A single measurement gives $\alpha$ directly ---
-      no formula needed, no assumptions about $C_A$.
-
-      \bigskip
-      \textbf{Procedure:}
-      \begin{enumerate}
-        \item Run B-stationary with $g_c = 0$
-        \item Record $T \,/\, MNK$
-        \item That \emph{is} $\alpha(T_M, T_N)$
-      \end{enumerate}
-
-      \smallskip
-      {\small\color{gray}
-        Repeat for every $(T_M, T_N)$ pair\\
-        to build the full $\alpha$ table.
-      }
-    \end{column}
-
-    \begin{column}{0.48\textwidth}
-    \centering
-    \begin{tikzpicture}[scale=0.90]
-
-      % ── Geometry ─────────────────────────────────────────────────────────
-      \pgfmathsetmacro{\mlong}{3.40}   % A bar length
-      \pgfmathsetmacro{\mbarh}{0.44}   % bar height
-      \pgfmathsetmacro{\mgap}{0.16}
-
-      \pgfmathsetmacro{\mAtop}{1.60}
-      \pgfmathsetmacro{\mAbot}{\mAtop-\mbarh}
-      \pgfmathsetmacro{\mBtop}{\mAbot-\mgap}
-      \pgfmathsetmacro{\mBbot}{\mBtop-0.22}   % B bar very thin (gc=0)
-      \pgfmathsetmacro{\mAm}{\mAtop-\mbarh/2}
-      \pgfmathsetmacro{\mBm}{\mBtop-0.11}
-      \pgfmathsetmacro{\mbrk}{\mBbot-0.28}
-
-      % gc=0 label
-      \node[font=\scriptsize\itshape, gray!70] at (\mlong/2, \mAtop+0.30)
-        {$g_c = 0$: B generation is free};
-
-      % A bar
-      \fill[matA!20] (0,\mAbot) rectangle (\mlong,\mAtop);
-      \draw[matA,thin] (0,\mAbot) rectangle (\mlong,\mAtop);
-      \node[left, matA!80!black, font=\scriptsize\bfseries] at (-0.10,\mAm) {A};
-      \node[matA!75!black, font=\small] at (\mlong/2,\mAm) {$\alpha(T_M,T_N)$};
-
-      % B bar (very thin — instantaneous)
-      \fill[matB!12] (0,\mBbot) rectangle (0.12,\mBtop);
-      \draw[matB!50,thin] (0,\mBbot) rectangle (0.12,\mBtop);
-      \draw[matB!30,dashed,thin] (0.12,\mBbot) -- (\mlong,\mBbot);
-      \draw[matB!30,dashed,thin] (0.12,\mBtop) -- (\mlong,\mBtop);
-      \node[left, matB!70!black, font=\scriptsize\bfseries] at (-0.10,\mBm) {B};
-      \node[right, matB!60, font=\tiny\itshape] at (0.18,\mBm)
-        {instantaneous ($g_c{=}0$)};
-
-      % runtime bracket
-      \draw[gray!55,thin] (0,\mbrk) -- (\mlong,\mbrk);
-      \draw[gray!55,thin] (0,\mbrk) -- (0,\mbrk+0.09);
-      \draw[gray!55,thin] (\mlong,\mbrk) -- (\mlong,\mbrk+0.09);
-      \node[below, TechBlue!75, font=\small\bfseries] at (\mlong/2,\mbrk)
-        {$T\,/\,MNK \;=\; \alpha(T_M,T_N)$};
-
-    \end{tikzpicture}
-    \end{column}
-
-  \end{columns}
-
+    \end{center}
 \end{frame}
 
 % ── Slide 15: Calibration — sweep (TM,TN) at gc=0, build α table ─────────────
@@ -1372,15 +993,7 @@
   \begin{columns}[c]
 
     \begin{column}{0.40\textwidth}
-      \textbf{Procedure:} for each valid $(T_M, T_N)$,\\
-      run B-stationary with $g_c = 0$,\\
-      record $T / MNK$.
-
-      \medskip
-      No formula assumed --- purely empirical.
-
       \bigskip
-      \textbf{What the data shows:}
       \begin{itemize}
         \item Small $T_N$: $\alpha$ spikes when the\\
           A tile overflows L1
@@ -1391,19 +1004,11 @@
         \item $\alpha$ decreases with $T_N$\\
           (more column reuse)
       \end{itemize}
-
-      \medskip
-      {\small\color{gray}
-        This non-linear structure is why\\
-        $C_A/T_N$ fails as a predictor.
-      }
     \end{column}
 
     \begin{column}{0.57\textwidth}
       \centering
-      \includegraphics[width=\linewidth]{%
-        ../experiments/v5-results/math-model-no-l2/%
-        e3-alpha-calibration/alpha_vs_tm_multitn.png}
+      \includegraphics[width=\linewidth]{graphs/alpha_vs_tm.png}
     \end{column}
 
   \end{columns}
@@ -1416,100 +1021,13 @@
   \begin{columns}[c]
 
     \begin{column}{0.44\textwidth}
-      $\alpha(T_M, T_N)$ is measured once and stored.\\
-      $g_c / T_M$ is analytic --- no measurement needed.
-
-      \medskip
-      For any new $g_c$:
-      \[
-        \text{predict}(T_M,T_N) = \max\!\left\{\alpha(T_M,T_N),\,\frac{g_c}{T_M}\right\}
-      \]
-      \[
-        (T_M, T_N)^* = \mathop{\arg\min}_{T_M,T_N}\;\max\!\left\{\alpha,\,\frac{g_c}{T_M}\right\}
-      \]
-
-      \medskip
-      \textbf{No new experiments needed.}
-
-      \medskip
       The optimal tile is where the two costs\\
       are balanced: $\alpha(T_M^*,T_N^*) \approx g_c/T_M^*$.
     \end{column}
 
     \begin{column}{0.52\textwidth}
-    \centering
-    \begin{tikzpicture}[scale=0.90]
-
-      % ── Axes ─────────────────────────────────────────────────────────────
-      \pgfmathsetmacro{\axW}{4.60}
-      \pgfmathsetmacro{\axH}{3.20}
-      \draw[->, gray!50, thin] (0,0) -- (\axW+0.2, 0)
-        node[right, font=\tiny, gray!70] {$T_M$};
-      \draw[->, gray!50, thin] (0,0) -- (0, \axH+0.2)
-        node[above, font=\tiny, gray!70] {cy/MAC};
-
-      % ── α line: flat then rises (A tile overflows L1) ────────────────────
-      % flat at y=1.55, uptick from x=3.8 to x=4.5 up to y=3.0
-      \draw[matA, thick]
-        (0.40, 1.55) -- (3.80, 1.55) -- (4.50, 3.00);
-      \node[right, matA!80!black, font=\scriptsize] at (1.60, 1.72)
-        {$\alpha(T_M, T_N^*)$};
-
-      % ── gc/TM curve: decreasing ───────────────────────────────────────────
-      % points: (0.40,3.10) (0.95,2.45) (1.80,1.55) (2.50,1.10) (3.30,0.80) (4.50,0.58)
-      \draw[matB, thick]
-        (0.40,3.10) .. controls (0.95,2.45) .. (1.80,1.55)
-                    .. controls (2.50,1.10) .. (3.30,0.80)
-                    -- (4.50,0.58);
-      \node[right, matB!80!black, font=\scriptsize] at (0.38, 3.20)
-        {$g_c / T_M$};
-
-      % ── Optimal point: crossing at ~(1.80, 1.55) ─────────────────────────
-      \pgfmathsetmacro{\optx}{1.80}
-      \pgfmathsetmacro{\opty}{1.55}
-
-      % vertical dashed line at optimal TM
-      \draw[TechBlue!60, dashed, thin] (\optx, 0) -- (\optx, \opty);
-
-      % dot at crossing
-      \fill[TechBlue] (\optx, \opty) circle (2.2pt);
-
-      % annotation
-      \node[above right, TechBlue!80!black, font=\scriptsize\bfseries]
-        at (\optx+0.05, \opty+0.05) {optimal $T_M^*$};
-      \node[below, TechBlue!70, font=\tiny] at (\optx, -0.08)
-        {$T_M^*$};
-
-      % ── Shaded region: upper envelope above optimal ───────────────────────
-      % light shading left of optimal (B-gen bound zone)
-      \fill[matB!8]
-        (0.40,0) -- (0.40,3.10) .. controls (0.95,2.45) .. (\optx,\opty)
-        -- (\optx,0) -- cycle;
-      % light shading right of optimal (A-load bound zone)
-      \fill[matA!8]
-        (\optx,0) -- (\optx,\opty) -- (3.80,1.55) -- (4.50,3.00)
-        -- (4.50,0) -- cycle;
-
-      % ── Redraw lines on top of shading ───────────────────────────────────
-      \draw[matA, thick]
-        (0.40, 1.55) -- (3.80, 1.55) -- (4.50, 3.00);
-      \draw[matB, thick]
-        (0.40,3.10) .. controls (0.95,2.45) .. (1.80,1.55)
-                    .. controls (2.50,1.10) .. (3.30,0.80)
-                    -- (4.50,0.58);
-      \fill[TechBlue] (\optx, \opty) circle (2.2pt);
-
-      % ── Zone labels ───────────────────────────────────────────────────────
-      \node[matB!60, font=\tiny\itshape] at (0.90, 0.45) {B-gen};
-      \node[matB!60, font=\tiny\itshape] at (0.90, 0.22) {bound};
-      \node[matA!60, font=\tiny\itshape] at (3.10, 0.45) {A-load};
-      \node[matA!60, font=\tiny\itshape] at (3.10, 0.22) {bound};
-
-      % ── Title ─────────────────────────────────────────────────────────────
-      \node[gray!65, font=\scriptsize\itshape] at (\axW/2, \axH+0.28)
-        {schematic ($g_c = 100$, fixed $T_N^*$)};
-
-    \end{tikzpicture}
+      \centering
+      \includegraphics[width=\linewidth]{graphs/model_intuition.png}
     \end{column}
 
   \end{columns}
@@ -1520,25 +1038,15 @@
 \section{Roofline Validation}
 \begin{frame}{Roofline Validation: Setup}
 
-  \begin{columns}[c]
 
-    \begin{column}{0.50\textwidth}
-      \textbf{Question:} calibrate $\alpha$ once at $g_c=0$;
+    \begin{center}
+      \textbf{Question:}\\ 
+      calibrate $\alpha$ once at $g_c=0$;
       does the model predict the best tile correctly
       at any new $g_c$?
 
       \medskip
-      \textbf{Methodology:}
-      \begin{enumerate}
-        \item Measure $\alpha(T_M, T_N)$ at $g_c = 0$
-        \item For each $g_c$: predict $(T_M^*, T_N^*)$\\
-              $= \arg\min \max\{\alpha,\, g_c/T_M\}$
-        \item Run simulator at that $g_c$, find empirical best
-        \item Compare prediction vs.\ empirical
-      \end{enumerate}
-
-      \medskip
-      \textbf{Test conditions:}
+      \textbf{Test conditions:}\\
       \renewcommand{\arraystretch}{1.25}
       \begin{tabular}{@{}ll@{}}
         SRAM budgets  & 64\,KB, 128\,KB \\
@@ -1546,121 +1054,63 @@
         $g_c$ values  & 10, 100, 250 \ldots 500 \\
         Total         & $12 \times 9 = 108$ conditions \\
       \end{tabular}
-    \end{column}
-
-    \begin{column}{0.46\textwidth}
-    \centering
-    \begin{tikzpicture}[scale=0.88,
-        box/.style={draw=TechBlue!60, fill=TechBlue!8, rounded corners=4pt,
-                    minimum width=3.0cm, minimum height=0.72cm,
-                    font=\small, align=center},
-        arr/.style={-{Stealth[length=5pt]}, TechBlue!60, thick},
-      ]
-
-      \node[box] (cal) at (0, 3.2) {Calibrate $\alpha$\\at $g_c = 0$};
-      \node[box] (pred) at (0, 2.0) {Predict $(T_M^*,T_N^*)$\\from model};
-      \node[box] (emp)  at (0, 0.8) {Measure empirical\\best at new $g_c$};
-      \node[box, draw=TechMid!70, fill=TechMid!10] (cmp) at (0, -0.4)
-        {Compare:\\match or gap?};
-
-      \draw[arr] (cal) -- (pred);
-      \draw[arr] (pred) -- (emp) node[right, midway, font=\tiny, gray!70]
-        {new $g_c$};
-      \draw[arr] (emp) -- (cmp);
-
-      \node[font=\tiny, gray!65, align=center] at (0, -1.1)
-        {Repeated for all 108 conditions};
-
-    \end{tikzpicture}
-    \end{column}
-
-  \end{columns}
-
+    \end{center}
 \end{frame}
 
 % ── Slide 18: Roofline validation — results ───────────────────────────────────
 \begin{frame}{Roofline Validation: Results}
 
-  \begin{columns}[c]
+  \begin{center}
+  \small
+  \begin{tabular}{cccc}
+    \toprule
+    $g_c$ & Model $(T_M^*, T_N^*)$ & Empirical $(T_M^*, T_N^*)$ & Match \\
+    \midrule
+    15  & (12,\;32) & (12,\;32) & \checkmark \\
+    30  & (12,\;32) & (12,\;32) & \checkmark \\
+    38  & (12,\;32) & (12,\;32) & \checkmark \\
+    42  & (32,\;64) & (32,\;64) & \checkmark \\
+    47  & (32,\;64) & (32,\;64) & \checkmark \\
+    50  & (32,\;64) & (32,\;64) & \checkmark \\
+    52  & (32,\;64) & (32,\;64) & \checkmark \\
+    57  & (32,\;64) & (32,\;64) & \checkmark \\
+    68  & (32,\;64) & (32,\;64) & \checkmark \\
+    74  & (32,\;64) & (32,\;64) & \checkmark \\
+    100 & (32,\;64) & (32,\;64) & \checkmark \\
+    150 & (64,\;32) & (64,\;32) & \checkmark \\
+    250 & (96,\;16) & (96,\;16) & \checkmark \\
+    400 & (96,\;16) & (96,\;16) & \checkmark \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
 
-    \begin{column}{0.42\textwidth}
-      \textbf{$T_M^*$: always predicted correctly.}\\
-      70/70 exact matches across all $g_c$ values
-      and $T_N$ choices (100\%).
-
-      \medskip
-      \textbf{$T_N^*$: correct up to $g_c \approx 250$,}\\
-      then degrades at high $g_c$.
-
-      \medskip
-      \textbf{Overall $(T_M^*,T_N^*)$ exact match:}
-      \begin{itemize}
-        \item $g_c \leq 250$: 100\% match
-        \item $g_c > 250$: model picks wrong $T_N^*$
-        \item When wrong: cycle gap $\leq 4\%$
-      \end{itemize}
-
-    \end{column}
-
-    \begin{column}{0.55\textwidth}
-      \centering
-      \includegraphics[width=\linewidth]{%
-        ../experiments/v5-results/math-model-no-l2/%
-        e8-gc-boundary-sweep/prediction_fit.png}
-    \end{column}
-
-  \end{columns}
+  \vspace{0.5em}
+  \centering\textbf{14/14 — 100\% exact match across all tested $g_c$ values.}
 
 \end{frame}
 
-% ── Slide 19: Why the model breaks — the gen-bound regime ─────────────────────
-\begin{frame}{Why $T_N^*$ Fails at High $g_c$: Gen-Bound Regime}
+% ── Slide 19: Impect of tile selection
+\begin{frame}{Impact of Tile Selection: Optimal vs.\ Square}
 
-  \begin{columns}[c]
-
-    \begin{column}{0.44\textwidth}
-      When $g_c / T_M \gg \alpha(T_M, T_N)$ for all $T_N$:
-
-      \[
-        \max\!\left\{\alpha, \frac{g_c}{T_M}\right\}
-        \approx \frac{g_c}{T_M}
-        \quad (\text{$T_N$-independent})
-      \]
-
-      The model predicts the same cost for every $T_N$
-      --- it cannot distinguish between them.
-
-      \medskip
-      \textbf{Consequence:}
-      \begin{itemize}
-        \item $T_M^*$ always correct ($g_c/T_M$ is TM-dependent)
-        \item $T_N^*$ chosen arbitrarily by the model
-        \item Empirically $T_N{=}16$ is best in
-          gen-bound regime (pipeline effects)
-      \end{itemize}
-    \end{column}
-
-    \begin{column}{0.53\textwidth}
+    \begin{center}
       \centering
-      \includegraphics[width=\linewidth]{%
+      \includegraphics[scale=0.35]{%
         ../experiments/v5-results/math-model-no-l2/%
         e8-gc-boundary-sweep/best_shape_per_gc.png}
 
       {\small\color{gray}
         $T_N^*$ (red) drops 64→32→16 as $g_c$ grows.
       }
-    \end{column}
+    \end{center}
 
-  \end{columns}
 
 \end{frame}
 
 % ── Slide 20: Impact of tile selection — optimal vs square ───────────────────
 \begin{frame}{Impact of Tile Selection: Optimal vs.\ Square}
 
-  \begin{columns}[c]
-
-    \begin{column}{0.32\textwidth}
+    \begin{center}
+      \textbf{Question:}\\
       Does choosing the right $(T_M, T_N)$
       actually matter?
 
@@ -1674,25 +1124,28 @@
       \medskip
       \textbf{Speedup from correct tile:}
       \begin{itemize}
-        \item $g_c = 100$: \textbf{20--40\%} faster
-        \item $g_c = 250$: \textbf{$\sim$75\%} faster
-        \item $g_c = 400$: \textbf{up to 85\%} faster
+        \item $g_c = 100$: \textbf{20--60\%} faster
+        \item $g_c = 250$: \textbf{$\sim$85\%} faster
+        \item $g_c = 400$: \textbf{up to 90\%} faster
       \end{itemize}
 
       \smallskip
       {\scriptsize\color{gray}
         Gain grows with $g_c$.
       }
-    \end{column}
+    \end{center}
 
-    \begin{column}{0.65\textwidth}
+\end{frame}
+
+% ── Slide 21: Impact of tile selection — optimal vs square ───────────────────
+\begin{frame}{Impact of Tile Selection: Optimal vs.\ Square}
+
+    \begin{center}
       \centering
       \includegraphics[width=\linewidth]{%
         ../experiments/v5-results/math-model-no-l2/%
         e8-gc-boundary-sweep/optimal_vs_square.png}
-    \end{column}
-
-  \end{columns}
+    \end{center}
 
 \end{frame}
 
