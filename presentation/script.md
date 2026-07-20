@@ -290,21 +290,26 @@ The table splits the 108 conditions at g_c=300. Below 300: 48 out of 48 exact ma
 
 The headline: TM* is correct in all 108 conditions. TN* has some ambiguity at high g_c, but you never lose more than 4.1% by following the model.
 
-> **[Note — why TN* prediction breaks at g_c ≥ 300]**
+> **[Note — why TN* prediction breaks at g_c ≥ 300, and which TN the model picks]**
 >
-> At gc < 300, the optimal tile (TM*=64 in most configs) is A-load bound: gc/TM < α(TM*,TN*). The model cost is α(TM,TN), which varies with TN — lower TN means higher α, so the model correctly prefers larger TN. TN* is unambiguous.
+> **Why it breaks:** At gc < 300, TM*=64 is A-load bound: gc/TM < α(TM*,TN*). The model cost is α(TM,TN), which varies with TN — lower TN means higher α, so the model correctly prefers larger TN.
 >
-> At gc = 300, TM*=64 enters the fully gen-bound regime: gc/TM = 300/64 = 4.69 > α(64,16) = 3.84. The roofline model predicts cost = gc/TM = 4.69 for ALL valid TN values at TM=64 (since gc/TM dominates α for every TN). The model sees them as tied and picks an arbitrary winner (happens to be TN=8 or TN=4 — whichever comes first in argmin).
->
-> Empirically, even inside the gen-bound regime, larger TN is still slightly better: A-loading contributes a small residual overhead, and lower α(64,16)=3.84 vs α(64,8)=4.55 means fewer A-load stalls. The model's max(α, gc/TM) formula discards that information once gc/TM takes over.
+> At gc = 300, TM*=64 enters the fully gen-bound regime: gc/TM = 300/64 = 4.69 > α(64,16) = 3.84. Now the roofline predicts cost = gc/TM = 4.69 for ALL gen-bound TN values at TM=64. They look identical to the model.
 >
 > Concretely at gc=300, L1=8KB, TM=64:
-> - (64, 8):  α=4.550, gc/TM=4.688 → cost=4.688
-> - (64, 16): α=3.840, gc/TM=4.688 → cost=4.688  ← empirical winner
+> - (64, 4):  α=5.968 → still A-load bound (cost=5.97)  ← excluded
+> - (64, 8):  α=4.550 → gen-bound (cost=4.688)  ← model picks this
+> - (64, 16): α=3.840 → gen-bound (cost=4.688)  ← empirical winner, same predicted cost
 >
-> Both score 4.688. Model picks TN=8 (arbitrary tie-break). Actual cycles differ by 0.3%.
+> **Which TN does the model pick:** the smallest TN that has already crossed into the gen-bound regime (i.e., the smallest TN where α(TM,TN) ≤ gc/TM). TN=4 is still A-load bound at gc=300, so the model's argmin falls on TN=8 — the smallest one where gc/TM wins. In the extreme (L1=120KB, gc=310, TM=96), both TN=4 and TN=8 are gen-bound with identical alpha (3.163), and the model picks TN=4.
 >
-> **Why the gap stays small (≤ 4.1%):** the model always gets TM* right. TN only controls residual A-loading within a gen-bound tile — a second-order effect. Even a wrong TN with the correct TM is near-optimal.
+> The reason is implementation: all tied gen-bound TN values return the same argmin score, and Python's `min()` returns the first encountered — which is the smallest TN, since the experiment sweeps TN in ascending order.
+>
+> **Empirically, larger TN always wins:** even in gen-bound, A-loading is a small residual. Lower α(64,16)=3.84 vs α(64,8)=4.55 still means fewer A-load stalls. The model's max(α, gc/TM) formula throws that away once gc/TM dominates.
+>
+> **Fix (not implemented):** use α as a tiebreaker among gen-bound tiles — always pick the largest valid TN when gc/TM dominates all candidates. That would correct all 22 mismatches.
+>
+> **Why the gap stays small (≤ 4.1%):** the model always gets TM* right. TN only controls residual A-loading within a gen-bound tile — a second-order effect. Even the smallest valid TN with the correct TM is near-optimal.
 
 > **[Note — how the model tile sizes are computed]**
 >
