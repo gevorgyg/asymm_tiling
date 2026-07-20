@@ -280,13 +280,31 @@ Now the question is: does this actually work? We calibrate α once at g_c=0 — 
 
 The methodology is: measure α at g_c=0; for each new g_c, compute the predicted best (TM*, TN*); run the simulator at that g_c empirically to find the true best; compare.
 
-We ran this across two SRAM budgets — 64KB and 128KB — with 6 hardware splits each varying the L1/FIFO split, and 9 g_c values from 10 to 500. That's 108 test conditions total.
+We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept how the budget is split between L1 and FIFO: 4 splits for 64KB, 8 splits for 128KB, 12 hardware configurations total. Nine g_c values from 10 to 500. That's 108 test conditions.
 
 ---
 
 ## Slide 23 — Roofline Validation: Results
 
-The table shows the model's predicted (TM*, TN*) versus the empirical best tile for each g_c. All 14 g_c values match exactly — 100%.
+The table splits the 108 conditions at g_c=300. Below 300: 48 out of 48 exact matches — 100%. Above 300: TM* is still correct every time, but TN* prediction drops to 63% exact. The max performance gap on any mismatch is 4.1%.
+
+The headline: TM* is correct in all 108 conditions. TN* has some ambiguity at high g_c, but you never lose more than 4.1% by following the model.
+
+> **[Note — why TN* prediction breaks at g_c ≥ 300]**
+>
+> At gc < 300, the optimal tile (TM*=64 in most configs) is A-load bound: gc/TM < α(TM*,TN*). The model cost is α(TM,TN), which varies with TN — lower TN means higher α, so the model correctly prefers larger TN. TN* is unambiguous.
+>
+> At gc = 300, TM*=64 enters the fully gen-bound regime: gc/TM = 300/64 = 4.69 > α(64,16) = 3.84. The roofline model predicts cost = gc/TM = 4.69 for ALL valid TN values at TM=64 (since gc/TM dominates α for every TN). The model sees them as tied and picks an arbitrary winner (happens to be TN=8 or TN=4 — whichever comes first in argmin).
+>
+> Empirically, even inside the gen-bound regime, larger TN is still slightly better: A-loading contributes a small residual overhead, and lower α(64,16)=3.84 vs α(64,8)=4.55 means fewer A-load stalls. The model's max(α, gc/TM) formula discards that information once gc/TM takes over.
+>
+> Concretely at gc=300, L1=8KB, TM=64:
+> - (64, 8):  α=4.550, gc/TM=4.688 → cost=4.688
+> - (64, 16): α=3.840, gc/TM=4.688 → cost=4.688  ← empirical winner
+>
+> Both score 4.688. Model picks TN=8 (arbitrary tie-break). Actual cycles differ by 0.3%.
+>
+> **Why the gap stays small (≤ 4.1%):** the model always gets TM* right. TN only controls residual A-loading within a gen-bound tile — a second-order effect. Even a wrong TN with the correct TM is near-optimal.
 
 > **[Note — how the model tile sizes are computed]**
 >

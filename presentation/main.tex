@@ -1050,8 +1050,8 @@
       \renewcommand{\arraystretch}{1.25}
       \begin{tabular}{@{}ll@{}}
         SRAM budgets  & 64\,KB, 128\,KB \\
-        Splits per budget & 6 (varying L1/FIFO) \\
-        $g_c$ values  & 10, 100, 250 \ldots 500 \\
+        L1/FIFO splits & 4 (64\,KB) + 8 (128\,KB) = 12 configs \\
+        $g_c$ values  & 10, 100, 250, 280, 300, 310, 325, 350, 500 \\
         Total         & $12 \times 9 = 108$ conditions \\
       \end{tabular}
     \end{center}
@@ -1061,31 +1061,25 @@
 \begin{frame}{Roofline Validation: Results}
 
   \begin{center}
-  \small
-  \begin{tabular}{cccc}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{@{}lcc@{}}
     \toprule
-    $g_c$ & Model $(T_M^*, T_N^*)$ & Empirical $(T_M^*, T_N^*)$ & Match \\
+    & $g_c < 300$ & $g_c \geq 300$ \\
     \midrule
-    15  & (12,\;32) & (12,\;32) & \checkmark \\
-    30  & (12,\;32) & (12,\;32) & \checkmark \\
-    38  & (12,\;32) & (12,\;32) & \checkmark \\
-    42  & (32,\;64) & (32,\;64) & \checkmark \\
-    47  & (32,\;64) & (32,\;64) & \checkmark \\
-    50  & (32,\;64) & (32,\;64) & \checkmark \\
-    52  & (32,\;64) & (32,\;64) & \checkmark \\
-    57  & (32,\;64) & (32,\;64) & \checkmark \\
-    68  & (32,\;64) & (32,\;64) & \checkmark \\
-    74  & (32,\;64) & (32,\;64) & \checkmark \\
-    100 & (32,\;64) & (32,\;64) & \checkmark \\
-    150 & (64,\;32) & (64,\;32) & \checkmark \\
-    250 & (96,\;16) & (96,\;16) & \checkmark \\
-    400 & (96,\;16) & (96,\;16) & \checkmark \\
+    Conditions & 48 & 60 \\
+    $T_M^*$ correct & \textbf{48\,/\,48} \;(100\%) & \textbf{60\,/\,60} \;(100\%) \\
+    $(T_M^*, T_N^*)$ exact & \textbf{48\,/\,48} \;(100\%) & 38\,/\,60 \hphantom{0}(63\%) \\
+    Max perf.\ gap & $0\%$ & $4.1\%$ \\
     \bottomrule
   \end{tabular}
-  \end{center}
 
-  \vspace{0.5em}
-  \centering\textbf{14/14 — 100\% exact match across all tested $g_c$ values.}
+  \bigskip
+  \textbf{$T_M^*$ correct in all 108 conditions.}\\[4pt]
+  {\small\color{gray}
+    At $g_c \geq 300$: $T_M^*$ is exact but $T_N^*$ is ambiguous ---
+    the model picks a safe tile within 4.1\% of optimal.
+  }
+  \end{center}
 
 \end{frame}
 
