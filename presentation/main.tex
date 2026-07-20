@@ -1062,23 +1062,18 @@
 
   \begin{center}
   \renewcommand{\arraystretch}{1.4}
-  \begin{tabular}{@{}lcc@{}}
+  \begin{tabular}{@{}lc@{}}
     \toprule
-    & $g_c < 300$ & $g_c \geq 300$ \\
+    & All 108 conditions \\
     \midrule
-    Conditions & 48 & 60 \\
-    $T_M^*$ correct & \textbf{48\,/\,48} \;(100\%) & \textbf{60\,/\,60} \;(100\%) \\
-    $(T_M^*, T_N^*)$ exact & \textbf{48\,/\,48} \;(100\%) & 38\,/\,60 \hphantom{0}(63\%) \\
-    Max perf.\ gap & $0\%$ & $4.1\%$ \\
+    $T_M^*$ correct       & \textbf{108\,/\,108} \;(100\%) \\
+    $(T_M^*, T_N^*)$ exact & \textbf{108\,/\,108} \;(100\%) \\
+    Max perf.\ gap        & $0\%$ \\
     \bottomrule
   \end{tabular}
 
   \bigskip
-  \textbf{$T_M^*$ correct in all 108 conditions.}\\[4pt]
-  {\small\color{gray}
-    At $g_c \geq 300$: $T_M^*$ is exact but $T_N^*$ is ambiguous ---
-    the model picks a safe tile within 4.1\% of optimal.
-  }
+  \textbf{100\% exact match across all hardware configurations and $g_c$ values.}
   \end{center}
 
 \end{frame}

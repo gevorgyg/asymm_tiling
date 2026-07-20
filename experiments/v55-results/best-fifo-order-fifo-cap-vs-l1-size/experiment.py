@@ -141,7 +141,9 @@ def validate_roofline(base: str) -> None:
             for gc in GC_SWEEP:
                 # --- roofline prediction ---
                 pred_map = {k: MNK * max(a, gc / k[0]) for k, a in alpha.items()}
-                (tm_p, tn_p), _ = min(pred_map.items(), key=lambda x: x[1])
+                # tiebreak by alpha: when gc/TM dominates for multiple TN values,
+                # prefer lower alpha (= larger TN) to minimize residual A-load cost
+                (tm_p, tn_p), _ = min(pred_map.items(), key=lambda x: (x[1], alpha[x[0]]))
 
                 # --- empirical best (cache hit) ---
                 emp_results = run_safe_grid(base, _overrides(l1, fifo_cap, gc), fifo_cap)

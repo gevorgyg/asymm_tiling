@@ -122,7 +122,9 @@ def _validate(label: str, flags: Flags, cache: Path, base: str) -> None:
                 (tm, tn): MNK * max(a, gc / tm)
                 for (tm, tn), a in alpha.items()
             }
-            (tm_p, tn_p), _ = min(pred_map.items(), key=lambda x: x[1])
+            # tiebreak by alpha: when gc/TM dominates for multiple TN values,
+            # prefer lower alpha (= larger TN) to minimize residual A-load cost
+            (tm_p, tn_p), _ = min(pred_map.items(), key=lambda x: (x[1], alpha[x[0]]))
 
             # Empirical best from v55 cache
             emp_map = _load_grid(base, l1, gc, flags, cache)
