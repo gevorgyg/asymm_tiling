@@ -46,7 +46,7 @@ When ρ=1 (equal precisions) you get a square tile. When ρ=1/4 — fp32 input, 
 
 ---
 
-## Slide 6 — The Simulator We Built
+## Slide 5 — The Simulator We Built
 
 Before showing the validation results, let me briefly describe the tool we used to generate them. We built a custom cycle-accurate C++ simulator from scratch — nothing off the shelf.
 
@@ -56,7 +56,7 @@ The key architectural detail, which we'll come back to, is that B takes a comple
 
 ---
 
-## Slide 7 — Traffic Minimum at the Predicted Tile
+## Slide 6 — Traffic Minimum at the Predicted Tile
 
 With the simulator in hand, we can validate the paper's formula. Each panel here sweeps the tile aspect ratio TN/TM on the x-axis and plots L1 read traffic. The dashed line is the paper's prediction for where the minimum should land.
 
@@ -70,7 +70,7 @@ For all four values of ρ, the empirical minimum falls exactly on the predicted 
 
 ---
 
-## Slide 8 — B/A Balance: Exact Confirmation
+## Slide 7 — B/A Balance: Exact Confirmation
 
 We can look at this even more directly. Instead of plotting total traffic, this shows the ratio of B reads to A reads as the aspect ratio varies. At the paper's predicted optimum, the two inputs contribute equal traffic — so the ratio should cross 1.
 
@@ -80,9 +80,9 @@ One thing worth noting: the blue line for ρ=1 shows a small bump at the far lef
 
 > **[Config — fa_balance.png]**
 > Source: `experiments/v5-results/paper-model/paper-per-matrix-balance/`
-> M=N=K=128, A_P=8B (fp64), B_P varies by ρ: same four values as slide 7.
+> M=N=K=128, A_P=8B (fp64), B_P varies by ρ: same four values as slide 6.
 > L1=16KB, fully associative, no L2. C-stationary, B from memory (no FIFO).
-> Note: different matrix size from slide 7 (128 vs 256) — same hardware setup.
+> Note: different matrix size from slide 6 (128 vs 256) — same hardware setup.
 
 > **[Note — why the bump appears at the left of the graph]**
 >
@@ -98,7 +98,7 @@ One thing worth noting: the blue line for ρ=1 shows a small bump at the far lef
 
 ---
 
-## Slide 9 — Traffic ≠ Time
+## Slide 8 — Traffic ≠ Time
 
 So the paper's traffic model is solid. But here's the problem: minimizing bytes transferred is not the same as minimizing cycles. Cache latency, bandwidth limits, and prefetch behavior all break the simple proportionality between traffic and runtime — a tile that loads 10% fewer bytes doesn't necessarily run 10% faster.
 
@@ -114,7 +114,7 @@ We need a cycle-accurate model. And on top of that, we're working with a differe
 
 ---
 
-## Slide 10 — Enter the PRNG FIFO
+## Slide 9 — Enter the PRNG FIFO
 
 This is the PRNG FIFO. B elements are generated on-chip by a random number generator and streamed directly into the compute unit. B never touches the cache. B has no memory address.
 
@@ -122,7 +122,7 @@ This completely changes the model. The B_P/TM traffic term simply vanishes — t
 
 ---
 
-## Slide 11 — The PRNG FIFO: B Without Memory
+## Slide 10 — The PRNG FIFO: B Without Memory
 
 Here's what the hardware looks like. A comes through the normal memory hierarchy — DRAM, L2, L1, registers. B takes a completely separate path: the PRNG generates it, the FIFO buffers it, and it goes straight to the MAC unit, bypassing the cache entirely.
 
@@ -130,19 +130,19 @@ Two independent bottlenecks: A-loading from memory, and waiting for the PRNG at 
 
 ---
 
-## Slide 11b — Runtime = ?
+## Slide 11 — Runtime = ?
 
 [Pause. Let the question land.]
 
 ---
 
-## Slide 11c — Runtime = whichever is slower
+## Slide 12 — Runtime = whichever is slower
 
 They run in parallel. The runtime is determined by whichever finishes last: A-loading or B-generation. This is the key insight the whole model rests on.
 
 ---
 
-## Slide 12 — Which Loop Order Fits the FIFO?
+## Slide 13 — Which Loop Order Fits the FIFO?
 
 Now, the FIFO generates B elements in a fixed order — you can't skip or replay them. The loop order of your computation must match the generation order, or you pay a penalty.
 
@@ -152,31 +152,40 @@ C-stationary row-major pays g_c times TN per element — badly wasteful. C-stati
 
 ---
 
-## Slide 13 — B-Stationary: TM-Fold Register Reuse
+## Slide 14 — B-Stationary: TM-Fold Register Reuse
 
 Loop order: B outer, A inner. One B block is fetched once, then all TM A-rows sweep through it. Each B element is reused TM times — generation cost amortized to g_c/TM per MAC.
 
-The table on the slide shows the numbers directly: at g_c=0 C-stationary is 2× faster (lower α, no B cost). By g_c=10 C-stationary is already 1.25-1.28× slower. At g_c=100 it's 7.5× slower. The crossover happens fast because the ghost-read and lack-of-amortization penalties scale with g_c.
+The table on the slide shows the numbers directly. At g_c=0, C-stationary col-major is about 1.9× faster than B-stationary — it has a lower α and pays nothing for B. But that advantage is gone by g_c=10, and by g_c=100 it is 7.7× *slower*. Row-major is worse still: already slower than B-stationary at g_c=0, and 61× slower at g_c=100. The crossover happens fast because the amortization penalty scales linearly with g_c.
+
+> **[Note — the measured numbers, TM=32, TN=32]**
+> Source: `v55-results/b-stationry-vs-c-stationary/` and `.../b-stationary-vs-c-stationry-col-major/`, cycles/MNK.
+>
+> | mode | gen cost / MAC | g_c=0 | g_c=10 | g_c=100 |
+> |---|---|---|---|---|
+> | **B-stationary** | `g_c/TM` = g_c/32 | 3.203 | 3.203 | **3.263** |
+> | C col-major | `g_c/reg_m` = g_c/4 | 1.672 | 2.572 | 25.07 |
+> | C row-major | `g_c·TN/(reg_n·reg_m)` = 2·g_c | 5.174 | 20.10 | 200.1 |
+>
+> Relative to B-stationary: col-major is 1.9× faster / 1.25× faster / **7.7× slower**; row-major is 1.6× slower / 6.3× slower / **61× slower**.
+>
+> The formulas are exact — check: col-major at g_c=100 → 100/4 = 25 (measured 25.07); row-major → 100×32/16 = 200 (measured 200.1); B-stat → 100/32 = 3.1 but α=3.2 dominates, so it stays memory-bound at 3.263.
+>
+> **⚠ If asked about g_c=0:** col-major genuinely beats B-stationary there (1.672 vs 3.203). It has no ghost reads *and* a better C-access pattern. B-stationary's whole case rests on g_c > 0 — which is the regime this hardware actually operates in.
 
 > **[Note — why B-stationary wins by such a large margin]**
 >
 > The fundamental difference is what the inner loop sweeps over:
-> - **C-stationary**: C tile is fixed. Inner loop generates new B for each rti (reg_m A-rows). B amortized over reg_m rows.
-> - **B-stationary**: ONE B register sub-tile is fixed in %rb. Inner loop sweeps ALL TM/reg_m A sub-tiles through it. B amortized over TM rows.
+> - **C-stationary**: C tile is fixed. Inner loop generates new B for each rti (reg_m A-rows). B amortized over **reg_m = 4** rows.
+> - **B-stationary**: ONE B register sub-tile is fixed in %rb. Inner loop sweeps ALL TM/reg_m A sub-tiles through it. B amortized over **TM = 32** rows.
 >
-> Since TM >> reg_m (e.g., 32 vs 4), B-stationary reuses each B element 8× more. The per-MAC gen cost is:
->
-> | Mode        | gen cost / MAC     | at gc=100, TM=32 |
-> |-------------|-------------------|------------------|
-> | row-major   | gc × TN / reg_m   | >> 100 cy        |
-> | col-major   | gc / reg_m = gc/4 | 25 cy            |
-> | B-stationary| gc / TM = gc/32   | **3.1 cy**       |
+> Since TM ≫ reg_m, B-stationary reuses each B element 8× more at TM=32. Row-major is worse than col-major by a further factor of TN/reg_n = 8, because it consumes the whole B tile per C sub-tile and discards all but one column group (ghost reads).
 >
 > The TM-fold amortization is the entire point. It doesn't matter how large the B block is — the N_B factor cancels in both numerator and denominator. What matters is how many A-rows share each B element: reg_m in C-stationary, TM in B-stationary.
 
 ---
 
-## Slide 14 — Naive Cycle Model: Two Cost Terms
+## Slide 15 — Naive Cycle Model: Two Cost Terms
 
 Now we can build a cycle model. The traffic argument translates directly: A is reused TN times, so its cost per MAC is C_A over TN, where C_A is cycles per element from L1. B is generated by the FIFO, reused TM times, so its cost is g_c over TM.
 
@@ -184,7 +193,7 @@ The naive model adds these: T/MNK equals C_A/TN plus g_c/TM. But this assumes se
 
 ---
 
-## Slide 15 — FIFO is Async: Two Costs in Parallel
+## Slide 16 — FIFO is Async: Two Costs in Parallel
 
 The FIFO doesn't work that way. It generates B in the background while the core is loading A. The two operations overlap, so the runtime is determined by whichever one takes longer:
 
@@ -192,9 +201,36 @@ T/MNK = max{ C_A/TN, g_c/TM }
 
 This gives us two regimes. When g_c/TM is small — low generation cost or large TM — we're A-load bound, and reducing TN helps. When g_c/TM dominates, we're B-gen bound, and increasing TM helps. The optimal tile balances these two terms.
 
+> **[Note — `g_c* = TM × α`, the one formula behind every number in this talk]**
+>
+> A tile flips memory-bound → gen-bound exactly where the two terms are equal:
+> ```
+> α = g_c/TM   →   g_c* = TM × α
+> ```
+> Below `g_c*` the PRNG finishes before the core does, so generation is **completely hidden and costs nothing**. Above it the core stalls waiting for B. Think of `TM × α` as the tile's **g_c budget** — how much generation cost it can swallow unnoticed.
+>
+> Worked, TM=12 with α=3.32 (budget = 40):
+> ```
+> g_c=24 → PRNG 24/12 = 2.00/MAC < 3.32   fully hidden, cost 3.32 (same as g_c=0)
+> g_c=40 → PRNG 40/12 = 3.33/MAC ≈ 3.32   exactly saturated ← the budget
+> g_c=60 → PRNG 60/12 = 5.00/MAC > 3.32   exposed, cost 5.00 (waiting 1.68/MAC)
+> ```
+> Bigger TM buys a bigger budget via the TM-fold reuse: TM=96 with α=4.53 hides g_c up to **435**, ~11× more than TM=12 — even though its α is *worse*. That trade (cheaper tile vs. more g_c-tolerant tile) is the entire story of why TM* rises with g_c.
+
+> **[Note — gen-bound is a real stall, not a modelling abstraction]**
+> The simulator counts it. TM=12, TN=8 (α=3.315, so g_c*=40) — `prng_fifo.stall_cycles`:
+>
+> | g_c | g_c/TM | vs α | cost | FIFO stall cycles |
+> |---|---|---|---|---|
+> | 38 | 3.17 | core slower | 3.338 | 294,912 |
+> | **42** | **3.50** | **PRNG slower** | **3.661** | **4,359,168** ← 15× jump |
+> | 400 | 33.33 | PRNG slower | 33.453 | 379,223,864 |
+>
+> Below `g_c*` the small residual stalls are just FIFO startup priming. The moment `g_c/TM` passes α the stalls explode and cost tracks `g_c/TM` almost exactly (400/12 = 33.33 vs 33.453 measured). "Gen-bound" literally means the MAC unit is idle waiting on the random number generator.
+
 ---
 
-## Slide 16 — Replacing C_A/TN with Measured α(TM,TN)
+## Slide 17 — Replacing C_A/TN with Measured α(TM,TN)
 
 There's one more problem. The C_A/TN term assumes A loading is a fixed cost per element divided cleanly by TN. In practice, cache residency, line utilization, and access patterns mean the actual cycles per MAC depend on tile shape in a way that's richer than a simple ratio.
 
@@ -204,7 +240,7 @@ The final model: T/MNK = max{ α(TM, TN), g_c/TM }.
 
 ---
 
-## Slide 17 — Isolating α: Set g_c = 0
+## Slide 18 — Isolating α: Set g_c = 0
 
 g_c is a hardware parameter we fully control in simulation. Setting it to zero collapses the max to just α(TM, TN). Run B-stationary at g_c=0, measure T/MNK — that's your α value. No formula assumed, no analytical model of cache behavior.
 
@@ -212,7 +248,7 @@ The procedure is: run B-stationary at g_c=0 for each valid (TM, TN) pair, record
 
 ---
 
-## Slide 18 — Calibration: Building the α Table
+## Slide 19 — Calibration: Building the α Table
 
 Here's what the measured α table looks like. Each line is a different TN value, plotted against TM on the x-axis.
 
@@ -236,26 +272,59 @@ Two things stand out. First, small TN values like TN=4 cause α to spike at mode
 > - TM=16: 16 × 256 × 4 = 16,384 B = exactly L1 → A starts evicting other data
 > - TM ≥ 24: 24 KB+ → A sub-tile fully overflows L1, must reload from DRAM each pass
 >
-> After this cliff, α is roughly flat ("goes to a constant") — you're in the DRAM regime for A. Increasing TM doesn't help because A keeps coming from DRAM regardless.
+> **Why the plateau is flat in TM — the TM cancellation.** Total A traffic is `M·N·K/(16·TN)`, with **no TM in it**. Intuition: you always read the *whole A matrix* once per output column block; TM only decides how that matrix is *sliced*, not how much data it is.
+> - TM=16: 12 row-blocks × 256 lines = 3,072 lines (the whole of A)
+> - TM=96: 2 row-blocks × 1,536 lines = 3,072 lines (the whole of A)
 >
-> The cliff height depends on TN: in B-stationary, A is reused TN times per DRAM load (once per B column block). With TN=8 the jump is large (3.31→4.64) because each DRAM load buys only 8 reuses. With TN=32 the jump is small (3.31→3.58) because each load buys 32 reuses, making the DRAM cost affordable.
+> Verified in `l1.line_fills` at TN=16: the A tile grows **6×** from TM=16→96 while total fills stay flat (49,344 → 49,184; predicted 49,152). The gentle downward drift in α (3.934 → 3.827 ≈ 0.10) is *not* traffic — fills move only 0.3% — it is the `2.0/TM` FIFO-read term (see slide 20 note).
+>
+> **Why the cliff height depends on TN.** A's index in `instgen.cpp:162` contains no `tj`, but `tj` is an outer loop — so for each `ti` the entire A tile is re-traversed **once per output column block**, i.e. `N/TN` times (64/32/16/8/4 for TN=4/8/16/32/64).
+> - A fits in L1 → 1 DRAM read of A, the other `N/TN − 1` sweeps hit L1
+> - A evicted → all `N/TN` sweeps go to DRAM
+>
+> So the cliff is a jump from 1 to `N/TN` DRAM reads → penalty `176/(16·TN) = 11.3/TN`. Measured jumps (TM 12→16): TN=4 → **+2.74** (predicted 2.75 — one *fully un-amortized* miss, 176/64 MACs, since TN=4 gives exactly one `rtj` pass), TN=8 → +1.33, TN=16 → +0.62, TN=32 → +0.27, TN=64 → ~0.
+>
+> Confirmed in `line_fills`: at TM=12 they are ~6,200 **flat across all TN**; at TM=16 they scale as `N/TN` (200,448 / 101,760 / 52,416 / 27,744 / 15,408). Net of the constant ~3,072-line C floor, the A-only ratio is **exactly N/TN**: 62, 31, 16, 8.
 >
 > **Second cliff (big, at high TM): C-tile overflows L1.**
-> The C tile is TM × TN output partial sums, held resident in L1 throughout the inner loop. ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2 is the **reuse distance**: how many line-accesses happen between two consecutive touches of the same C line. L1 holds 256 lines; once the reuse distance exceeds that, C lines are evicted before they are reused. (Full derivation in the slide 22 note; 300 is a tolerance band above the true 256 capacity.)
+> The C tile is TM × TN output partial sums, held resident in L1 throughout the inner loop. ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2 is the **reuse distance**: how many line-accesses happen between two consecutive touches of the same C line. L1 holds 256 lines; once the reuse distance exceeds that, C lines are evicted before they are reused. (Full derivation in the slide 23 note; 300 is a tolerance band above the true 256 capacity.)
 > - TN=32: cliff at TM=96, ws=406 → α jumps from 3.48 to 9.03
 > - TN=64: cliff at TM=48, ws=394 → α jumps from 3.34 to 4.39, then at TM=64 (ws=526) → 8.87
 > - TN=8, TN=16: ws stays below 300 at all tested TM → NO second cliff visible
 >
-> The second cliff is much larger than the first because C is accessed on every single MAC (load + store, read-modify-write), not just once per B block like A. When C spills to DRAM, every MAC operation pays 2 × DRAM latency. That's why α jumps from ~3.5 to ~9 — roughly a 2.6× penalty.
+> **Why the second cliff costs ~5.6 cycles/MAC** (do *not* say "every MAC pays 2× DRAM latency" — that would give α≈360, not 9). Eviction happens once per C sub-tile per `rtk` boundary, not per MAC:
+> - `rtk` boundaries per block: K/reg_k = 64
+> - C sub-tiles: (TM/4)(TN/4) = TM·TN/16
+> - each eviction costs a dirty writeback + a write-allocate refill = 2 × 180 = 360 cy
+>
+> `64 × (TM·TN/16) × 360 / (TM·TN·256)` = **5.6 cy/MAC** — and **TM and TN cancel**, so every broken tile lands at the same place: 3.4 + 5.6 ≈ **9.0**. That is exactly what the data shows — (96,32)→9.03, (64,64)→8.87, (96,64)→8.88, despite very different shapes.
 >
 > **Summary of the three regimes:**
 > 1. **L1 regime** (TM ≤ 12): A fits in L1, all TN lines cluster near α ≈ 3.3
 > 2. **DRAM-A regime** (16 ≤ TM ≤ ~64): A from DRAM, C still in L1. α ≈ flat per TN (lower TN = higher α)
 > 3. **DRAM-AC regime** (TM large, TN large): both A and C from DRAM. α → ~9
 
+> **[Note — the whole α surface in one formula]**
+>
+> ```
+> α(TM, TN) ≈ 3.10  +  2.0/TM   +  11.3/TN · [A tile > L1]
+>              floor   FIFO read    A cold-fill from DRAM
+> ```
+> Fits the measured table to ~0.005. Spot-checks: α(96,16) → 3.10+0.021+0.706 = 3.827 vs **3.827** measured; α(32,4) → 3.10+0.063+2.825 = 5.988 vs **5.984**.
+>
+> - **`3.10` floor** — compute plus L1 traffic; the irreducible cost.
+> - **`2.0/TM`** — the `ltea` B-tile FIFO *transfer*, which survives even at g_c=0 (generation is free; moving 16 elements into `%rb` is not). `ltea` sits outside the `rti` loop, so MACs per `ltea` = TM·reg_n·reg_k = 16·TM → matching 2.0/TM gives **≈32 cycles per B register tile**. Same 1/TM shape as g_c/TM, and reg_m cancels identically.
+> - **`11.3/TN`** — switches on only once the A tile exceeds L1.
+>
+> **Why all five curves collapse at TM=8 and 12:** the third term is absent (A is resident), and the measured spread across TN=4…64 at TM=8 is literally **0.00**. TN only ever mattered as a divisor on a DRAM cost — remove the DRAM access and TN has nothing to do.
+>
+> Read the cold-fill coefficient straight off successive TN differences at TM=32: 1.409 = C/8, 0.705 = C/16, 0.353 = C/32, 0.177 = C/64 → **C ≈ 11.3** every time (theory: (180−4)/(REG_M·REG_K) = 176/16 = 11.0). At TM=8 the same subtraction gives C ≈ 0.02.
+>
+> ⚠ The constants `/16` (elements per 64B line) and `/8` are **precision-specific** — they assume 4-byte elements. At fp64 they change.
+
 ---
 
-## Slide 19 — Using the α Table: Predicting the Optimal Tile
+## Slide 20 — Using the α Table: Predicting the Optimal Tile
 
 Once we have α measured, using it is straightforward. For any new g_c, we evaluate max{ α(TM, TN), g_c/TM } at every valid tile shape and take the argmin. No new experiments — just table lookup and arithmetic.
 
@@ -265,10 +334,40 @@ The diagram shows why this works geometrically. α is roughly flat in the A-load
 > Source: `presentation/graphs/gen_charts.py` → α data from E6-nol2, TN=32 slice.
 > M=192, N=K=256, A_P=B_P=4B (fp32). L1=16KB, no L2. TN=32 fixed.
 > α(TM) curve measured at gc=0. Two gc/TM hyperbolas shown: gc=50 and gc=200.
+> Hardcoded α values (`gen_charts.py:245`): TM = 4/8/12/16/24/32/48/64/96/128 → α = 3.646 / 3.396 / 3.313 / 3.581 / 3.539 / 3.518 / 3.496 / 3.485 / 9.033 / 9.051.
+
+> **[Note — the small "bowl" at the left of the red α curve (TM=4→16)]**
+>
+> The α curve dips before it climbs. The left wall is exactly a `2.0/TM` term:
+>
+> | TM | α measured | 3.146 + 2.0/TM |
+> |---|---|---|
+> | 4 | 3.646 | **3.646** ✓ |
+> | 8 | 3.396 | **3.396** ✓ |
+> | 12 | 3.313 | **3.313** ✓ |
+>
+> **Left wall (TM=4→12):** the `ltea` B-tile load sits *outside* the `rti` loop, so its fixed ~32-cycle cost is amortized over `TM/reg_m` passes. At TM=4 the `rti` loop runs exactly **once** — you pay it with no reuse at all.
+> **Bottom (TM=12):** B-tile overhead already amortized 3×, and A still fits in L1.
+> **Right wall (TM=12→16):** A tile hits 16KB, the `11.3/TN` cold-fill switches on (+0.35 at TN=32), swamping the further 0.04 you'd gain from `2/TM`. α jumps 3.313 → 3.581.
+> **After (TM≥16):** the gentle decline 3.581 → 3.485 is just `2/TM` continuing to shrink (0.125 → 0.031), until the C-tile cliff at TM=96.
+>
+> The bowl is shallow (~10%) but it is why **TM\*=12 is the optimum at low g_c** on the next slide.
+
+> **[Note — the winner is usually memory-bound, and why]**
+>
+> Across the 108 validation conditions the winning tile is memory-bound in **81/108 (75%)**; in E8 it is 13 of 14. Median `(g_c/TM)/α` at the winner is 0.84 — just on the memory side of balance.
+>
+> The two states are **not symmetric**:
+> - **Gen-bound is escapable.** Its cost `g_c/TM` depends only on TM, and α is nearly flat in TM in the DRAM regime (4.64 → 4.53 across TM=16→96 at TN=8). So you can almost always escape by growing TM, at negligible α cost.
+> - **Memory-bound is where you stop.** Growing TM further gains nothing, and eventually `ws_lines` forces TN down and α back up.
+>
+> So the optimizer pushes TM up until it escapes gen-bound, then stops. You stay gen-bound only when (a) **you run out of TM** — at g_c=400 even 400/96 = 4.17 > α = 3.83 — or (b) **escaping costs more α than the stall**, e.g. TN=8 at g_c=42–52, where staying gen-bound at 3.50 beats crossing the L1 cliff to α=4.53.
+>
+> Landing at 0.84 rather than a perfectly balanced 1.0 is **TM quantization**: TM only comes in {4,8,12,16,24,32,48,64,96}, so escaping gen-bound overshoots. E8 at g_c=38 sits at ratio 0.96 (nearly perfect), then the winner jumps TM=12→32 at g_c=42 and the ratio drops to 0.39.
 
 ---
 
-## Slide 20 — Roofline Validation: Setup
+## Slide 21 — Roofline Validation: Setup
 
 Now the question is: does this actually work? We calibrate α once at g_c=0 — so we're committed to a fixed table — and then ask whether the model correctly predicts the best tile at new, unseen g_c values.
 
@@ -278,7 +377,7 @@ We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept
 
 ---
 
-## Slide 21 — Roofline Validation: Results
+## Slide 22 — Roofline Validation: Results
 
 108 out of 108 — exact match across all hardware configurations and all g_c values.
 
@@ -351,18 +450,32 @@ We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept
 >
 > It's a **model accuracy** constraint. If the FIFO can't pre-buffer a full block, the PRNG and MAC partially overlap instead of fully overlap. The simple "both run in parallel, runtime = max(A-load, B-gen)" model becomes less accurate because now there are stall points mid-block. The experiments stay in the full-overlap regime so the model's predictions hold.
 
-> **[Note — what "cycle gap ≤ 4%" means]**
-> The cycle gap answers: *if the model picks the "wrong" tile, how much performance do you actually lose?*
-> Formally: gap = cycles(predicted tile) / cycles(optimal tile) − 1.
-> A gap of 0% means the predicted tile is just as fast as the optimal. A gap of 4% means you run 4% slower than you could.
-> In the high-g_c gen-bound regime, many (TM, TN) combinations give the same predicted cost (g_c/TM doesn't depend on TN), so TN* is ambiguous. Even if the model picks a suboptimal TN, all TN choices with the same TM give nearly the same actual cycles — hence the ≤4% bound.
+> **[Note — "Max perf. gap 0%" on the slide is tautological — say so if challenged]**
+> gap = cycles(predicted tile) / cycles(optimal tile) − 1. Since the prediction **is** the optimum in all 108 conditions, the gap is 0 by construction. It carries no information beyond the exact-match row above it. Not wrong, but it is not independent evidence, and a sharp examiner may say so. It would only be informative if some predictions were wrong.
 
-> **[Note — why TN* could degrade at very high g_c]**
-> When g_c/TM >> α(TM, TN) for every valid TN, the roofline model collapses to max(α, g_c/TM) ≈ g_c/TM for all TN. Since g_c/TM doesn't depend on TN, the model predicts identical cost for all TN values at the best TM. TN* becomes arbitrary — the model has no information to choose between TN values. In practice, small differences in α(TM, TN) (from cache-line utilization and register pressure) still break the tie correctly at the g_c values we tested, so the model remains 100% accurate. But at sufficiently extreme g_c, this margin could disappear.
+> **[Note — why TN* could still degrade at extreme g_c]**
+> When g_c/TM ≫ α for *every* valid TN, the model collapses to max(α, g_c/TM) ≈ g_c/TM, which does not depend on TN — so all TN at the best TM tie exactly. This is real and visible: at g_c=250 every TM=12 tile predicts 20.833 and every TM=32 tile predicts 7.812, regardless of TN.
+>
+> We handle it explicitly with the α tie-break (see the argmin note above), which resolves every tie correctly at the g_c values tested. It is not luck — α is a strictly better tie-break than iteration order. But the *margin* between tied tiles shrinks with g_c, so at sufficiently extreme g_c the ranking could become sensitive to measurement noise in α.
+
+> **[Note — the scope of the 108/108 claim, and its one real limitation]**
+>
+> **State it precisely:** *for each hardware configuration, one calibration at g_c=0 predicts the optimal tile correctly at every g_c we tested.* The code runs a **separate** g_c=0 calibration per split — 12 calibrations, each predicting 9 g_c values. Not "one calibration covers all hardware."
+>
+> **The task was genuinely hard** (lead with this): 12 distinct optimal tiles across the 108 conditions; the optimum **moves with g_c in 11 of the 12** configs; the model chose among 16–36 candidates each time, so random guessing scores ≈3.7%. There were also **zero empirical ties**, so 100% is not a tie-breaking artifact.
+>
+> **⚠ The limitation to volunteer rather than be caught by.** `safe()` compares against a hardcoded `ws_lines < 300` calibrated for L1=16KB. It does **not** scale with L1 — but in this sweep L1 ranges from 8KB (128 lines) to 120KB (1920 lines). At the large-L1 splits it excludes tiles that would fit comfortably. We simulated them:
+>
+> | L1 | gc | excluded tile | measured α | safe() winner | its α | gap |
+> |---|---|---|---|---|---|---|
+> | 40KB | 250 | (96,32) ws=406 | **3.478** | (96,16) | 3.837 | **9.3% faster** |
+> | 56KB | 250 | (96,64) ws=790 | **3.297** | (96,16) | 3.837 | **14.1% faster** |
+>
+> 28 of 36 conditions across the four large-L1 splits have a better excluded tile (~26% of the 108). **This does not invalidate the model** — prediction and ground truth used the same filter, and the roofline *predicted these excluded tiles to within 0.15%* (3.473 vs 3.478; 3.295 vs 3.297). The limitation is the **candidate filter, not the model**. The fix is to scale the threshold: `ws_lines < 1.17 × (L1/LINE)`, preserving the 300/256 ratio validated at 16KB.
 
 ---
 
-## Slide 22 — Why TN* Fails at High g_c: Gen-Bound Regime
+## Slide 23 — Why TN* Fails at High g_c: Gen-Bound Regime
 
 [This slide — best_shape_per_gc.png — shows TM* and TN* as step functions of g_c.]
 
@@ -425,10 +538,10 @@ The graph shows the model's globally optimal (TM*, TN*) trajectory as g_c increa
 
 ---
 
-## Slide 23 — Impact of Tile Selection: Numbers
+## Slide 24 — Impact of Tile Selection: Numbers
 
 Does choosing the right tile actually matter? The numbers:
-- At g_c=100: 20–60% faster depending on TN.
+- At g_c=100: 20–65% faster depending on TN.
 - At g_c=250: ~85% faster.
 - At g_c=400: up to 90% faster.
 
@@ -443,19 +556,21 @@ The gain grows with g_c because the generation bottleneck is what the tile shape
 
 ---
 
-## Slide 24 — Impact of Tile Selection: Graph
+## Slide 25 — Impact of Tile Selection: Graph
 
 The model we built tells you where that optimal shape is, from a single calibration run at g_c=0. Thanks for listening.
 
 > **[Config — optimal_vs_square.png]**
 > Source: same `e8-gc-boundary-sweep/results.json` via `plot_all.py:plot_e8_vs_square()`
 > M=192, N=K=256, A_P=B_P=4B (fp32). L1=16KB, fully associative, no L2. B-stationary. FIFO_CAP=16384 elements.
-> Four TN values plotted: 8, 16, 32, 64 (TN=4 excluded). Same gc sweep as slide 24.
+> Four TN values plotted: 8, 16, 32, 64 (TN=4 excluded). Same gc sweep as slide 23.
 > Left panel: cycles/MNK for optimal TM* vs square TM=TN, per (TN, gc). Right panel: speedup %.
 
 > **[Note — why TN=64 (red line) is flat in performance and its SPEEDUP drops at high gc]**
 >
-> Left panel: Square tile (TM=64, TN=64) has C-tile size = 64×64×4B = 16384B = L1 capacity exactly. It saturates L1 completely. Every new K-iteration evicts the current A row from L1 and reloads it from DRAM. Cost ≈ 8.9 cycles, constant regardless of gc — the square tile is perpetually A-load bound.
+> Left panel: the square tile (TM=64, TN=64) has `ws_lines = 526`, far past 300 — its **C tile** is evicted (not its A row), giving α = 8.87 from g_c=0 onward. It stays flat because its gen crossover is `g_c* = TM × α = 64 × 8.87 = 568`, which is **beyond the g_c=400 end of the sweep**. So it never becomes gen-bound anywhere on this graph and never moves off 8.87.
+>
+> The irony worth saying out loud: it is *so bad at memory* that generation never gets to be its problem. A huge α is a huge g_c budget. Consequence — it goes from the **worst** square at g_c=15 to the **best** square at g_c=400 (8.87 vs 50.0 / 25.0 / 12.5 for TN=8/16/32, all of which went gen-bound long before).
 >
 > The optimal tile for TN=64 starts at TM=32 (cost ≈ 3.3 cycles) and only grows to TM=48 at high gc. It can't grow beyond TM=48 because of the register constraint: safe(48,64)=394>300 (already over the limit), safe(64,64)=526>300. So the "optimal" for TN=64 is really capped at TM≤48.
 >
@@ -496,5 +611,59 @@ The model we built tells you where that optimal shape is, from a single calibrat
 >
 > Square (TM=32, TN=32): ws=134, α≈3.50. Optimal: TM=64, α≈3.49 (almost identical at low gc). Tiny speedup until the square goes gen-bound at gc ≈ 32×3.50 = 112.
 > After that: square cost = gc/32 (rising). Optimal (TM=64) gen-bound at gc ≈ 64×3.49 = 223. After both are gen-bound: cost ratio = (gc/32)/(gc/64) = 2. Speedup = 50%. Flat forever. The 2× TM ratio is the permanent advantage.
+
+> **[Note — THE THREE RULES that explain every feature of this graph]**
+>
+> First, define the term: **"the square"** is the baseline tile with **TM = TN** — the naive symmetric choice. Each coloured curve has its own square, fixed by its TN (TN=8 → tile (8,8); TN=32 → tile (32,32)). "The square's TM" just means TN.
+>
+> **RULE 1 — everything comes from `g_c* = TM × α`** (the gen-bound crossover):
+>
+> | tile | α | `g_c*` | role |
+> |---|---|---|---|
+> | (8,8) TN=8's square | 3.40 | **27** | dies earliest — tiny TM |
+> | (12,·) the A-resident optimum | ~3.32 | **40** | when the cache advantage expires — *same for every TN* |
+> | (16,16) TN=16's square | 3.93 | **63** | |
+> | (32,32) TN=32's square | 3.52 | **112** | |
+> | (64,64) TN=64's square | 8.87 | **568** | past the sweep — never gen-bound |
+>
+> **RULE 2 — the speedup only moves when one side is rising and the other is frozen:**
+>
+> | square | optimal | speedup |
+> |---|---|---|
+> | gen-bound (rising) | memory-bound (frozen) | **climbs** |
+> | gen-bound (rising) | gen-bound (rising) | **flat** at `1 − TM_sq/TM_opt` — g_c cancels |
+> | both memory-bound | | small and flat |
+>
+> **RULE 3 — a dip is the window between two `g_c*` crossings.** The left edge is always ≈40 (the A-resident tile is TM=12 regardless of TN); only the right edge moves:
+> ```
+> TN=8:   square dies at 27, BEFORE 40  → advantages overlap → NO dip
+> TN=16:  40 → 63    = 23 wide
+> TN=32:  40 → 112   = 72 wide   ← why blue's dead zone is so long
+> ```
+>
+> **Asymptote = `1 − TN/TM_opt`.** (Optimal cost on top — easy to invert by accident.) Both gen-bound, g_c cancels:
+> ```
+> TN=8:  1 − 8/96  = 92%     TN=16: 1 − 16/96 = 83%     TN=32: 1 − 32/64 = 50%
+> ```
+> Blue asymptotes at only 50% because 64 is merely **twice** 32. Large TN loses at both ends: the square's TM is already large *and* `ws_lines(96,32)=406` caps TM_opt at 64.
+
+> **[Note — walking the green (TN=8) curve, with the bound-state of each tile]**
+>
+> Square = (8,8), α=3.397. Optimum is TM=12 (α=3.315) then TM=96 (α=4.530).
+>
+> | gc | square TM=8 | TM=12 | TM=96 | best | speedup |
+> |---|---|---|---|---|---|
+> | 15 | 3.397 **mem** | 3.315 **mem** | 4.530 mem | 12 | 2.4% |
+> | 38 | 4.750 **GEN** | 3.315 **mem** | 4.530 mem | 12 | 30.2% |
+> | 42–52 | 5.25→6.50 **GEN** | 3.50→4.33 **GEN** | 4.530 mem | 12 | **33.3% flat** |
+> | 57 | 7.125 **GEN** | 4.750 GEN | 4.530 **mem** | **96** | 36.4% |
+> | 400 | 50.0 **GEN** | 33.3 GEN | 4.530 **mem** | 96 | 90.9% |
+>
+> - **Starts at only 2.4%** because the square TM=8 gives an 8KB A tile that *fits* in L1 — it's a decent tile. (Contrast TN=16, whose square sits exactly *on* the cliff, hence its 16% gap.) The 0.08 difference is just `2/8 − 2/12`.
+> - **No dip**, because the square dies at g_c=27 *before* TM=12 dies at 40.
+> - **The 33.3% plateau** is Rule 2: both gen-bound, so `1 − 8/12 = 33.3%` with g_c cancelling. Costs rise 5.25→6.50 and 3.50→4.33 — the same ×1.238 — so the *gap* is frozen.
+> - **It resumes climbing at g_c≈54** because the *optimal tile changes*. TM=12's cost `g_c/12` finally exceeds TM=96's α of 4.530 (crossover `12 × 4.530 = 54.4`), so the optimum switches to TM=96 — which is **memory-bound again** (its own `g_c*` is 435). Frozen optimal + rising square = the gap reopens, toward the `1 − 8/96 = 92%` ceiling.
+>
+> If asked *"if both are gen-bound, how does it ever start rising again?"* — the answer is that "the optimal" is not a fixed tile. It is whichever tile is best at that g_c, and at g_c≈54 that becomes a tile with 11× the g_c budget.
 
 ---
