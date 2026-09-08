@@ -375,6 +375,9 @@ The methodology is: measure α at g_c=0; for each new g_c, compute the predicted
 
 We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept how the budget is split between L1 and FIFO: 4 splits for 64KB, 8 splits for 128KB, 12 hardware configurations total. Nine g_c values from 10 to 500. That's 108 test conditions.
 
+> **⚠ [These numbers are SPOKEN ONLY — the slide shows just the question.]**
+> The test-conditions table was removed from the slide, so you have to say them. The full list if pressed: SRAM budgets 64KB and 128KB; L1/FIFO splits 4 + 8 = 12 configs; g_c values 10, 100, 250, 280, 300, 310, 325, 350, 500; total 12 × 9 = 108.
+
 ---
 
 ## Slide 22 — Roofline Validation: Results

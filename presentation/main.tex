@@ -870,16 +870,6 @@
       calibrate $\alpha$ once at $g_c=0$;
       does the model predict the best tile correctly
       at any new $g_c$?
-
-      \medskip
-      \textbf{Test conditions:}\\
-      \renewcommand{\arraystretch}{1.25}
-      \begin{tabular}{@{}ll@{}}
-        SRAM budgets  & 64\,KB, 128\,KB \\
-        L1/FIFO splits & 4 (64\,KB) + 8 (128\,KB) = 12 configs \\
-        $g_c$ values  & 10, 100, 250, 280, 300, 310, 325, 350, 500 \\
-        Total         & $12 \times 9 = 108$ conditions \\
-      \end{tabular}
     \end{center}
 \end{frame}
 
@@ -892,7 +882,6 @@
     \toprule
     & All 108 conditions \\
     \midrule
-    $T_M^*$ correct       & \textbf{108\,/\,108} \;(100\%) \\
     $(T_M^*, T_N^*)$ exact & \textbf{108\,/\,108} \;(100\%) \\
     Max perf.\ gap        & $0\%$ \\
     \bottomrule
