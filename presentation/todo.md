@@ -1,3 +1,6 @@
+questions after one go:
+1. 
+
 notes:
 * alpha graph: 
 why alpha is flat. because the Tm cancels in the calculation of (Tm * k * 1/16) / (Tm * Tn * k)

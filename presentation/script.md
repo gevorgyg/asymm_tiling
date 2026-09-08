@@ -453,8 +453,12 @@ We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept
 >
 > It's a **model accuracy** constraint. If the FIFO can't pre-buffer a full block, the PRNG and MAC partially overlap instead of fully overlap. The simple "both run in parallel, runtime = max(A-load, B-gen)" model becomes less accurate because now there are stall points mid-block. The experiments stay in the full-overlap regime so the model's predictions hold.
 
-> **[Note — "Max perf. gap 0%" on the slide is tautological — say so if challenged]**
-> gap = cycles(predicted tile) / cycles(optimal tile) − 1. Since the prediction **is** the optimum in all 108 conditions, the gap is 0 by construction. It carries no information beyond the exact-match row above it. Not wrong, but it is not independent evidence, and a sharp examiner may say so. It would only be informative if some predictions were wrong.
+> **[Note — why the slide shows only one row]**
+> Two rows were deliberately removed. Both were tautological given 108/108:
+> - **"TM\* correct"** — implied by the pair row. If (TM\*, TN\*) matches exactly, TM\* matched.
+> - **"Max perf. gap 0%"** — defined as `cycles(predicted)/cycles(optimal) − 1`. Since the prediction *is* the optimum in every condition, this is 0 by arithmetic; it cannot report anything else. The metric was designed for the pre-fix state at 86/108, where "when we miss, how costly is the miss?" was a real question.
+>
+> **If asked "so how much does getting it right actually buy you?"** — that number is *not* on the slide, but you have it: the **runner-up** tile in the candidate set is a median 3.5% and up to **21.8%** slower than the optimum. So exact selection is worth up to ~22% over the next-best choice. (Picking the *worst* valid tile costs up to 23×, but that is a weak comparison — the worst tile is something like TM=4 at g_c=500, which nobody would choose.)
 
 > **[Note — why TN* could still degrade at extreme g_c]**
 > When g_c/TM ≫ α for *every* valid TN, the model collapses to max(α, g_c/TM) ≈ g_c/TM, which does not depend on TN — so all TN at the best TM tie exactly. This is real and visible: at g_c=250 every TM=12 tile predicts 20.833 and every TM=32 tile predicts 7.812, regardless of TN.
