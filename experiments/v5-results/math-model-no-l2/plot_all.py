@@ -800,9 +800,8 @@ def plot_e8_best_shape():
     GC_VALS = sorted(measured)
     best_tm   = [min(measured[gc], key=lambda k: measured[gc][k])[0] for gc in GC_VALS]
     best_tn   = [min(measured[gc], key=lambda k: measured[gc][k])[1] for gc in GC_VALS]
-    best_alpha = [measured[gc][min(measured[gc], key=lambda k: measured[gc][k])] for gc in GC_VALS]
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8.0, 7.0), sharex=True)
+    fig, ax1 = plt.subplots(figsize=(8.0, 4.5))
 
     # ── Panel 1: TM* and TN* step functions ───────────────────────────────────
     ax1.step(GC_VALS, best_tm, where="post", color=BLUE, lw=2.5, label="$T_M^*$", zorder=3)
@@ -830,14 +829,8 @@ def plot_e8_best_shape():
                   fontsize=13, pad=10)
     ax1.legend(labelcolor=INK_MUT, loc="upper left")
     ax1.set_ylim(0, 115)
-
-    # ── Panel 2: best α* achieved ─────────────────────────────────────────────
-    ax2.plot(GC_VALS, best_alpha, color=BLUE, lw=2.4, marker="o", ms=6,
-             zorder=3, label="optimal $(T_M^*, T_N^*)$")
-    ax2.set_xlabel("B generation cost $g_c$  (cycles / element)", fontsize=12, labelpad=6)
-    ax2.set_ylabel("Best $\\alpha^*$  (cycles / output element)", fontsize=12, labelpad=6)
-    ax2.set_title("Best achievable performance per $g_c$", fontsize=13, pad=10)
-    ax2.xaxis.set_major_locator(ticker.MultipleLocator(50))
+    ax1.set_xlabel("B generation cost $g_c$  (cycles / element)", fontsize=12, labelpad=6)
+    ax1.xaxis.set_major_locator(ticker.MultipleLocator(50))
 
     fig.tight_layout(pad=1.4)
     fig.savefig(OUT / "best_shape_per_gc.png", bbox_inches="tight")
