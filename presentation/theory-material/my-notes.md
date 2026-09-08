@@ -1,3 +1,144 @@
+#### alpha graph why it looks like that:
+You're right, I overstated it. The rtj loop is just the register-level sub-columns within one TN tile — A is actually reloaded for each rtj. Look at the load on line 162:
+
+for (uint rtj = 0; rtj < tile.n / reg_n_; ++rtj) {   // sub-cols within ONE TN tile
+    load B → %rb
+    for (uint rti = 0; rti < tile.m / reg_m_; ++rti) {
+        load A → %ra    // ← reloaded every rtj, not held
+        ...
+        tmulac
+    }
+}
+
+So A is not "used once for all TN columns" at the register level. The amortization happens one level up — in L1:
+
+- A[ti's rows, tk's K-block] = TM × K × A_P bytes brought from DRAM once per (ti, tk)
+- It sits in L1 while all tile.n/reg_n_ rtj iterations run — those are L1 hits, not DRAM hits
+- Total MACs served by that one DRAM fetch: TM × K × TN
+
+So DRAM A-bytes per MAC = (TM × K × A_P) / (TM × K × TN) = A_P / TN — same formula, but the mechanism is L1 reuse across the rtj iterations, not register retention. Larger TN → more rtj iterations served from the same L1-resident A data → better DRAM amortization.
+
+✻ Worked for 41s
+
+❯ so we load a B reg tile, and then for that one tile, we load Tm / reg_m rows of A into the L1 cache.
+
+  then when trj moves on to the next column, we reuse the same A rows we just put in the cache again ?
+
+  that's the idea ?
+
+Yes, exactly that.
+
+For one (ti, tj, tk):
+
+rtj=0: load B[:,0:reg_n] → %rb
+         rti=0: load A[0:reg_m, :] → L1 → %ra, compute   ← DRAM miss
+         rti=1: load A[reg_m:2*reg_m, :] → L1 → %ra      ← DRAM miss
+         ...
+
+rtj=1: load B[:,reg_n:2*reg_n] → %rb
+         rti=0: load A[0:reg_m, :] → %ra                  ← L1 hit  ✓
+         rti=1: load A[reg_m:2*reg_m, :] → %ra            ← L1 hit  ✓
+         ...
+
+rtj=2: load B[:,2*reg_n:3*reg_n] → %rb
+         rti=0: load A[0:reg_m, :] → %ra                  ← L1 hit  ✓
+         ...
+
+DRAM sees the A rows once (at rtj=0). Every subsequent rtj just hits L1. The DRAM cost of those A rows is spread over all TN/reg_n rtj passes, which is why more TN → cheaper A per MAC.
+
+The one condition for this to work: the A tile (TM × K × A_P bytes) has to actually fit in L1, otherwise later rtj iterations start evicting earlier A rows and you get DRAM misses on every pass. That's the first cliff in the α graph — at TM=16 with L1=16KB, the A tile exactly fills L1 and things start breaking down.
+
+✻ Brewed for 10s
+
+❯ so as soon as the Tn is very small, that resue is not a thing or is less.
+  and when it's less, the panelty is bigger at the same point exactly where the row spills out
+
+Yes, that's the core idea. And you're right that small TN makes the cliff worse, but in a specific way — let me be precise about it.
+
+Before the cliff (A fits in L1):
+- A rows land in L1 at rtj=0, reused for TN/reg_n passes
+- DRAM cost per MAC = A_P / TN → large TN is cheap, small TN is expensive
+
+At the cliff (A no longer fits — evicted between rtj passes):
+- A is reloaded from DRAM on every rtj pass
+- DRAM cost per MAC = A_P / reg_n — constant, independent of TN
+
+So after the cliff, TN stops mattering for A-bandwidth. Both large and small TN converge to the same DRAM cost.
+
+The consequence is the opposite of what you might expect:
+
+- Large TN: big cliff — it had a large L1 reuse benefit to lose, so α jumps sharply
+- Small TN: small cliff — it had almost no L1 reuse to begin with (TN ≈ reg_n means only 1 rtj pass anyway), so the cliff barely changes its α
+
+The reason small TN looks bad on the graph is not that its cliff is steeper — it's that it starts high and stays high. The cliff hurts large TN most because that's where the reuse benefit was real.
+
+✻ Crunched for 1m 2s
+
+❯ they all happen at Tm = 16 ? does that make sense ?
+
+Yes, it makes sense exactly because TN doesn't appear in the A tile size.
+
+The A tile is just TM rows × K columns:
+
+A tile = TM × K × A_P bytes
+       = TM × 256 × 4B
+       = TM × 1KB
+
+L1=16KB → fits when TM × 1KB < 16KB → TM < 16, breaks at TM=16 for every TN.
+
+TN is irrelevant to how much A data you need to hold — you always need the same TM rows of K elements in L1, regardless of how many B columns you're sweeping over. So the cliff is at the same TM for all TN curves, which is exactly what you see in the graph — all five lines bend at the same TM=16 point.
+
+What TN does change is how severe the pre-cliff regime looks (small TN → already high α) and how big the drop is at the cliff (large TN → bigger jump), but the location is pinned purely by A tile size vs L1 capacity.
+
+#### units 
+
+The model is:
+
+T/MNK = max(α(TM,TN),  gc/TM)
+
+Both sides must be in cycles per MAC. Here's how each term gets there:
+
+T/MNK — trivially cycles/MAC:
+- T = total cycles for the GEMM
+- MNK = total multiply-accumulate operations
+- T/MNK = [cycles / MAC]
+
+α(TM,TN) — measured directly in cycles/MAC:
+- Calibrated at gc=0 as T_measured / MNK
+- Units: [cycles / MAC] ✓
+
+gc/TM — this is where the units need unpacking:
+
+┌─────────────────────────────────────────────────────────────┬────────────────────┐
+│                            quantity                            │          value          │       units        │
+├─────────────────────────────────────────────────────────────┼────────────────────┤
+│ gc                                       ost per B element  │ [cycles /          │
+│                                                             │ B-element]         │
+├─────────────────────────────────────────────────────────────┼────────────────────┤
+│ one B element B[k,n] participates in     al MACs (all       │                    │
+│                                          s)                 │                    │
+├────────────────────────────────────────────────────────────────┼─────────────────────────┼────────────────────┤
+│ but in B-stationary tiling, B[k,n] is genM generation       │                    │
+│  A-rows                                  s                  │                    │
+├─────────────────────────────────────────────────────────────┼────────────────────┤
+│ generation cost attributed to that B[k,n](M/TM)             │ [cycles]           │
+├────────────────────────────────────────────────────────────────┼─────────────────────────┼────────────────────┤
+│ per MAC, for that B[k,n]                 (M/TM) / M         │ [cycles / MAC]     │
+├────────────────────────────────────────────────────────────────┼─────────────────────────┼────────────────────┤
+│ simplify                                                       │ gc / TM                 │ [cycles / MAC] ✓   │
+└────────────────────────────────────────────────────────────────┴─────────────────────────┴────────────────────┘
+
+The intuition: each B element is reused TM and re-generated. So you pay one gc per TM
+MACs → gc/TM cycles per MAC.
+
+The max: picks whichever bottleneck dominat
+- α = A-load bound (how long it takes to st
+- gc/TM = generation bound (how long the FI
+
+Both are in [cycles/MAC], so the max is dimltiplying back by MNK gives total predictedcycles.
+
+
+----------------------------------------------------------------------------------------------------------
 * Using same size elements. But we bring it in way quicker. That's the idea with the fifo.
 * The cost in cache goes to zero.
 * The non fifo saves space in the L2 only.
