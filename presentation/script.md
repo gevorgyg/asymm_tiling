@@ -241,7 +241,7 @@ Two things stand out. First, small TN values like TN=4 cause α to spike at mode
 > The cliff height depends on TN: in B-stationary, A is reused TN times per DRAM load (once per B column block). With TN=8 the jump is large (3.31→4.64) because each DRAM load buys only 8 reuses. With TN=32 the jump is small (3.31→3.58) because each load buys 32 reuses, making the DRAM cost affordable.
 >
 > **Second cliff (big, at high TM): C-tile overflows L1.**
-> The C tile is TM × TN output partial sums, held resident in L1 throughout the inner loop. When ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2 exceeds ~300 (≈ L1 capacity), the C tile can no longer stay resident.
+> The C tile is TM × TN output partial sums, held resident in L1 throughout the inner loop. ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2 is the **reuse distance**: how many line-accesses happen between two consecutive touches of the same C line. L1 holds 256 lines; once the reuse distance exceeds that, C lines are evicted before they are reused. (Full derivation in the slide 22 note; 300 is a tolerance band above the true 256 capacity.)
 > - TN=32: cliff at TM=96, ws=406 → α jumps from 3.48 to 9.03
 > - TN=64: cliff at TM=48, ws=394 → α jumps from 3.34 to 4.39, then at TM=64 (ws=526) → 8.87
 > - TN=8, TN=16: ws stays below 300 at all tested TM → NO second cliff visible
@@ -309,7 +309,7 @@ We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept
 >
 > **Subject to (what makes a pair "valid"):**
 > 1. **L1 working-set constraint** — `TM × TN // 8 + TM // 4 − 2 < 300`
->    The C tile accumulates partial sums across the entire inner loop. The expression `ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2` estimates how many L1 **cache lines** the C tile occupies. L1 = 16KB = 256 lines. When ws_lines exceeds ~256–300, the C tile no longer fits in L1 — parts of it get evicted and reloaded on every inner-loop iteration, blowing up α. The threshold 300 is empirically observed: below it α is flat, above it α spikes. Examples: (64,32)→ws=270 ✓, α=3.49 normal; (96,32)→ws=406 ✗, α=9.03 broken; (48,64)→ws=394 ✗, α=4.39 elevated.
+>    The C tile accumulates partial sums across the entire inner loop. `ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2` is the **reuse distance** — line-accesses between two consecutive touches of the same C line — not the C footprint. Terms: 2×(TM×TN/16) for C (load+store per line), TM/4 for A (1 line per sub-tile), −2 for the measured line itself. L1 = 16KB = 256 lines is the true capacity; 300 is a tolerance band, since a small overflow does not measurably hurt α. Examples: (64,32)→ws=270 ✓, α=3.49 normal *(over 256, still fine)*; (96,32)→ws=406 ✗, α=9.03 broken; (48,64)→ws=394 ✗, α=4.39 elevated.
 > 2. **FIFO capacity** — `TK × TN ≤ FIFO_CAP`
 >    This is a performance constraint, not a correctness one. The FIFO has hardware back-pressure: when full the PRNG pauses, when empty the consumer stalls, so TK×TN > FIFO_CAP still produces correct results. The constraint ensures the PRNG can pre-buffer one complete B block (TK×TN elements) before the MAC loop starts, so the two fully overlap. If FIFO_CAP < TK×TN the FIFO caps mid-fill, the MAC loop eventually stalls waiting for more elements, and the gc/TM cost model becomes less accurate. The experiments stay in the regime where the pre-buffer fits. With TK=256, FIFO_CAP=16384: TN ≤ 64 (TN=64 fills it exactly).
 > 3. **Clean tiling** — TM divides M, TN divides N.
@@ -333,10 +333,10 @@ We ran this across two SRAM budgets — 64KB and 128KB. For each budget we swept
 >
 > In B-stationary, the C tile (TM rows × TN columns of partial sums) lives in L1 throughout the entire inner loop. Every iteration of the inner loop loads a small A sub-tile, does a multiply-accumulate into the C sub-tile, and stores it back. The C tile must stay resident in L1 the whole time — if any part of it gets evicted, the next iteration has to reload it from DRAM, paying the full DRAM latency each time.
 >
-> The formula `ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2` estimates how many L1 cache lines the C tile occupies. L1 = 16KB = 256 cache lines of 64 bytes each. Once the tile grows past roughly 256 lines the C tile stops fitting, evictions start, and measured α blows up.
+> The formula `ws_lines(TM,TN) = TM×TN/8 + TM/4 − 2` measures the **reuse distance**: line-accesses between two consecutive touches of the same C line (2×TM×TN/16 for C's load+store, TM/4 for A, −2 for the line itself). L1 = 16KB = 256 cache lines of 64 bytes each. Once the reuse distance passes 256, a C line is evicted before you get back to it — and since each C line is touched TK/REG_K = 64 times, every eviction costs a full DRAM round trip.
 >
-> Why threshold 300 and not 256? The formula is an approximation and was calibrated empirically — the exact boundary where α starts degrading is observed to be around 300, not the clean L1 size of 256. You can see it clearly in the data:
-> - ws=270 → (64,32) → α = 3.49 (normal)
+> Why threshold 300 and not 256? 256 *is* the true capacity — 300 is a deliberate tolerance band. A small overflow evicts few enough lines that α does not move measurably; safe() picks 300 to exclude the blowups while keeping harmless borderline tiles. The data shows the band directly:
+> - ws=270 → (64,32) → α = 3.49 (normal — note this is already *over* 256 and still fine)
 > - ws=406 → (96,32) → α = 9.03 (completely broken — evictions on every inner iteration)
 >
 > This is why the "unsafe" tile (96,32) appears in the E8 data with an inflated α: it was run without the safe() guard, and its α reflects the eviction penalty, not a model breakdown.
@@ -378,17 +378,36 @@ The graph shows the model's globally optimal (TM*, TN*) trajectory as g_c increa
 >
 > The constraint is `ws_lines(TM, TN) = TM×TN/8 + TM/4 − 2 < 300`.
 >
-> **What ws_lines counts:** the C tile is TM×TN output partial sums, each 4 bytes. In B-stationary mode, C is held in L1 throughout the inner loop (across all K iterations). The number of 64-byte L1 cache lines needed is:
-> - C partial sums: TM×TN×4B / 64 = TM×TN/16 lines
-> - But partial sums are accessed in register sub-tiles (reg_m × reg_n), and the emitter loads/stores each sub-tile independently, so the effective working-set is larger: the formula TM×TN/8 + TM/4 − 2 is an empirically derived count of how many distinct cache lines get touched during the inner loop.
+> **What ws_lines counts — it is a REUSE DISTANCE, not a footprint.** Source: `math-model-no-l2/GUIDE.md:189` — "lines accessed between two C[i,j] accesses". It measures how much other data streams through L1 between one touch of a C line and the next touch of that same line. If more than a cacheful passes by in between, that C line has been evicted when you come back to it.
 >
-> **L1 = 16KB = 256 cache lines** of 64 bytes each. You'd expect the threshold to be 256, but the empirical cliff is at ~300 for two reasons: (1) the formula slightly over-counts (the coefficient is 1/8 = 2×(1/16), accounting for both loads and stores touching the same lines), and (2) the hardware prefetcher can tolerate a small amount of overflow before performance degrades measurably. The exact cliff was observed empirically from the α data:
+> Setup: REG_M=REG_N=REG_K=4, elements are 4B, lines are 64B → 16 elements/line. L1 = 16KB = **256 lines**.
+> The inner loop is rtk → rtj → rti, and C[rti,rtj] is re-touched one full rtk step later. In that interval you sweep every (rtj, rti) pair exactly once, touching:
+>
+> | Term | What | Derivation |
+> |---|---|---|
+> | **TM×TN/8** | C | C tile = TM×TN×4B / 64 = TM×TN/16 lines, each touched **twice** (`load C → %rc` … `store C`) → 2 × TM×TN/16 |
+> | **TM/4** | A | one A sub-tile = REG_M×REG_K = 4×4 elems × 4B = 64B = **exactly 1 line**; TM/REG_M = TM/4 of them per rtk step, loaded once |
+> | **− 2** | self | the C line being measured doesn't count against its own reuse distance — subtract its own load+store |
+>
+> B contributes nothing: it comes from the PRNG FIFO and bypasses the cache entirely.
+>
+> The 2× on C is confirmed by `e4-cfill-mechanism/README.md:100`, which tabulates the C footprint separately — at TM=96 it is 24/48/96/192 lines for TN=4/8/16/32, exactly TM×TN/16, i.e. **half** the formula's first term. Check TM=96,TN=32: 2×192 + 24 − 2 = 406 ✓
+>
+> **Why the threshold is 300 and not 256.** The true capacity is 256 lines (`e-l1size-regime/experiment.py:71` tests `ws_lines >= l1 // LINE`). 300 is a **tolerance band**, not a capacity:
+> - WS < 256 — fits, no eviction
+> - WS 256–300 — over capacity, but the eviction rate is too small to show in α. **(64,32) → WS=270 > 256 yet α=3.49, perfectly normal.** This is exactly why safe() uses 300, not 256.
+> - WS ≥ 300 — catastrophic. (`catastrophic()` uses `L1/LINE + 50`, ">10% over capacity".)
+>
+> Supporting α data:
 > - (64, 32): ws=270 → α=3.49 ✓ normal
 > - (96, 32): ws=406 → α=9.03 ✗ broken (C tile evicted on every MAC iteration)
 > - (48, 64): ws=394 → α=4.39 ✗ elevated
 > - (64, 64): ws=526 → α=8.87 ✗ severely broken
 >
-> Below ~300 the C tile stays resident; above it, parts get evicted and reloaded on every inner-loop step, blowing up α by 2–3×.
+> Below ~300 the C tile stays resident; above it, parts get evicted and reloaded on every inner-loop step, blowing up α by 2–3×. Each unique C line is accessed TK/REG_K = 64 times, so an eviction before reuse costs a full DRAM round trip (180 cy) on a line you were about to touch again — that is why the penalty is so violent.
+>
+> **[If pushed — the known limitation of this formula]**
+> ws_lines assumes each C sub-tile sits on 1 cache line. It doesn't: C is row-major with row stride N, so a 4×4 sub-tile spans 4 different rows = 4 lines. `e-l1size-regime/README.md:213` says this outright and gives a corrected formula for the **TM-overflow** regime that ws_lines misses: `(TM/4 − 1)×8 + 4 < L1/LINE` (the 8 = 4 lines for A + 4 for C per rti sub-tile). At L1=16KB every tile in our sweep passes it, so it never bites here. At L1=8KB it does: TM=96 gives 188 > 128 → unusable regardless of TN.
 
 > **[Note — why TM* goes up and TN* goes down as g_c increases — and why TN* goes UP first]**
 >
