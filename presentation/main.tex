@@ -823,10 +823,8 @@
       \begin{itemize}
         \item Small $T_N$: $\alpha$ spikes when the\\
           A tile overflows L1
-          {\small\color{gray}($T_N{=}4$ at $T_M{=}32$)}
         \item Large $T_N$: $\alpha$ stays low until\\
           the C tile overflows L1
-          {\small\color{gray}($T_N{=}32$ at $T_M{=}96$)}
         \item $\alpha$ decreases with $T_N$\\
           (more column reuse)
       \end{itemize}
@@ -901,11 +899,7 @@
         ../experiments/v5-results/math-model-no-l2/%
         e8-gc-boundary-sweep/best_shape_per_gc.png}
 
-      {\small\color{gray}
-        $T_N^*$ (red) drops 64→32→16 as $g_c$ grows.
-      }
     \end{center}
-
 
 \end{frame}
 
@@ -933,9 +927,6 @@
       \end{itemize}
 
       \smallskip
-      {\scriptsize\color{gray}
-        Gain grows with $g_c$.
-      }
     \end{center}
 
 \end{frame}
