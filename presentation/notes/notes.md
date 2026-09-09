@@ -4,6 +4,12 @@
 * from there as long as C doesn't overflow the L1 cache, the size of Tm doesn't effect alpha.
 * the second step is when C gets evicted, then you need to pay the read and write for it each time.
 
+## page 20 alpha graph:
+### the dip:
+* what is it? at first there is not amoretization of the A because Tm = 4.
+* as Tm grows a little we get amoretization so better performance. 
+* then at Tm 16 there is the jump because of the spill over.
+
 ## page 22 alpha graph:
 * how do we calculate the Tm and Tn? we calculate the alpha for Tm and Tn when gc is 0 and create a table for each pair.
 * for some gc -> we check each pair and calculate -> max{alpha (from table), gc/Tm} -> we pick the best pair out of the options.
@@ -36,3 +42,4 @@
 * same as yellow, just that the dip is longer, because Tn is larger, then Tm is larger (cause it's  
   a square), meaning that it lowers the gc/Tm for a longer time. Until the gc is large enough such that  
   the square looses to the new Tm of the optimal one.
+

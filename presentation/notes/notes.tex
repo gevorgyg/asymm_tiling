@@ -1,0 +1,81 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\setlist[itemize]{leftmargin=1.5em, itemsep=3pt, topsep=3pt}
+
+\title{\textbf{Presentation Notes \& Graph Explanations}}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+\vspace{-1.5cm}
+
+\section*{Page 19: $\alpha$ Graph}
+\begin{itemize}
+    \item When $T_M$ is small enough, the $A$ tile fits in L1 with $C$ completely. So there is no cost.
+    \item When it starts spilling, you can calculate the penalty with $\left(\frac{\text{ram\_lat} - \text{l1\_lat}}{\text{reg}_m \cdot \text{reg}_k}\right) \times \frac{1}{T_N}$.
+    \item From there, as long as $C$ doesn't overflow the L1 cache, the size of $T_M$ doesn't affect $\alpha$.
+    \item The second step is when $C$ gets evicted, then you need to pay the read and write for it each time.
+\end{itemize}
+
+\section*{Page 20: $\alpha$ Graph}
+\subsection*{The Dip}
+\begin{itemize}
+    \item What is it? At first there is no amortization of the $A$ because $T_M = 4$.
+    \item As $T_M$ grows a little we get amortization, so better performance.
+    \item Then at $T_M = 16$ there is the jump because of the spillover.
+\end{itemize}
+
+\section*{Page 22: $\alpha$ Graph}
+\begin{itemize}
+    \item How do we calculate the $T_M$ and $T_N$? We calculate the $\alpha$ for $T_M$ and $T_N$ when $g_c$ is 0 and create a table for each pair.
+    \item For some $g_c \to$ we check each pair and calculate $\to \max\{\alpha \text{ (from table)},\; g_c / T_M\} \to$ we pick the best pair out of the options.
+    \item The $\alpha$ for large enough $T_N$ as we've seen is quite low, and for a large $T_M$ we can lower the $g_c / T_M$ and almost always allow for a small $\alpha$. That is possible because of the $B$ residing in the FIFO.
+    \item Most of the time the winner is mem-bound, not gen-bound. It becomes gen-bound when the $g_c$ is too high.
+\end{itemize}
+
+\section*{Page 23: Ratios Graph}
+\begin{itemize}
+    \item $T_M$ only goes up because we always want to lower the $g_c / T_M$ as much as possible.
+    \item $T_N$ goes up at first because we want to amortize the cost of bringing in the evicted $A$ tile we stream.
+    \item $T_N$ goes down when $g_c$ is high enough because $T_M$ is forced to grow to keep the cost down, and also we cannot allow $T_N$ to be high enough for the $C$ eviction, it's very bad, so lowering $T_N$ is better even though it amortizes less. That makes sense because the $T_M$ is large so we actually need less bands of $A$.
+\end{itemize}
+
+\section*{Page 25: Comparing to Square}
+
+\subsection*{Why lower $T_N$ makes for bigger difference?}
+\begin{itemize}
+    \item Because the square just stays small, then there is almost no amortization for the huge $g_c$ stall.
+\end{itemize}
+
+\subsection*{Why red goes down?}
+\begin{itemize}
+    \item Because at first it's already spilling out of $C$ for low $g_c$. When $g_c$ grows, because $T_M$ is large for the square also, we get amortization and the difference is not so big for high $g_c$.
+\end{itemize}
+
+\subsection*{Why the green stays flat at some point?}
+\begin{itemize}
+    \item There they are both generation-bound; because of that, the ratio is just the ratio between the tile sizes: $1 - 8/12$.
+    \item That stays until we get to a $g_c$ where the optimal is not $T_M = 12$ anymore.
+\end{itemize}
+
+\subsection*{What happens with yellow?}
+\begin{itemize}
+    \item At first, the non-square can have a small enough $T_M$ such that $A$ just fits in the L1 cache with $C$, so it's faster.
+    \item Then the non-square is gen-bound but the square is mem-bound, and the difference is not that big.
+    \item After that, the square becomes gen-bound eventually and the difference starts growing.
+\end{itemize}
+
+\subsection*{What happens with blue?}
+\begin{itemize}
+    \item Same as yellow, just that the dip is longer, because $T_N$ is larger, then $T_M$ is larger (cause it's a square), meaning that it lowers the $g_c / T_M$ for a longer time. Until the $g_c$ is large enough such that the square loses to the new $T_M$ of the optimal one.
+\end{itemize}
+
+\end{document}
