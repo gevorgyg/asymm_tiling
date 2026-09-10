@@ -417,7 +417,7 @@
   \begin{itemize}
     \item Tiles divide the matrix evenly, and register tiles divide the cache
       tile, so there are no partial edge tiles.
-    \item A and C sit in row-major memory with fixed strides.
+    \item A and C are stored in memory as row-major
     \item The C tile stays resident in L1 for the whole inner loop
     \item The way FIFO PRNG works is that: it uses seeds, which have smaller
       precision than elements of B and need to be taken from memory. We assume
