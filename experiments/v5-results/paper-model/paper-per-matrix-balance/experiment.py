@@ -47,7 +47,10 @@ FAMILIES = {
 # predicted-optimal tile per rho (T_N/T_M = 1/rho, smallest fitting family)
 OPT_TILE = {1.0: (32, 32), 0.5: (16, 32), 0.25: (16, 64), 0.125: (8, 64)}
 
-FLAGS = Flags(b_source="mem", stationary="A", three_d_reg=True,
+# stationary="B" is the paper's C-stationary rank-1 order under this
+# simulator's inverted naming (cheap matrix = B). Verified against the
+# paper reads formula.
+FLAGS = Flags(b_source="mem", stationary="B", three_d_reg=True,
               mulac_norecord=True)
 
 
@@ -111,7 +114,7 @@ def _sweep(base: str) -> list[dict]:
                     experiment_dir=EXPERIMENT_DIR,
                     base_config_text=base,
                     base_overrides=overrides,
-                    flags=Flags(b_source="mem", stationary="A",
+                    flags=Flags(b_source="mem", stationary="B",
                                 three_d_reg=True),
                 )
                 records.append({

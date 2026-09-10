@@ -49,7 +49,10 @@ FAMILIES = {
 }
 FAMILY_MARKERS = {1024: "o", 512: "s"}
 
-FLAGS = Flags(b_source="mem", stationary="A", three_d_reg=True)
+# stationary="B" is the paper's C-stationary rank-1 order in this simulator's
+# (inverted) naming: the cheap matrix here is B, so B is the reused/streamed
+# input. Verified: it reproduces the paper reads formula to the byte.
+FLAGS = Flags(b_source="mem", stationary="B", three_d_reg=True)
 
 
 def _sweep() -> list[dict]:

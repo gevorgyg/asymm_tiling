@@ -327,6 +327,22 @@
 \section{Paper Validation}
 % ==============================================================================
 
+% ── Slide 6: default hardware configuration ───────────────────────────────────
+\begin{frame}{Default Hardware Configuration}
+
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    L1 cache      & $16$\,KB, $64$-byte lines, $4$-cycle access \\
+    L2 cache      & $64$\,KB, $14$-cycle access (off in the no-L2 runs) \\
+    DRAM          & $180$-cycle access \\
+    Register size & $4 \times 4 \times 4$ \\
+    \bottomrule
+  \end{tabular}
+
+
+\end{frame}
+
 % ── Simulator architecture ────────────────────────────────────────────────────
 \begin{frame}{The Simulator We Built}
 
@@ -395,6 +411,21 @@
 
 \end{frame}
 
+
+\begin{frame}{What the Model Assumes}
+
+  \begin{itemize}
+    \item Tiles divide the matrix evenly, and register tiles divide the cache
+      tile, so there are no partial edge tiles.
+    \item A and C sit in row-major memory with fixed strides.
+    \item The C tile stays resident in L1 for the whole inner loop
+    \item The way FIFO PRNG works is that: it uses seeds, which have smaller
+      precision than elements of B and need to be taken from memory. We assume
+      that this traffic is neglegible and don't include it in our model.
+  \end{itemize}
+
+\end{frame}
+
 % ── Slide 4a: L1 reads vs tile aspect ratio ───────────────────────────────────
 \begin{frame}{Traffic Minimum at the Predicted Tile}
   \begin{columns}[c]
@@ -426,17 +457,22 @@
       \textbf{Traffic saved vs.\ square tile:}
 
       \smallskip
-      \renewcommand{\arraystretch}{1.3}
-      \begin{tabular}{@{}ccl@{}}
+      \renewcommand{\arraystretch}{1.2}
+      \small
+      \begin{tabular}{@{}ccc@{}}
         \toprule
-        $\rho$ & saving & \\
+        $\rho$ & \shortstack{saving\\(empirical)} & \shortstack{saving\\(theoretical)} \\
         \midrule
-        $1$     & $0\%$  & (symmetric) \\
-        $0.5$   & $0\%$  & \\
-        $0.25$  & $18\%$ & \\
-        $0.125$ & $36\%$ & \\
+        $1$     & $0\%$  & $0\%$  \\
+        $0.5$   & $0\%$  & $6\%$  \\
+        $0.25$  & $18\%$ & $20\%$ \\
+        $0.125$ & $36\%$ & $37\%$ \\
         \bottomrule
       \end{tabular}
+
+      \smallskip
+      {\footnotesize Theoretical saving is given by the formula:
+      \[ 1 - \frac{2\sqrt{\rho}}{1+\rho} \]}
     \end{column}
   \end{columns}
 \end{frame}
@@ -594,23 +630,29 @@
 
     % ── Left: comparison table ────────────────────────────────────────────────
     \begin{column}{0.55\textwidth}
-        \textbf{Problem:} B elements emerge from the PRNG\\
-        in a \textbf{fixed order} --- you cannot skip or replay elements.
+        \textbf{Problem:} B streams from the PRNG in a\\
+        \textbf{fixed order} --- you cannot skip or replay elements,\\
+        so the loop must consume B as it is generated.
 
       \medskip
-      Three loop structures are possible:
+      Two dataflows fit the stream. They differ in how many
+      times each generated B element is reused:
 
       \bigskip
       \renewcommand{\arraystretch}{1.55}
-      \begin{tabular}{@{}p{2.4cm}p{1.6cm}l@{}}
+      \begin{tabular}{@{}p{2.5cm}p{1.5cm}l@{}}
         \toprule
-        Mode & In regs & B cost / elem \\
+        Dataflow & In regs & B gen cost / MAC \\
         \midrule
-        C-stat row-maj  & $C_{ij}$ tile & $g_c \times T_N$ (waste) \\[2pt]
-        C-stat col-maj  & $C_{ij}$ tile & $g_c$ \\[2pt]
-        B-stationary    & $B_{ij}$ tile & $\boldsymbol{g_c / T_M}$ \\
+        C-stationary  & $C_{ij}$ tile & $g_c / R_M$ \\[2pt]
+        B-stationary  & $B_{ij}$ tile & $\boldsymbol{g_c / T_M}$ \\
         \bottomrule
       \end{tabular}
+
+      \smallskip
+      {\footnotesize $R_M$ = register-tile rows $\ll T_M$. C-stationary
+      restarts the FIFO every $R_M$ rows; B-stationary reuses each
+      B element across the full tile height $T_M$.}
     \end{column}
 
     % ── Right: register-file diagram ──────────────────────────────────────────
@@ -623,25 +665,15 @@
         arr/.style={-{Stealth[length=4pt]}, thin},
       ]
 
-      %% C-stat row-major ───────────────────────────────────────────────────────
-      \node[font=\scriptsize, gray, align=center] at (1.7, 5.55)
-        {C-stat row-maj};
-      \node[regbox, fill=matC!18, draw=matC] (c1) at (1.7, 4.9)
+      %% C-stationary ────────────────────────────────────────────────────────────
+      \node[font=\scriptsize, gray, align=center] at (1.7, 4.35)
+        {C-stationary};
+      \node[regbox, fill=matC!18, draw=matC] (c2) at (1.7, 3.7)
         {$C_{ij}$ in regs};
-      \draw[arr, matA] (-0.05, 4.9) node[left, font=\tiny]{A row} -- (c1.west);
-      \draw[arr, matB] (1.7, 5.7) -- (c1.north);
-      \node[matB!80!black, font=\tiny] at (1.7, 5.85)
-        {B row $(\times T_N$ waste)};
-
-      %% C-stat col-major ───────────────────────────────────────────────────────
-      \node[font=\scriptsize, gray, align=center] at (1.7, 3.55)
-        {C-stat col-maj};
-      \node[regbox, fill=matC!18, draw=matC] (c2) at (1.7, 2.9)
-        {$C_{ij}$ in regs};
-      \draw[arr, matA] (-0.05, 2.9) node[left, font=\tiny]{A row} -- (c2.west);
-      \draw[arr, matB] (1.7, 3.7) -- (c2.north);
-      \node[matB!80!black, font=\tiny] at (1.7, 3.85)
-        {B col (no waste)};
+      \draw[arr, matA] (-0.05, 3.7) node[left, font=\tiny]{A row} -- (c2.west);
+      \draw[arr, matB] (1.7, 4.5) -- (c2.north);
+      \node[matB!80!black, font=\tiny, align=center] at (1.7, 4.75)
+        {new B every $R_M$ rows};
 
       %% B-stationary ───────────────────────────────────────────────────────────
       \node[font=\scriptsize\bfseries, TechBlue!80!black, align=center]
@@ -651,7 +683,7 @@
       \draw[arr, matA] (-0.05, 0.95)
         node[left, font=\tiny]{$T_M$ rows} -- (bst.west);
       \node[TechBlue!80!black, font=\tiny, align=center] at (1.7, 0.22)
-        {reused $T_M{\times}$ $\;\Rightarrow\;$ $g_c/T_M$ per elem};
+        {reused $T_M{\times}$ $\;\Rightarrow\;$ $g_c/T_M$ per MAC};
 
     \end{tikzpicture}
     \end{column}
@@ -723,11 +755,14 @@
         \toprule
         & $g_c{=}0$ & $g_c{=}10$ & $g_c{=}100$ \\
         \midrule
-        B-stat     & ref             & ref             & \textbf{ref} \\
-        C col-maj  & 1.9$\times$ fstr & 1.25$\times$ fstr & 7.7$\times$ slwr \\
-        C row-maj  & 1.6$\times$ slwr & 6.3$\times$ slwr  & 61$\times$ slwr \\
+        B-stationary  & ref             & ref             & \textbf{ref} \\
+        C-stationary  & 1.7$\times$ fstr & 1.4$\times$ fstr & 7.1$\times$ slwr \\
         \bottomrule
       \end{tabular}
+
+      \smallskip
+      {\footnotesize C-stationary wins while $g_c$ is small (lower A-load
+      cost), but B-stationary pulls ahead as generation dominates.}
     \end{column}
 
   \end{columns}
