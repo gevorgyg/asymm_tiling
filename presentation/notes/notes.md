@@ -1,3 +1,7 @@
+## general:
+* gc/Tm, because for one brick of B we bring in, it's amoretized by Tm rows of A.
+* when Tn is larger, even if A leaves the cache, you need to reload it fewer times, so it's amoretized.
+
 ## page 19 alpha graph:
 * when Tm is small enough, the A tile fits in L1 with C completely. So there is no cost.
 * when it starts spilling, you can calculate the panalty with (ram_lat - l1_lat / regm*regk) * 1/Tn.
@@ -42,4 +46,12 @@
 * same as yellow, just that the dip is longer, because Tn is larger, then Tm is larger (cause it's  
   a square), meaning that it lowers the gc/Tm for a longer time. Until the gc is large enough such that  
   the square looses to the new Tm of the optimal one.
+### why the asymptote?
+* because at the high gc, the Tm is big, but the gc is so big that gc/Tm is still big enough and  
+  and it becomes generator bound again. Making it so the improvement is the ratio again.
+### the place where the square and non square are close, why is it that way?
+* beacuse if you decrease Tm, the generator will stall you. If you Increase Tm, you're at the point  
+  where it doesn't effect alpha anyway and you'll just cause C to spill. So that's just the best option.
+
+
 
