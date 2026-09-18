@@ -1,26 +1,10 @@
+#include "my_utils.h"
 #include <array>
 #include <cstdint>
 #include <cstdio>
-#include <random>
 #include <spdlog/async.h>
 #include <spdlog/sinks/ansicolor_sink.h>
 #include <spdlog/spdlog.h>
-
-struct SimpleRandomNumberGenerator {
-    std::random_device rd_dev;
-    std::mt19937_64 mt_eng;
-    std::uniform_int_distribution<uint64_t> uni_dist;
-
-    SimpleRandomNumberGenerator()
-        : rd_dev(), mt_eng(rd_dev()), uni_dist(1, 0xffffffff)
-    {
-    }
-
-    uint64_t operator()()
-    {
-        return uni_dist(mt_eng);
-    }
-};
 
 using raw_addr = uint64_t;
 
@@ -190,7 +174,7 @@ int main()
     spdlog::init_thread_pool(8192, 1);
     std::shared_ptr<spdlog::logger> bg_console_logger =
         spdlog::create_async<spdlog::sinks::ansicolor_stdout_sink_mt>(
-            "bg_console_logger");
+            "b_console_logger");
     spdlog::set_default_logger(bg_console_logger);
     spdlog::info("Initialized Async Logger");
 

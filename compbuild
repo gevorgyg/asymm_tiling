@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [[ ! -d build/ ]]; then
+    echo "missing build dir... creating..."
+    cmake -B build/ -S .
+fi
+
+cmake --build build/

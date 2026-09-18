@@ -9,7 +9,9 @@ find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED)
 find_package(CLI11 REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp cachesim.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp)
+
+target_sources(${PROJECT_NAME} PRIVATE src/cachesim.h src/cachesim.cpp src/my_utils.h src/my_utils.cpp)
 
 target_link_libraries(${PROJECT_NAME} spdlog::spdlog fmt::fmt CLI11::CLI11)
 
