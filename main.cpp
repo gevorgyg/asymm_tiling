@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <fmt/printf.h>
 #include <random>
+#include <spdlog/spdlog.h>
 
 struct SimpleRandomNumberGenerator {
     std::random_device rd_dev;
