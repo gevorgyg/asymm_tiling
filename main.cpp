@@ -1,377 +1,196 @@
-#include "config.h"
-#include "instruction-stream-generator/instgen.h"
-#include "interpreter/interpreter.h"
-#include "memory-system/cache/cache.h"
-#include "memory-system/hierarchy.h"
-#include "utils.h"
-
+#include <array>
+#include <cstdint>
 #include <cstdio>
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
+#include <fmt/printf.h>
+#include <random>
 
-constexpr char instruction_path[] = "./matmul.matv";
+struct SimpleRandomNumberGenerator {
+    std::random_device rd_dev;
+    std::mt19937_64 mt_eng;
+    std::uniform_int_distribution<uint64_t> uni_dist;
 
-
-enum class BSource { Memory, PrngMem, PrngFifo, PrngFifoPipelined };
-
-
-WritePolicy parseWritePolicy(const std::string& str)
-{
-    if (str == "WRITE_THROUGH") return WritePolicy::WRITE_THROUGH;
-    if (str == "WRITE_BACK")    return WritePolicy::WRITE_BACK;
-    std::cerr << "error: unknown write policy: " << str << std::endl;
-    exit(1);
-}
-
-BSource parseBSource(const std::string& str)
-{
-    if (str == "mem")                   return BSource::Memory;
-    if (str == "prng_mem")              return BSource::PrngMem;
-    if (str == "prng_fifo")             return BSource::PrngFifo;
-    if (str == "prng_fifo_pipelined")   return BSource::PrngFifoPipelined;
-    std::cerr << "error: --Bsource must be one of {mem, prng_mem, prng_fifo, prng_fifo_pipelined}; got '"
-              << str << "'\n";
-    exit(1);
-}
-
-Dataflow parseStationary(const std::string& str)
-{
-    if (str == "A")      return Dataflow::AStationary;
-    if (str == "B")      return Dataflow::BStationary;
-    if (str == "output") return Dataflow::OutputStationary;
-    std::cerr << "error: --stationary must be A, B, or output; got '" << str << "'\n";
-    exit(1);
-}
-
-void generateInstructions(const Config& c, Dataflow df, bool b_fifo,
-                          uint reg_m, uint reg_n, uint reg_k, uint seed_bytes,
-                          bool b_fifo_pipelined = false, uint num_prefill = 1,
-                          bool b_fifo_col_major = false)
-{
-    InstGenerator gen{InstGenerator::Params{
-        .a_height    = c.a_height,
-        .a_width     = c.a_width,
-        .b_width     = c.b_width,
-        .a_precision = c.a_precision,
-        .b_precision = c.b_precision,
-        .reg_m       = reg_m,
-        .reg_n       = reg_n,
-        .reg_k       = reg_k,
-        .seed_bytes  = seed_bytes,
-        .num_prefill = num_prefill,
-    }};
-
-    std::ofstream ofs(instruction_path);
-    if (!ofs.is_open()) {
-        std::cerr << "error opening file" << std::endl;
-        exit(1);
+    SimpleRandomNumberGenerator()
+        : rd_dev(), mt_eng(rd_dev()), uni_dist(1, 0xffffffff)
+    {
     }
 
-    InstGenerator::TileShape tile{c.tile_m, c.tile_n, c.tile_k};
-    gen.generate(tile, ofs, df, b_fifo, b_fifo_pipelined, b_fifo_col_major);
-}
-
-
-// Config keys whose values are ignored under the current CLI flag combination.
-// Used by both --- UNUSED OPTIONS --- output (humans) and the experiment
-// harness (cache-key normalization).
-std::vector<const char*> unusedConfigKeys(BSource source, bool use_3dregisters,
-                                          bool record_mulac, bool no_l2)
-{
-    std::vector<const char*> u;
-    if (source != BSource::PrngMem) {
-        u.push_back("PRNG_ACCESS_CYCLES");
-        u.push_back("PRNG_GEN_COST_PER_LINE");
+    uint64_t operator()()
+    {
+        return uni_dist(mt_eng);
     }
-    if (source != BSource::PrngFifo && source != BSource::PrngFifoPipelined) {
-        u.push_back("PRNG_FIFO_CAPACITY");
-        u.push_back("PRNG_FIFO_GEN_COST");
-        u.push_back("PRNG_FIFO_SEED_BYTES");
+};
+
+using raw_addr = uint64_t;
+
+enum class MatName { in_a, in_b, out_c };
+
+inline size_t ceil(const size_t x, const size_t y)
+{
+    return (x + y - 1) / y;
+}
+
+struct Matrix {
+    MatName name{};
+    raw_addr base{};
+
+    size_t elem_size{};
+
+    size_t height{};
+    size_t width{};
+};
+
+struct Tile {
+    const Matrix& parent_mat;
+    raw_addr base;
+
+    size_t height;
+    size_t width;
+
+    raw_addr get_addr(const size_t row, const size_t col) const
+    {
+        return base + (col + row * parent_mat.width) * parent_mat.elem_size;
     }
-    if (source != BSource::PrngFifoPipelined) {
-        u.push_back("PRNG_FIFO_NUM_PREFILL");
-    }
-    if (!use_3dregisters) {
-        u.push_back("REG_M");
-        u.push_back("REG_N");
-        u.push_back("REG_K");
-    }
-    if (!record_mulac) {
-        u.push_back("MULAC_CYCLES");
-    }
-    if (no_l2) {
-        u.push_back("L2_SIZE_BYTES");
-        u.push_back("L2_LINE_SIZE_BYTES");
-        u.push_back("L2_ASSOC");
-        u.push_back("L2_ACCESS_CYCLES");
-        u.push_back("L2_REPLACEMENT_POLICY");
-        u.push_back("L2_WRITE_POLICY");
-    }
-    return u;
-}
+};
 
+struct Multipiler {
+    Matrix a, b, c;
 
-void printCacheTable(const Cache& l1, const Cache* l2)
-{
-    const auto printRow = [](const Cache& c) {
-        const auto& s = c.stats();
-        const double hr = (s.hits + s.misses) ? (double)s.hits / (s.hits + s.misses) : 0.0;
-        printf("| %s | %.03f | %llu | %llu | %llu | %llu | %llu | %llu |\n", c.name(), hr,
-               (unsigned long long)s.tag_lookups,
-               (unsigned long long)s.line_fills,
-               (unsigned long long)s.evicts,
-               (unsigned long long)s.writebacks,
-               (unsigned long long)s.bytes_in,
-               (unsigned long long)s.bytes_out);
-    };
+    size_t tile_w{};
+    size_t tile_h{};
 
-    printf("| Cache | Hit rate | TagLookup | LineFill | Evict | Writeback | BytesIn | BytesOut |\n");
-    printf("|---|---|---|---|---|---|---|---|\n");
-    printRow(l1);
-    if (l2) printRow(*l2);
-}
+    size_t inner_dim{a.width};
+    size_t reg_dim{4};
+    size_t cache_line_size_{64};
 
-// L2 is the only client of main memory, so DRAM traffic is L2's boundary
-// traffic seen from the other side: reads = L2 fills, writes = L2 pushes.
-void printDramTable(const Cache& l2)
-{
-    const auto& s = l2.stats();
-    printf("\n| DRAM | BytesRead | BytesWritten |\n");
-    printf("|---|---|---|\n");
-    printf("| DRAM | %llu | %llu |\n",
-           (unsigned long long)s.bytes_in,
-           (unsigned long long)s.bytes_out);
-}
+    void load_into_reg(const Tile& t, size_t r, size_t c) const
+    {
+        size_t row           = r * reg_dim;
+        size_t col           = c * reg_dim;
+        size_t row_byte_size = reg_dim * t.parent_mat.elem_size;
 
-void printPrngTable(const PrngDev::Stats& s)
-{
-    printf("\n| PRNG | Generate | Regenerate |\n");
-    printf("|---|---|---|\n");
-    printf("| PRNG | %llu | %llu |\n",
-           (unsigned long long)s.generates,
-           (unsigned long long)s.regenerates);
-}
+        fmt::printf("base addr: %lu\n", t.base);
+        for (size_t i = 0; i < reg_dim; ++i) {
+            raw_addr addr                     = t.get_addr(row + i, col);
+            raw_addr cache_aligned_addr_start = addr & ~(cache_line_size_ - 1);
+            raw_addr cache_aligned_addr_end =
+                (addr + row_byte_size - 1) & ~(cache_line_size_ - 1);
 
-void printPrngFifoTable(const PrngFifoDev::Stats& s)
-{
-    printf("\n| PRNG FIFO | Starts | Stops | Reads | Stalls | StallCycles | Generates |\n");
-    printf("|---|---|---|---|---|---|---|\n");
-    printf("| PRNG FIFO | %llu | %llu | %llu | %llu | %llu | %llu |\n",
-           (unsigned long long)s.starts,
-           (unsigned long long)s.stops,
-           (unsigned long long)s.reads,
-           (unsigned long long)s.stalls,
-           (unsigned long long)s.stall_cycles,
-           (unsigned long long)s.generates);
-}
-
-void printPrngFifoPipelinedTable(const PrngFifoPipelinedDev::Stats& s)
-{
-    printf("\n| PRNG FIFO Pipelined | Starts | Stops | Swaps | Reads | Stalls | StallCycles | Generates | PrefillGenerates |\n");
-    printf("|---|---|---|---|---|---|---|---|---|\n");
-    printf("| PRNG FIFO Pipelined | %llu | %llu | %llu | %llu | %llu | %llu | %llu | %llu |\n",
-           (unsigned long long)s.starts,
-           (unsigned long long)s.stops,
-           (unsigned long long)s.swaps,
-           (unsigned long long)s.reads,
-           (unsigned long long)s.stalls,
-           (unsigned long long)s.stall_cycles,
-           (unsigned long long)s.generates,
-           (unsigned long long)s.prefill_generates);
-}
-
-void printSystemTable(size_t cycles)
-{
-    printf("\n| System | Cycles |\n");
-    printf("|---|---|\n");
-    printf("| System | %llu |\n", (unsigned long long)cycles);
-}
-
-
-int main(int argc, char* argv[])
-{
-    BSource     b_source         = BSource::Memory;
-    Dataflow    dataflow         = Dataflow::BStationary;
-    std::string config_path      = "default.config";
-    std::string trace_file_path  = "trace.log";
-    std::string assembler_input;
-    int         trace_level      = Interpreter::trace_instructions;
-    bool        use_3dregisters  = false;
-    bool        mulac_norecord   = false;
-    bool        no_l2            = false;
-    bool        b_fifo_col_major = false;
-
-    for (int i = 1; i < argc; ++i) {
-        const std::string arg = argv[i];
-        const auto need_arg = [&](const char* flag) {
-            if (i + 1 >= argc) {
-                std::cerr << flag << " requires an argument\n";
-                exit(1);
+            for (size_t line = cache_aligned_addr_start;
+                 line <= cache_aligned_addr_end; line += cache_line_size_) {
+                fmt::printf("touched: %lu -> %lu\n", line,
+                            line + cache_line_size_);
             }
-            return std::string(argv[++i]);
+        }
+    }
+
+    void store_reg(const Tile& t, size_t r, size_t c) const
+    {
+    }
+
+    void mulacc() const
+    {
+    }
+
+    void weight_tile_mul(const Tile& a, const Tile& b, const Tile& c) const
+    {
+        for (size_t r = 0; r < a.height; ++r) {
+            for (size_t c = 0; c < a.width; ++c) {
+                // load C(r,c)
+                for (size_t k = 0; k < inner_dim; ++k) {
+                    // load A(r,k)
+                    // load B(k,c)
+                }
+                // store C(r,c)
+            }
+        }
+    }
+
+    void output_tile_mul(const Tile& a, const Tile& b, const Tile& c) const
+    {
+        for (size_t row = 0; row < ceil(a.height, reg_dim); ++row) {
+            for (size_t col = 0; col < ceil(b.width, reg_dim); ++col) {
+
+                fmt::printf("load C: ");
+                load_into_reg(c, row, col);
+                for (size_t k = 0; k < ceil(inner_dim, reg_dim); ++k) {
+                    fmt::printf("load A: ");
+                    load_into_reg(a, row, k);
+                    fmt::printf("load B: ");
+                    load_into_reg(b, k, col);
+                }
+                fmt::printf("store C: ");
+                store_reg(c, row, col);
+            }
+        }
+    }
+
+    void output_stat_matmul() const
+    {
+        Tile ta{a, a.base, tile_h, a.width};
+        Tile tb{b, b.base, b.height, tile_w};
+        Tile tc{c, c.base, tile_h, tile_w};
+
+        for (int row = 0; row < ceil(a.height, tile_h); ++row) {
+            ta.base = a.base + (row * a.width * tile_h) * a.elem_size;
+            for (int col = 0; col < ceil(b.width, tile_w); ++col) {
+                tb.base = b.base + (col * tile_w) * b.elem_size;
+                tc.base = c.base +
+                          (col * tile_w + row * c.width * tile_h) * c.elem_size;
+
+                fmt::printf("tiles %d, %d\n", row, col);
+
+                output_tile_mul(ta, tb, tc);
+            }
+        }
+    }
+
+    void weight_stat_matmul(const Matrix& a, const Matrix& b,
+                            const Matrix& c) const
+    {
+    }
+};
+
+struct MatrixFactory {
+    uint32_t small_perc_;
+    uint32_t ratio_;
+    uint32_t m_, k_, n_;
+    SimpleRandomNumberGenerator generate;
+
+    MatrixFactory(uint32_t m, uint32_t k, uint32_t n, uint32_t small_percision,
+                  uint32_t ratio)
+        : small_perc_(small_percision), ratio_(ratio), m_(m), k_(k), n_(n)
+    {
+    }
+
+    std::array<Matrix, 3> create()
+    {
+        static constexpr uint32_t kAlign = 0x40;
+
+        raw_addr start_addr   = generate();
+        raw_addr aligned_addr = (start_addr / kAlign) * kAlign;
+        raw_addr next_addr =
+            ceil(aligned_addr + small_perc_ * ratio_ * m_ * k_, kAlign) *
+            kAlign;
+        raw_addr final_addr =
+            ceil(next_addr + small_perc_ * k_ * n_, kAlign) * kAlign;
+
+        std::array<Matrix, 3> ret_arr = {
+            Matrix{MatName::in_a, aligned_addr, small_perc_ * ratio_, m_, k_},
+            Matrix{MatName::in_b, next_addr, small_perc_, k_, n_},
+            Matrix{MatName::out_c, final_addr, small_perc_ * ratio_, m_, n_},
         };
 
-        if      (arg == "--Bsource")         b_source        = parseBSource(need_arg("--Bsource"));
-        else if (arg == "--stationary")      dataflow        = parseStationary(need_arg("--stationary"));
-        else if (arg == "--config")          config_path     = need_arg("--config");
-        else if (arg == "--trace_file")      trace_file_path = need_arg("--trace_file");
-        else if (arg == "--assembler_input") assembler_input = need_arg("--assembler_input");
-        else if (arg == "--3dregisters")     use_3dregisters  = true;
-        else if (arg == "--mulac_norecord")  mulac_norecord   = true;
-        else if (arg == "--no-l2")           no_l2            = true;
-        else if (arg == "--col-major-fifo")  b_fifo_col_major = true;
-        else if (arg == "--trace_level") {
-            trace_level = std::atoi(need_arg("--trace_level").c_str());
-            if (trace_level < Interpreter::trace_instructions ||
-                trace_level > Interpreter::trace_actions) {
-                std::cerr << "--trace_level must be 0, 1 or 2\n";
-                exit(1);
-            }
-        } else {
-            std::cerr << "unexpected argument: " << arg << '\n'
-                      << "see README.md for the supported flags.\n";
-            exit(1);
-        }
+        return ret_arr;
     }
+};
 
-    const Config cfg = loadConfig(config_path);
+int main()
+{
+    MatrixFactory mat_factory(10, 10, 10, 1, 4);
+    auto [a, b, c] = mat_factory.create();
 
-    // Apply CLI gates to config values: a flag absent means the corresponding
-    // config block is unused, and its values are zeroed before reaching the
-    // simulator. This is the *one* place "feature on/off" is decided.
-    uint reg_m = 0, reg_n = 0, reg_k = 0;
-    if (use_3dregisters) {
-        if (cfg.reg_m == 0 || cfg.reg_n == 0 || cfg.reg_k == 0) {
-            std::cerr << "error: --3dregisters requires REG_M, REG_N, REG_K > 0 in config\n";
-            exit(1);
-        }
-        reg_m = cfg.reg_m;
-        reg_n = cfg.reg_n;
-        reg_k = cfg.reg_k;
-    }
-
-    const bool record_mulac = !mulac_norecord;
-    uint mulac_cycles = 0;
-    if (record_mulac) {
-        mulac_cycles = cfg.mulac_cycles;
-    }
-
-    const bool b_generated        = (b_source == BSource::PrngMem);
-    const bool b_fifo             = (b_source == BSource::PrngFifo);
-    const bool b_fifo_pipelined   = (b_source == BSource::PrngFifoPipelined);
-
-    if (b_fifo_pipelined && !use_3dregisters) {
-        std::cerr << "error: --Bsource prng_fifo_pipelined requires --3dregisters\n";
-        exit(1);
-    }
-    if (b_fifo_pipelined && !b_fifo_col_major && dataflow != Dataflow::BStationary) {
-        std::cerr << "error: --Bsource prng_fifo_pipelined requires --stationary B (or --col-major-fifo for output-stationary)\n";
-        exit(1);
-    }
-
-    if (b_fifo_col_major && ((!b_fifo && !b_fifo_pipelined) || !use_3dregisters || dataflow != Dataflow::OutputStationary)) {
-        std::cerr << "error: --col-major-fifo requires --Bsource prng_fifo[_pipelined], --stationary output, and --3dregisters\n";
-        exit(1);
-    }
-
-
-    const uint a_bytes = cfg.a_height * cfg.a_width  * cfg.a_precision;
-    const uint b_bytes = cfg.a_width  * cfg.b_width  * cfg.b_precision;
-
-    MemoryHierarchy::Parameters mp{
-        .l1 = {.name         = "L1",
-               .size         = cfg.l1.size_bytes,
-               .line_size    = cfg.l1.line_size_bytes,
-               .assoc        = cfg.l1.assoc,
-               .write_policy = parseWritePolicy(cfg.l1.write_policy)},
-        .l1_access_cycles = cfg.l1.access_cycles,
-        .l1_policy        = cfg.l1.replacement_policy,
-
-        .l2 = {.name         = "L2",
-               .size         = cfg.l2.size_bytes,
-               .line_size    = cfg.l2.line_size_bytes,
-               .assoc        = cfg.l2.assoc,
-               .write_policy = parseWritePolicy(cfg.l2.write_policy)},
-        .l2_access_cycles = cfg.l2.access_cycles,
-        .l2_policy        = cfg.l2.replacement_policy,
-
-        .mem_access_cycles = cfg.mem_access_cycles,
-
-        .prng = {.base_addr         = a_bytes,
-                 .window_bytes      = b_generated ? b_bytes : 0,
-                 .line_size         = cfg.l1.line_size_bytes,
-                 .access_cycles     = cfg.prng_access_cycles,
-                 .gen_cost_per_line = cfg.prng_gen_cost_per_line},
-
-        .prng_fifo = {.ctrl_start_addr = 0xFF000000,
-                      .ctrl_stop_addr  = 0xFF00000C,
-                      .seed_addr       = 0xFF000004,
-                      .data_start_addr = 0xFF000008,
-                      .data_end_addr   = 0xFF100008,
-                      .access_cycles   = cfg.prng_access_cycles,
-                      .fifo_capacity   = b_fifo ? cfg.prng_fifo_capacity : 0,
-                      .gen_cost        = b_fifo ? cfg.prng_fifo_gen_cost : 0},
-
-        .prng_fifo_pipelined = {.pref_seed_addr   = 0xFF200000,
-                                .pref_start_addr  = 0xFF200004,
-                                .swap_addr        = 0xFF200008,
-                                .stop_addr        = 0xFF20000C,
-                                .data_start_addr  = 0xFF200010,
-                                .data_end_addr    = 0xFF300010,
-                                .access_cycles    = cfg.prng_access_cycles,
-                                .fifo_capacity    = b_fifo_pipelined ? cfg.prng_fifo_capacity : 0,
-                                .gen_cost         = b_fifo_pipelined ? cfg.prng_fifo_gen_cost : 0,
-                                .num_prefill      = b_fifo_pipelined ? (cfg.prng_fifo_num_prefill ? cfg.prng_fifo_num_prefill : 1u) : 0u},
-        .no_l2 = no_l2,
-    };
-
-    size_t cpu_cycles = 0;
-    MemoryHierarchy mem(mp, cpu_cycles);
-
-    std::string run_path = instruction_path;
-    if (!assembler_input.empty()) {
-        run_path = assembler_input;
-    } else {
-        const uint num_prefill = b_fifo_pipelined
-                                   ? (cfg.prng_fifo_num_prefill ? cfg.prng_fifo_num_prefill : 1u)
-                                   : 1u;
-        generateInstructions(cfg, dataflow, b_fifo, reg_m, reg_n, reg_k,
-                             cfg.prng_fifo_seed_bytes, b_fifo_pipelined, num_prefill,
-                             b_fifo_col_major);
-    }
-
-    Interpreter::Options opts{
-        .trace_file_path = trace_file_path,
-        .trace_level     = static_cast<Interpreter::TraceLevel>(trace_level),
-        .reg_m           = reg_m,
-        .reg_n           = reg_n,
-        .reg_k           = reg_k,
-        .mulac_cycles    = mulac_cycles,
-    };
-    Interpreter inter(run_path, mem, opts, cpu_cycles);
-
-    inter.run();
-
-    // Traffic ledger must include data still resident at exit: every dirty
-    // line is written back (stats only, no cycle cost).
-    mem.flushCaches();
-
-    // Header: which config blocks were ignored by this run.
-    printf("--- UNUSED OPTIONS ---\n");
-    for (const char* k : unusedConfigKeys(b_source, use_3dregisters, record_mulac, no_l2)) {
-        printf("# %s\n", k);
-    }
-    printf("--- END ---\n\n");
-
-    printCacheTable(mem.l1(), no_l2 ? nullptr : &mem.l2());
-    if (!no_l2) printDramTable(mem.l2());
-    if (b_generated)      printPrngTable(mem.prng().stats());
-    if (b_fifo)           printPrngFifoTable(mem.prng_fifo().stats());
-    if (b_fifo_pipelined) printPrngFifoPipelinedTable(mem.prng_fifo_pipelined().stats());
-    printSystemTable(cpu_cycles);
+    Multipiler m{a, b, c, 5, 5};
+    m.output_stat_matmul();
 
     return 0;
 }

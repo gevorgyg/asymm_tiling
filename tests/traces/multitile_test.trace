@@ -1,7 +1,0 @@
-prefetch (0x1000, 4, 4, 4, 8)
-prefetch (0x2000, 4, 4, 4, 2)
-ltea (0x1000, 4, 4, 4, 8), %ra
-ltea (0x2000, 4, 4, 4, 2), %rb
-ltea (0x3000, 4, 4, 4, 8), %rc
-tmulac %ra, %rb, %rc
-tmov (0x3000, 4, 4, 4, 8), %rc
