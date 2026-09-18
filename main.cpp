@@ -1,8 +1,9 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
-#include <fmt/printf.h>
 #include <random>
+#include <spdlog/async.h>
+#include <spdlog/sinks/ansicolor_sink.h>
 #include <spdlog/spdlog.h>
 
 struct SimpleRandomNumberGenerator {
@@ -69,7 +70,7 @@ struct Multipiler {
         size_t col           = c * reg_dim;
         size_t row_byte_size = reg_dim * t.parent_mat.elem_size;
 
-        fmt::printf("base addr: %lu\n", t.base);
+        spdlog::info("base addr: {}", t.base);
         for (size_t i = 0; i < reg_dim; ++i) {
             raw_addr addr                     = t.get_addr(row + i, col);
             raw_addr cache_aligned_addr_start = addr & ~(cache_line_size_ - 1);
@@ -78,8 +79,8 @@ struct Multipiler {
 
             for (size_t line = cache_aligned_addr_start;
                  line <= cache_aligned_addr_end; line += cache_line_size_) {
-                fmt::printf("touched: %lu -> %lu\n", line,
-                            line + cache_line_size_);
+                spdlog::info("touched: {} -> {}", line,
+                             line + cache_line_size_);
             }
         }
     }
@@ -111,15 +112,15 @@ struct Multipiler {
         for (size_t row = 0; row < ceil(a.height, reg_dim); ++row) {
             for (size_t col = 0; col < ceil(b.width, reg_dim); ++col) {
 
-                fmt::printf("load C: ");
+                spdlog::info("load C: ");
                 load_into_reg(c, row, col);
                 for (size_t k = 0; k < ceil(inner_dim, reg_dim); ++k) {
-                    fmt::printf("load A: ");
+                    spdlog::info("load A: ");
                     load_into_reg(a, row, k);
-                    fmt::printf("load B: ");
+                    spdlog::info("load B: ");
                     load_into_reg(b, k, col);
                 }
-                fmt::printf("store C: ");
+                spdlog::info("store C: ");
                 store_reg(c, row, col);
             }
         }
@@ -138,8 +139,7 @@ struct Multipiler {
                 tc.base = c.base +
                           (col * tile_w + row * c.width * tile_h) * c.elem_size;
 
-                fmt::printf("tiles %d, %d\n", row, col);
-
+                spdlog::info("tiles {}, {}", row, col);
                 output_tile_mul(ta, tb, tc);
             }
         }
@@ -187,10 +187,17 @@ struct MatrixFactory {
 
 int main()
 {
-    MatrixFactory mat_factory(10, 10, 10, 1, 4);
+    spdlog::init_thread_pool(8192, 1);
+    std::shared_ptr<spdlog::logger> bg_console_logger =
+        spdlog::create_async<spdlog::sinks::ansicolor_stdout_sink_mt>(
+            "bg_console_logger");
+    spdlog::set_default_logger(bg_console_logger);
+    spdlog::info("Initialized Async Logger");
+
+    MatrixFactory mat_factory(100, 100, 100, 1, 4);
     auto [a, b, c] = mat_factory.create();
 
-    Multipiler m{a, b, c, 5, 5};
+    Multipiler m{a, b, c, 25, 25};
     m.output_stat_matmul();
 
     return 0;
