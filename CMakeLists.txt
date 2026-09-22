@@ -19,4 +19,5 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
         <spdlog/spdlog.h>
         <spdlog/async.h>
         <fmt/format.h>
+        <fmt/printf.h>
 )

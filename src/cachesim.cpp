@@ -9,7 +9,7 @@
 namespace
 {
 
-constexpr int B_ADDR_SIZE  = 32;
+constexpr int B_ADDR_SIZE  = 64;
 constexpr int B_ALIGN_SIZE = 2;
 
 /* simple log function */
@@ -207,7 +207,7 @@ Insertion cache::insert(const AddrParts& addr, RawAddr& evicted_addr,
     return sets_[addr.set].insert(addr, evicted_addr, evicted_dirty);
 }
 
-simulator& simulator::getInstance(int block_size, int mem_cycles, int l1_size,
+CacheUnit& CacheUnit::getInstance(int block_size, int mem_cycles, int l1_size,
                                   int l1_cycles, int l1_assoc, int l2_size,
                                   int l2_cycles, int l2_assoc, bool write_alloc)
 {
@@ -215,13 +215,13 @@ simulator& simulator::getInstance(int block_size, int mem_cycles, int l1_size,
     /* Creating a static instance of the simulator because we don't need
      * more than one
      */
-    static simulator instance(block_size, mem_cycles, l1_size, l1_cycles,
+    static CacheUnit instance(block_size, mem_cycles, l1_size, l1_cycles,
                               l1_assoc, l2_size, l2_cycles, l2_assoc,
                               write_alloc);
     return instance;
 }
 
-void simulator::process_request(char operation, RawAddr address)
+void CacheUnit::process_request(char operation, RawAddr address)
 {
     switch (operation) {
     case 'r':
@@ -236,20 +236,20 @@ void simulator::process_request(char operation, RawAddr address)
     }
 }
 
-double simulator::calc_L1_miss_rate() const
+double CacheUnit::calc_L1_miss_rate() const
 {
     return (double)l1_.get_n_misses() / (double)l1_.get_n_access();
 }
-double simulator::calc_L2_miss_rate() const
+double CacheUnit::calc_L2_miss_rate() const
 {
     return (double)l2_.get_n_misses() / (double)l2_.get_n_access();
 }
-double simulator::calc_avg_access_time() const
+double CacheUnit::calc_avg_access_time() const
 {
     return (double)total_access_cycles / (double)n_of_access;
 }
 
-simulator::simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
+CacheUnit::CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
                      int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
                      bool write_alloc)
     : block_size_(block_size), mem_cycles_(mem_cycles), l1_size_(l1_size),
@@ -260,7 +260,7 @@ simulator::simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
 {
 }
 
-void simulator::do_read(RawAddr address)
+void CacheUnit::do_read(RawAddr address)
 {
     AddrParts l1_addr_parts = l1_.splitter(address);
     AddrParts l2_addr_parts = l2_.splitter(address);
@@ -296,33 +296,8 @@ void simulator::do_read(RawAddr address)
             Insertion wasEvicted =
                 l2_.insert(l2_addr_parts, evicted_addr, evicted_dirty);
 
-            if (wasEvicted.second) {
-                // write back to memory the evicted data in background
-                cur_state = snoop_l1;
-            } else {
-                cur_state = insert_l1;
-            }
-
-        } break;
-        case snoop_l1: {
-            AddrParts l1_snoop_addr_parts = l1_.splitter(evicted_addr);
-
-            // take dirty status of evicted line from L2
-            bool should_evict = evicted_dirty;
-
-            CacheLine* victim = l1_.lookupNoUpdate(l1_snoop_addr_parts);
-            if (victim) {
-                if (victim->isDirty()) {
-                    should_evict = true;
-                }
-
-                l1_.invalidate(l1_snoop_addr_parts);
-            }
-
-            if (should_evict) {
-                // NOTE: maybe not needed if the writes are in
-                // background
-                // log_mem_access();
+            if (wasEvicted.second && evicted_dirty) {
+                log_mem_access();
             }
 
             cur_state = insert_l1;
@@ -345,9 +320,17 @@ void simulator::do_read(RawAddr address)
             if (target) {
                 target->markDirty();
             } else {
-                // shouldn't happen because inclusive cache
-                std::cerr << "cache contradicts inclusivness" << std::endl;
-                exit(1);
+                RawAddr l2_evicted_addr   = 0;
+                DirtyBit l2_evicted_dirty = false;
+
+                Insertion result = l2_.insert(
+                    l2_writeback_addr_parts, l2_evicted_addr, l2_evicted_dirty);
+
+                result.first->markDirty();
+
+                if (result.second && l2_evicted_dirty) {
+                    log_mem_access();
+                }
             }
 
             finish = true;
@@ -356,7 +339,7 @@ void simulator::do_read(RawAddr address)
     }
 }
 
-void simulator::do_write(RawAddr address)
+void CacheUnit::do_write(RawAddr address)
 {
     if (write_alloc_) {
         do_write_allocate(address);
@@ -365,7 +348,7 @@ void simulator::do_write(RawAddr address)
     }
 }
 
-void simulator::do_write_allocate(RawAddr address)
+void CacheUnit::do_write_allocate(RawAddr address)
 {
     AddrParts l1_addr_parts = l1_.splitter(address);
     AddrParts l2_addr_parts = l2_.splitter(address);
@@ -403,31 +386,8 @@ void simulator::do_write_allocate(RawAddr address)
             Insertion wasEvicted =
                 l2_.insert(l2_addr_parts, evicted_addr, evicted_dirty);
 
-            if (wasEvicted.second) {
-                // write back to memory the evicted data in background
-                cur_state = snoop_l1;
-            } else {
-                cur_state = insert_l1;
-            }
-
-        } break;
-        case snoop_l1: {
-            AddrParts l1_snoop_addr_parts = l1_.splitter(evicted_addr);
-
-            bool should_evict = evicted_dirty;
-            CacheLine* victim = l1_.lookupNoUpdate(l1_snoop_addr_parts);
-            if (victim) {
-                if (victim->isDirty()) {
-                    should_evict = true;
-                }
-
-                l1_.invalidate(l1_snoop_addr_parts);
-            }
-
-            if (should_evict) {
-                // NOTE: maybe not needed if the writes are in
-                // background
-                // log_mem_access();
+            if (wasEvicted.second && evicted_dirty) {
+                log_mem_access();
             }
 
             cur_state = insert_l1;
@@ -453,9 +413,17 @@ void simulator::do_write_allocate(RawAddr address)
             if (target) {
                 target->markDirty();
             } else {
-                // shouldn't happen because inclusive cache
-                std::cerr << "cache contradicts inclusivness" << std::endl;
-                exit(1);
+                RawAddr l2_evicted_addr   = 0;
+                DirtyBit l2_evicted_dirty = false;
+
+                Insertion result = l2_.insert(
+                    l2_writeback_addr_parts, l2_evicted_addr, l2_evicted_dirty);
+
+                result.first->markDirty();
+
+                if (result.second && l2_evicted_dirty) {
+                    log_mem_access();
+                }
             }
 
             finish = true;
@@ -464,7 +432,7 @@ void simulator::do_write_allocate(RawAddr address)
     }
 }
 
-void simulator::do_write_simple(RawAddr address)
+void CacheUnit::do_write_simple(RawAddr address)
 {
     AddrParts l1_addr_parts = l1_.splitter(address);
     AddrParts l2_addr_parts = l2_.splitter(address);
@@ -486,7 +454,7 @@ void simulator::do_write_simple(RawAddr address)
     log_mem_access();
 }
 
-void simulator::log_l1_access()
+void CacheUnit::log_l1_access()
 {
     /* only need to increment the access amount of the first access try,
      * that always starts at L1 */
@@ -494,11 +462,11 @@ void simulator::log_l1_access()
     total_access_cycles += l1_cycles_;
 }
 
-void simulator::log_l2_access()
+void CacheUnit::log_l2_access()
 {
     total_access_cycles += l2_cycles_;
 }
-void simulator::log_mem_access()
+void CacheUnit::log_mem_access()
 {
     total_access_cycles += mem_cycles_;
 }

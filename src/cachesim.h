@@ -7,11 +7,10 @@
 #include <utility>
 #include <vector>
 
-using uint     = unsigned int;
-using Tag      = uint;
-using BitMask  = uint;
-using RawAddr  = uint;
-using SetIndex = uint;
+using RawAddr  = uint64_t;
+using Tag      = uint64_t;
+using BitMask  = uint64_t;
+using SetIndex = uint64_t;
 using DirtyBit = bool;
 using Outcome  = bool;
 
@@ -127,13 +126,13 @@ class cache
     std::vector<Set> sets_;
 };
 
-class simulator
+class CacheUnit
 {
   public:
-    simulator(const simulator&)            = delete;
-    simulator& operator=(const simulator&) = delete;
+    CacheUnit(const CacheUnit&)            = delete;
+    CacheUnit& operator=(const CacheUnit&) = delete;
 
-    static simulator& getInstance(int block_size, int mem_cycles, int l1_size,
+    static CacheUnit& getInstance(int block_size, int mem_cycles, int l1_size,
                                   int l1_cycles, int l1_assoc, int l2_size,
                                   int l2_cycles, int l2_assoc,
                                   bool write_alloc);
@@ -145,7 +144,7 @@ class simulator
     double calc_avg_access_time() const;
 
   private:
-    simulator(int block_size, int mem_cycles, int l1_size, int l1_cycles,
+    CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
               int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
               bool write_alloc);
 
@@ -173,7 +172,6 @@ class simulator
         search_l2,
         insert_l1,
         insert_l2,
-        snoop_l1,
         write_back_l2,
     };
 
