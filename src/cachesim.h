@@ -1,18 +1,13 @@
 #ifndef CACHE_SIM_H_
 #define CACHE_SIM_H_
 
+#include "my_utils.h"
+
 #include <cassert>
 #include <list>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-using RawAddr  = uint64_t;
-using Tag      = uint64_t;
-using BitMask  = uint64_t;
-using SetIndex = uint64_t;
-using DirtyBit = bool;
-using Outcome  = bool;
 
 struct AddrParts {
     RawAddr raw;
@@ -129,13 +124,9 @@ class cache
 class CacheUnit
 {
   public:
-    CacheUnit(const CacheUnit&)            = delete;
-    CacheUnit& operator=(const CacheUnit&) = delete;
-
-    static CacheUnit& getInstance(int block_size, int mem_cycles, int l1_size,
-                                  int l1_cycles, int l1_assoc, int l2_size,
-                                  int l2_cycles, int l2_assoc,
-                                  bool write_alloc);
+    CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
+              int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
+              bool write_alloc);
 
     void process_request(char operation, RawAddr address);
 
@@ -144,10 +135,6 @@ class CacheUnit
     double calc_avg_access_time() const;
 
   private:
-    CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
-              int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
-              bool write_alloc);
-
     const int block_size_;
     const int mem_cycles_;
     const int l1_size_;

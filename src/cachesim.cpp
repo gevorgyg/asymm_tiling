@@ -207,20 +207,6 @@ Insertion cache::insert(const AddrParts& addr, RawAddr& evicted_addr,
     return sets_[addr.set].insert(addr, evicted_addr, evicted_dirty);
 }
 
-CacheUnit& CacheUnit::getInstance(int block_size, int mem_cycles, int l1_size,
-                                  int l1_cycles, int l1_assoc, int l2_size,
-                                  int l2_cycles, int l2_assoc, bool write_alloc)
-{
-
-    /* Creating a static instance of the simulator because we don't need
-     * more than one
-     */
-    static CacheUnit instance(block_size, mem_cycles, l1_size, l1_cycles,
-                              l1_assoc, l2_size, l2_cycles, l2_assoc,
-                              write_alloc);
-    return instance;
-}
-
 void CacheUnit::process_request(char operation, RawAddr address)
 {
     switch (operation) {
