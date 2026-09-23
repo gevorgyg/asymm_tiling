@@ -4,26 +4,31 @@
 #include "cachesim.h"
 #include "my_utils.h"
 
-class MultipUnit
+class MultiUnit
 {
-    using MultiplyMode = void (MultipUnit::*)(const Tile&, const Tile&,
-                                              const Tile&);
+    using MultiplyMode = void (MultiUnit::*)(const Tile&, const Tile&,
+                                             const Tile&);
 
   public:
-    MultipUnit(CacheUnit cache, std::tuple<Matrix, Matrix, Matrix> mats,
-               size_t tile_w, size_t tile_h);
+    MultiUnit(CacheUnit cache, std::tuple<Matrix, Matrix, Matrix> mats,
+              size_t tile_w, size_t tile_h);
 
-    MultipUnit(CacheUnit cache, std::tuple<Matrix, SeedArray, Matrix> mats,
-               size_t tile_w, size_t tile_h);
+    MultiUnit(CacheUnit cache, std::tuple<Matrix, SeedArray, Matrix> mats,
+              size_t tile_w, size_t tile_h);
 
     void output_stat_mul();
 
     void weight_stat_mul();
 
-    const CacheUnit& get_cache_unit() const;
+    // getter
+    const CacheUnit& cache() const;
 
   private:
+    enum BSource { fifo, memory };
+    BSource b_source{memory};
+
     CacheUnit cache_;
+
     Matrix a_, b_, c_;
     SeedArray seeds_;
 
@@ -44,7 +49,7 @@ class MultipUnit
 
     void output_tile_mul(const Tile& a, const Tile& b, const Tile& c);
 
-    void cache_level_mult(MultiplyMode mult_func);
+    void cache_level_multi(MultiplyMode mult_func);
 
     void calculate_addr(const Tile& t, size_t r, size_t c, char operation);
 };

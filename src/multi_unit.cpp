@@ -1,51 +1,51 @@
 #include "multi_unit.h"
 
-MultipUnit::MultipUnit(CacheUnit cache, std::tuple<Matrix, Matrix, Matrix> mats,
-                       size_t tile_w, size_t tile_h)
+MultiUnit::MultiUnit(CacheUnit cache, std::tuple<Matrix, Matrix, Matrix> mats,
+                     size_t tile_w, size_t tile_h)
     : cache_(cache), a_(std::get<0>(mats)), b_(std::get<1>(mats)),
       c_(std::get<2>(mats)), tile_w_(tile_w), tile_h_(tile_h)
 {
 }
 
-MultipUnit::MultipUnit(CacheUnit cache,
-                       std::tuple<Matrix, SeedArray, Matrix> mats,
-                       size_t tile_w, size_t tile_h)
+MultiUnit::MultiUnit(CacheUnit cache,
+                     std::tuple<Matrix, SeedArray, Matrix> mats, size_t tile_w,
+                     size_t tile_h)
     : cache_(cache), a_(std::get<0>(mats)), seeds_(std::get<1>(mats)),
       c_(std::get<2>(mats)), tile_w_(tile_w), tile_h_(tile_h)
 {
 }
 
-void MultipUnit::output_stat_mul()
+void MultiUnit::output_stat_mul()
 {
-    cache_level_mult(&MultipUnit::output_tile_mul);
+    cache_level_multi(&MultiUnit::output_tile_mul);
 }
 
-void MultipUnit::weight_stat_mul()
+void MultiUnit::weight_stat_mul()
 {
-    cache_level_mult(&MultipUnit::weight_tile_mul);
+    cache_level_multi(&MultiUnit::weight_tile_mul);
 }
 
-const CacheUnit& MultipUnit::get_cache_unit() const
+const CacheUnit& MultiUnit::cache() const
 {
     return cache_;
 }
 
-void MultipUnit::load_into_reg(const Tile& t, size_t r, size_t c)
+void MultiUnit::load_into_reg(const Tile& t, size_t r, size_t c)
 {
     calculate_addr(t, r, c, 'r');
 }
 
-void MultipUnit::store_from_reg(const Tile& t, size_t r, size_t c)
+void MultiUnit::store_from_reg(const Tile& t, size_t r, size_t c)
 {
     calculate_addr(t, r, c, 'w');
 }
 
-void MultipUnit::mulacc() const
+void MultiUnit::mulacc() const
 {
     // add dummy cycles
 }
 
-void MultipUnit::weight_tile_mul(const Tile& a, const Tile& b, const Tile& c)
+void MultiUnit::weight_tile_mul(const Tile& a, const Tile& b, const Tile& c)
 {
     for (size_t k = 0; k < ceil(inner_dim_, reg_dim_); ++k) {
         for (size_t col = 0; col < ceil(b.width, reg_dim_); ++col) {
@@ -60,7 +60,7 @@ void MultipUnit::weight_tile_mul(const Tile& a, const Tile& b, const Tile& c)
     }
 }
 
-void MultipUnit::output_tile_mul(const Tile& a, const Tile& b, const Tile& c)
+void MultiUnit::output_tile_mul(const Tile& a, const Tile& b, const Tile& c)
 {
     for (size_t row = 0; row < ceil(a.height, reg_dim_); ++row) {
         for (size_t col = 0; col < ceil(b.width, reg_dim_); ++col) {
@@ -75,7 +75,7 @@ void MultipUnit::output_tile_mul(const Tile& a, const Tile& b, const Tile& c)
     }
 }
 
-void MultipUnit::cache_level_mult(MultiplyMode mult_func)
+void MultiUnit::cache_level_multi(MultiplyMode mult_func)
 {
     Tile ta{a_, a_.base, tile_h_, a_.width};
     Tile tb{b_, b_.base, b_.height, tile_w_};
@@ -93,8 +93,8 @@ void MultipUnit::cache_level_mult(MultiplyMode mult_func)
     }
 }
 
-void MultipUnit::calculate_addr(const Tile& t, size_t r, size_t c,
-                                char operation)
+void MultiUnit::calculate_addr(const Tile& t, size_t r, size_t c,
+                               char operation)
 {
     size_t row           = r * reg_dim_;
     size_t col           = c * reg_dim_;

@@ -1,21 +1,42 @@
 #include "matrix_factory.h"
+#include "my_utils.h"
 
 MatrixFactory::MatrixFactory(uint32_t m, uint32_t k, uint32_t n,
-                             uint32_t small_percision, uint32_t ratio)
-    : small_perc_(small_percision), ratio_(ratio), m_(m), k_(k), n_(n)
+                             uint32_t small_percision, uint32_t ratio,
+                             uint32_t seed_perc)
+    : small_perc_(small_percision), ratio_(ratio), m_(m), k_(k), n_(n),
+      seed_perc_(seed_perc)
 {
+}
+
+MatrixFactory::MatSeedArrayTuple MatrixFactory::create_fifo_source()
+{
+    RawAddr start_addr   = generate_();
+    RawAddr aligned_addr = start_addr & ~(kAlign_ - 1);
+    RawAddr next_addr =
+        (aligned_addr + small_perc_ * ratio_ * m_ * k_) & ~(kAlign_ - 1);
+
+    // TODO: change this when we have a global config
+    const size_t seed_array_size = 1000000;
+    RawAddr seed_array_addr =
+        (static_cast<RawAddr>(-1) - seed_array_size) & ~(kAlign_ - 1);
+
+    MatSeedArrayTuple ret_arr = {
+        Matrix{aligned_addr, small_perc_ * ratio_, m_, k_},
+        SeedArray{seed_array_addr, seed_perc_, seed_array_size},
+        Matrix{next_addr, small_perc_ * ratio_, m_, n_},
+    };
+
+    return ret_arr;
 }
 
 MatrixFactory::MatTuple MatrixFactory::create_memory_source()
 {
-    static constexpr uint32_t kAlign = 0x40;
-
     RawAddr start_addr   = generate_();
-    RawAddr aligned_addr = (start_addr / kAlign) * kAlign;
+    RawAddr aligned_addr = start_addr & ~(kAlign_ - 1);
     RawAddr next_addr =
-        ceil(aligned_addr + small_perc_ * ratio_ * m_ * k_, kAlign) * kAlign;
-    RawAddr final_addr =
-        ceil(next_addr + small_perc_ * k_ * n_, kAlign) * kAlign;
+        (aligned_addr + small_perc_ * ratio_ * m_ * k_) & ~(kAlign_ - 1);
+    RawAddr final_addr = (next_addr + small_perc_ * k_ * n_) & ~(kAlign_ - 1);
 
     MatTuple ret_arr = {
         Matrix{aligned_addr, small_perc_ * ratio_, m_, k_},
