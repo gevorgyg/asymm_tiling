@@ -3,6 +3,7 @@
 
 #include "cachesim.h"
 #include "my_utils.h"
+#include "prngfifo.h"
 
 class MultiUnit
 {
@@ -10,34 +11,35 @@ class MultiUnit
                                              const Tile&);
 
   public:
-    MultiUnit(CacheUnit cache, std::tuple<Matrix, Matrix, Matrix> mats,
-              size_t tile_w, size_t tile_h);
+    enum BSource { fifo, memory };
 
-    MultiUnit(CacheUnit cache, std::tuple<Matrix, SeedArray, Matrix> mats,
-              size_t tile_w, size_t tile_h);
+    MultiUnit(CacheUnit cache, PrngFifo prng_fifo, Mat3Tuple mats,
+              size_t tile_w, size_t tile_h, BSource b_source);
 
-    void output_stat_mul();
+    void output_stat_matmul();
 
-    void weight_stat_mul();
+    void weight_stat_matmul();
 
-    // getter
     const CacheUnit& cache() const;
+    const PrngFifo& prng_fifo() const;
+
+    void register_stats() const;
 
   private:
-    enum BSource { fifo, memory };
-    BSource b_source{memory};
+    BSource b_source_;
 
     CacheUnit cache_;
+    PrngFifo prng_fifo_;
 
     Matrix a_, b_, c_;
-    SeedArray seeds_;
 
-    size_t tile_w_{};
-    size_t tile_h_{};
+    const size_t tile_w_{};
+    const size_t tile_h_{};
 
-    size_t inner_dim_{a_.width};
-    size_t reg_dim_{4};
-    size_t cache_line_size_{64};
+    const size_t inner_dim_{a_.width};
+    const size_t reg_dim_{4};
+    const size_t cache_line_size_{64};
+    const size_t mulacc_cost_{4};
 
     void load_into_reg(const Tile& t, size_t r, size_t c);
 
@@ -45,11 +47,11 @@ class MultiUnit
 
     void mulacc() const;
 
-    void weight_tile_mul(const Tile& a, const Tile& b, const Tile& c);
+    void reg_weight_mul(const Tile& a, const Tile& b, const Tile& c);
 
-    void output_tile_mul(const Tile& a, const Tile& b, const Tile& c);
+    void reg_output_mul(const Tile& a, const Tile& b, const Tile& c);
 
-    void cache_level_multi(MultiplyMode mult_func);
+    void tile_mul(MultiplyMode mult_func);
 
     void calculate_addr(const Tile& t, size_t r, size_t c, char operation);
 };

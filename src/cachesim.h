@@ -86,10 +86,13 @@ class AddrSplitter
     SetIndex create_index(RawAddr address) const;
 };
 
-class cache
+class CacheLevel
 {
+    friend class CacheUnit;
+
   public:
-    cache(int size, int block_size, int cycles, int assoc, bool write_alloc);
+    CacheLevel(int size, int block_size, int cycles, int assoc,
+               bool write_alloc);
 
     size_t get_n_access() const;
     size_t get_n_hits() const;
@@ -113,9 +116,9 @@ class cache
     const bool write_alloc_;
 
     // data for printing
-    size_t n_of_access = 0;
-    size_t n_of_misses = 0;
-    size_t n_of_hits   = 0;
+    size_t n_of_access_ = 0;
+    size_t n_of_misses_ = 0;
+    size_t n_of_hits_   = 0;
     // ---------------
 
     std::vector<Set> sets_;
@@ -129,6 +132,7 @@ class CacheUnit
               bool write_alloc);
 
     void process_request(char operation, RawAddr address);
+    void register_stats() const;
 
     double calc_L1_miss_rate() const;
     double calc_L2_miss_rate() const;
@@ -144,15 +148,10 @@ class CacheUnit
     const int l2_cycles_;
     const int l2_assoc_;
 
-    // data for printing
-    size_t total_access_cycles = 0;
-    size_t n_of_access         = 0;
-    // ---------------
-
     const bool write_alloc_;
 
-    cache l1_;
-    cache l2_;
+    CacheLevel l1_;
+    CacheLevel l2_;
 
     enum state {
         search_l1,
@@ -176,6 +175,11 @@ class CacheUnit
 
     void log_l2_access();
     void log_mem_access();
+
+    // data for printing
+    size_t total_access_cycles_ = 0;
+    size_t total_n_of_access_   = 0;
+    // ---------------
 };
 
 #endif

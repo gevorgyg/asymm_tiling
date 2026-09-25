@@ -1,10 +1,15 @@
 #include "cachesim.h"
+#include "my_utils.h"
+#include "registry.h"
 #include <cassert>
 #include <iostream>
 #include <list>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+// TODO: refractor the getters from the unit to the cache levels, because it's a
+// friend now, no need for them.
 
 namespace
 {
@@ -156,7 +161,8 @@ SetIndex AddrSplitter::create_index(RawAddr address) const
     return (address & set_mask_) >> block_size_;
 }
 
-cache::cache(int size, int block_size, int cycles, int assoc, bool write_alloc)
+CacheLevel::CacheLevel(int size, int block_size, int cycles, int assoc,
+                       bool write_alloc)
     : size_(size), cycles_(cycles), assoc_(ttp(assoc)),
       write_alloc_(write_alloc),
       sets_((ttp(size) / ttp(assoc)) / ttp(block_size), Set{ttp(assoc)}),
@@ -164,45 +170,45 @@ cache::cache(int size, int block_size, int cycles, int assoc, bool write_alloc)
 {
 }
 
-size_t cache::get_n_access() const
+size_t CacheLevel::get_n_access() const
 {
-    return n_of_access;
+    return n_of_access_;
 }
-size_t cache::get_n_hits() const
+size_t CacheLevel::get_n_hits() const
 {
-    return n_of_hits;
+    return n_of_hits_;
 }
-size_t cache::get_n_misses() const
+size_t CacheLevel::get_n_misses() const
 {
-    return n_of_misses;
+    return n_of_misses_;
 }
 
-CacheLine* cache::lookup(const AddrParts& addr)
+CacheLine* CacheLevel::lookup(const AddrParts& addr)
 {
-    ++n_of_access;
+    ++n_of_access_;
     CacheLine* target = sets_[addr.set].lookup(addr.tag);
 
     if (target) {
-        ++n_of_hits;
+        ++n_of_hits_;
     } else {
-        ++n_of_misses;
+        ++n_of_misses_;
     }
 
     return target;
 }
 
-CacheLine* cache::lookupNoUpdate(const AddrParts& addr)
+CacheLine* CacheLevel::lookupNoUpdate(const AddrParts& addr)
 {
     return sets_[addr.set].lookup(addr.tag);
 }
 
-void cache::invalidate(const AddrParts& addr)
+void CacheLevel::invalidate(const AddrParts& addr)
 {
     sets_[addr.set].invalidate(addr.tag);
 }
 
-Insertion cache::insert(const AddrParts& addr, RawAddr& evicted_addr,
-                        DirtyBit& evicted_dirty)
+Insertion CacheLevel::insert(const AddrParts& addr, RawAddr& evicted_addr,
+                             DirtyBit& evicted_dirty)
 {
     return sets_[addr.set].insert(addr, evicted_addr, evicted_dirty);
 }
@@ -232,7 +238,7 @@ double CacheUnit::calc_L2_miss_rate() const
 }
 double CacheUnit::calc_avg_access_time() const
 {
-    return (double)total_access_cycles / (double)n_of_access;
+    return (double)total_access_cycles_ / (double)total_n_of_access_;
 }
 
 CacheUnit::CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
@@ -444,15 +450,45 @@ void CacheUnit::log_l1_access()
 {
     /* only need to increment the access amount of the first access try,
      * that always starts at L1 */
-    n_of_access++;
-    total_access_cycles += l1_cycles_;
+    total_n_of_access_++;
+    total_access_cycles_ += l1_cycles_;
+    Clock::tick(l1_cycles_);
 }
 
 void CacheUnit::log_l2_access()
 {
-    total_access_cycles += l2_cycles_;
+    total_access_cycles_ += l2_cycles_;
+    Clock::tick(l2_cycles_);
 }
 void CacheUnit::log_mem_access()
 {
-    total_access_cycles += mem_cycles_;
+    total_access_cycles_ += mem_cycles_;
+    Clock::tick(mem_cycles_);
+}
+void CacheUnit::register_stats() const
+{
+    gRegistry().reg_stat("CacheUnit: total access cycles",
+                         &total_access_cycles_);
+    gRegistry().reg_stat("CacheUnit: total number of access",
+                         &total_n_of_access_);
+    gRegistry().reg_stat("CacheUnit: L1 accesses", &l1_.n_of_access_);
+    gRegistry().reg_stat("CacheUnit: L1 hits", &l1_.n_of_hits_);
+    gRegistry().reg_stat("CacheUnit: L1 misses", &l1_.n_of_misses_);
+    gRegistry().reg_stat("CacheUnit: L2 accesses", &l2_.n_of_access_);
+    gRegistry().reg_stat("CacheUnit: L2 hits", &l2_.n_of_hits_);
+    gRegistry().reg_stat("CacheUnit: L2 misses", &l2_.n_of_misses_);
+
+    gRegistry().reg_stat<double>("CacheUnit: cache avg_access_time",
+                                 [this]() { return calc_avg_access_time(); });
+    gRegistry().reg_stat<double>("CacheUnit: l1 miss_rate %", [this]() {
+        return calc_L1_miss_rate() * 100.0;
+    });
+    gRegistry().reg_stat<double>("CacheUnit: l2 local_miss_rate %", [this]() {
+        return calc_L2_miss_rate() * 100.0;
+    });
+    gRegistry().reg_stat<double>("CacheUnit: l2 global_miss_rate %", [this]() {
+        return total_n_of_access_
+                   ? ((double)l2_.get_n_misses() / total_n_of_access_) * 100.0
+                   : 0.0;
+    });
 }
