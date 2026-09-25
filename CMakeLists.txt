@@ -26,12 +26,13 @@ target_sources(${PROJECT_NAME} PRIVATE src/cachesim.h
 )
 
 target_link_libraries(${PROJECT_NAME} 
-    spdlog::spdlog 
-    fmt::fmt CLI11::CLI11
+    spdlog::spdlog
+    fmt::fmt
+    CLI11::CLI11
 )
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE
         <spdlog/spdlog.h>
-        <spdlog/async.h>
         <fmt/format.h>
+        <CLI/CLI.hpp>
 )
