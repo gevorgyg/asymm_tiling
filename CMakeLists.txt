@@ -25,6 +25,8 @@ target_sources(${PROJECT_NAME} PRIVATE src/cachesim.h
                                        src/registry.h
                                        src/my_options.cpp
                                        src/my_options.h
+                                       src/config.cpp
+                                       src/config.h
 )
 
 target_link_libraries(${PROJECT_NAME} 
@@ -38,4 +40,5 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
         <fmt/format.h>
         <CLI/CLI.hpp>
         <map>
+        <toml++/toml.hpp>
 )

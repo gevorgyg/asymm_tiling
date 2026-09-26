@@ -1,6 +1,7 @@
 #ifndef MY_OPTIONS_H_
 #define MY_OPTIONS_H_
 
+#include "config.h"
 #include "multi_unit.h"
 
 struct MyOptions : public CLI::App {
@@ -12,41 +13,40 @@ struct MyOptions : public CLI::App {
     oriantation mult_oriantation = weight;
 
     // matrix factory options
-    uint32_t m               = 250;
-    uint32_t k               = 250;
-    uint32_t n               = 250;
-    uint32_t small_percision = 1;
-    uint32_t ratio           = 4;
+    uint32_t m;
+    uint32_t k;
+    uint32_t n;
+    uint32_t small_percision;
+    uint32_t ratio;
 
     // prnf fifo options
-    // PrngFifo(size_t capacity, size_t generation_cost, size_t accsess_cost,
-    //          size_t seed_size);
-    size_t capacity        = 14;
-    size_t generation_cost = 10;
-    size_t accsess_cost    = 2;
-    uint32_t seed_size     = 1;
+    size_t capacity;
+    size_t generation_cost;
+    size_t accsess_cost;
+    uint32_t seed_size;
 
     // multi unit options
-    size_t tile_h{m / 2};
-    size_t tile_w{n / 2};
-    BSource b_source = BSource::memory;
-
-    // CacheUnit{6, 100, 14, 4, 3, 16, 20, 3, true};
+    size_t tile_h;
+    size_t tile_w;
+    BSource b_source;
 
     // cache unit options
-    int block_size = 6;
-    int mem_cycles = 100;
-    int l1_size    = 14;
-    int l1_cycles  = 4;
-    int l1_assoc   = 3;
-    int l2_size    = 16;
-    int l2_cycles  = 20;
-    int l2_assoc   = 3;
-
-    bool write_alloc = false;
+    int block_size;
+    int mem_cycles;
+    int l1_size;
+    int l1_cycles;
+    int l1_assoc;
+    int l2_size;
+    int l2_cycles;
+    int l2_assoc;
+    bool write_alloc;
 
     explicit MyOptions(std::string app_description = "",
                        std::string app_name        = "");
+
+    void apply_config(const Config& config);
+
+    void post_parse();
 
   private:
     std::array<int, 8> cache_options;

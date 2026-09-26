@@ -82,9 +82,48 @@ MyOptions::MyOptions(std::string app_description, std::string app_name)
                "mem_cycles, l1_size, l1_cycles, "
                "l1_assoc, l2_size, l2_cycles, l2_assoc ]");
 
-    auto [block_size, mem_cycles, l1_size, l1_cycles, l1_assoc, l2_size,
-          l2_cycles, l2_assoc] = cache_options;
-
     add_flag("-w, --write-allocate, --no-write-allocate{false}", write_alloc,
              "set write allocate");
+}
+
+void MyOptions::apply_config(const Config& config)
+{
+    m               = config.m;
+    k               = config.k;
+    n               = config.n;
+    small_percision = config.small_percision;
+    ratio           = config.ratio;
+
+    block_size  = config.block_size;
+    mem_cycles  = config.mem_cycles;
+    l1_size     = config.l1_size;
+    l1_cycles   = config.l1_cycles;
+    l1_assoc    = config.l1_assoc;
+    l2_size     = config.l2_size;
+    l2_cycles   = config.l2_cycles;
+    l2_assoc    = config.l2_assoc;
+    write_alloc = config.write_alloc;
+
+    capacity        = config.capacity;
+    generation_cost = config.generation_cost;
+    accsess_cost    = config.accsess_cost;
+    seed_size       = config.seed_size;
+
+    tile_w   = config.tile_w;
+    tile_h   = config.tile_h;
+    b_source = config.b_source;
+}
+
+void MyOptions::post_parse()
+{
+    if (get_option("-c")->count() > 0) {
+        block_size = cache_options[0];
+        mem_cycles = cache_options[1];
+        l1_size    = cache_options[2];
+        l1_cycles  = cache_options[3];
+        l1_assoc   = cache_options[4];
+        l2_size    = cache_options[5];
+        l2_cycles  = cache_options[6];
+        l2_assoc   = cache_options[7];
+    }
 }

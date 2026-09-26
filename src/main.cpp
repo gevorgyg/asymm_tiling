@@ -10,14 +10,19 @@
 int main(int argc, char* argv[])
 {
     MyOptions options{"asymm tiling options", "asymm tiling"};
+
+    // apply config from file
+    options.apply_config(gConfig());
+
+    // overwrite things given from CLI
     CLI11_PARSE(options, argc, argv);
+    options.post_parse();
 
     spdlog::info("Asymm Matrix Multiplication Log Start");
 
     // create matrices
     MatrixFactory mat_factory{options.m, options.k, options.n,
                               options.small_percision, options.ratio};
-    const size_t tile_w = 25, tile_h = 25;
 
     MultiUnit m{
         CacheUnit{options.block_size, options.mem_cycles, options.l1_size,
@@ -32,7 +37,7 @@ int main(int argc, char* argv[])
     };
 
     // start simulation
-    if (options.mult_oriantation) {
+    if (options.mult_oriantation == MyOptions::output) {
         m.output_stat_matmul();
     } else {
         m.weight_stat_matmul();
