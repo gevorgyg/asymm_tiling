@@ -32,12 +32,24 @@ The simulator integrates:
   - `CLI11`
   - `toml++`
 
-On Ubuntu/Debian, dependencies can typically be installed via:
+### Installing Dependencies
+
+#### Ubuntu / Debian
 ```bash
 sudo apt-get update
-sudo apt-get install build-essential cmake libspdlog-dev libfmt-dev libcli11-dev
+sudo apt-get install build-essential cmake libspdlog-dev libfmt-dev libcli11-dev libtomlplusplus-dev
 ```
-*(Ensure `toml++` is installed in your system include path or package manager).*
+
+#### Arch Linux
+```bash
+sudo pacman -S base-devel cmake spdlog fmt cli11 tomlplusplus
+```
+
+#### macOS (Homebrew)
+```bash
+brew install cmake spdlog fmt cli11 tomlplusplus
+```
+
 
 ---
 
