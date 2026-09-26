@@ -2,10 +2,9 @@
 #include "my_utils.h"
 
 MatrixFactory::MatrixFactory(uint32_t m, uint32_t k, uint32_t n,
-                             uint32_t small_percision, uint32_t ratio,
-                             uint32_t seed_perc)
-    : small_perc_(small_percision), ratio_(ratio), m_(m), k_(k), n_(n),
-      seed_perc_(seed_perc)
+                             uint32_t small_percision, uint32_t ratio)
+    : small_perc_(small_percision), ratio_(ratio), m_(m), k_(k), n_(n)
+
 {
 }
 

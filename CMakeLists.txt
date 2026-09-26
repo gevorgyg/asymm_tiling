@@ -35,4 +35,5 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
         <spdlog/spdlog.h>
         <fmt/format.h>
         <CLI/CLI.hpp>
+        <map>
 )

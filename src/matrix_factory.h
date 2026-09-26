@@ -7,7 +7,7 @@ class MatrixFactory
 
   public:
     MatrixFactory(uint32_t m, uint32_t k, uint32_t n, uint32_t small_percision,
-                  uint32_t ratio, uint32_t seed_perc = 1);
+                  uint32_t ratio);
 
     Mat3Tuple create_mats();
 
@@ -15,6 +15,5 @@ class MatrixFactory
     const uint32_t small_perc_;
     const uint32_t ratio_;
     const uint32_t m_, k_, n_;
-    const uint32_t seed_perc_;
     SimpleRandomNumberGenerator generate_;
 };
