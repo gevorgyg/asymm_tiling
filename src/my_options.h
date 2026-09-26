@@ -12,9 +12,9 @@ struct MyOptions : public CLI::App {
     oriantation mult_oriantation = weight;
 
     // matrix factory options
-    uint32_t m               = 100;
-    uint32_t k               = 100;
-    uint32_t n               = 100;
+    uint32_t m               = 250;
+    uint32_t k               = 250;
+    uint32_t n               = 250;
     uint32_t small_percision = 1;
     uint32_t ratio           = 4;
 

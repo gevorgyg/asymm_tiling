@@ -23,6 +23,8 @@ target_sources(${PROJECT_NAME} PRIVATE src/cachesim.h
                                        src/prngfifo.cpp
                                        src/registry.cpp
                                        src/registry.h
+                                       src/my_options.cpp
+                                       src/my_options.h
 )
 
 target_link_libraries(${PROJECT_NAME} 
