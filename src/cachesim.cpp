@@ -161,9 +161,9 @@ SetIndex AddrSplitter::create_index(RawAddr address) const
     return (address & set_mask_) >> block_size_;
 }
 
-CacheLevel::CacheLevel(int size, int block_size, int cycles, int assoc,
-                       bool write_alloc)
-    : size_(size), cycles_(cycles), assoc_(ttp(assoc)),
+CacheLevel::CacheLevel(int level, int size, int block_size, int cycles,
+                       int assoc, bool write_alloc)
+    : level_(level), size_(size), cycles_(cycles), assoc_(ttp(assoc)),
       write_alloc_(write_alloc),
       sets_((ttp(size) / ttp(assoc)) / ttp(block_size), Set{ttp(assoc)}),
       splitter((ttp(size) / ttp(assoc)) / ttp(block_size), block_size)
@@ -241,15 +241,37 @@ double CacheUnit::calc_avg_access_time() const
     return (double)total_access_cycles_ / (double)total_n_of_access_;
 }
 
-CacheUnit::CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
-                     int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
+CacheUnit::CacheUnit(int block_size, int mem_cycles,
+                     const std::vector<CacheLevelConfig>& cache_levels,
                      bool write_alloc)
-    : block_size_(block_size), mem_cycles_(mem_cycles), l1_size_(l1_size),
-      l1_cycles_(l1_cycles), l1_assoc_(l1_assoc), l2_size_(l2_size),
-      l2_cycles_(l2_cycles), l2_assoc_(l2_assoc), write_alloc_(write_alloc),
-      l1_(l1_size, block_size, l1_cycles, l1_assoc, write_alloc),
-      l2_(l2_size, block_size, l2_cycles, l2_assoc, write_alloc)
+    : block_size_(block_size), mem_cycles_(mem_cycles),
+      write_alloc_(write_alloc)
 {
+    // construct the levels vector
+    for (const auto& level_config : cache_levels) {
+        levels_.push_back(std::make_unique<CacheLevel>(
+            level_config.level, level_config.size, block_size_,
+            level_config.cycles, level_config.assoc, write_alloc_));
+    }
+
+    // assign level pointers
+    if (levels_.size() == 1) {
+        levels_[0]->upper_level_ = nullptr;
+        levels_[0]->lower_level_ = nullptr;
+    } else {
+        for (int i = 0; i < levels_.size(); ++i) {
+            if (i == 0) {
+                levels_[i]->upper_level_ = nullptr;
+                levels_[i]->lower_level_ = levels_[i + 1].get();
+            } else if (i >= levels_.size() - 1) {
+                levels_[i]->upper_level_ = levels_[i - 1].get();
+                levels_[i]->lower_level_ = nullptr;
+            } else {
+                levels_[i]->upper_level_ = levels_[i - 1].get();
+                levels_[i]->lower_level_ = levels_[i + 1].get();
+            }
+        }
+    }
 }
 
 void CacheUnit::do_read(RawAddr address)

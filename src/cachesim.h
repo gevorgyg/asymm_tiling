@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <list>
+#include <memory>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -61,7 +62,7 @@ class Set
   private:
     void updateQueue(Data target);
 
-    std::unordered_map<Tag, CacheLine> ways_;
+    std::unordered_map<Tag, CacheLine> ways_; // each way is a cacheline
 
     std::list<Tag> lru_queue_;
 
@@ -91,7 +92,7 @@ class CacheLevel
     friend class CacheUnit;
 
   public:
-    CacheLevel(int size, int block_size, int cycles, int assoc,
+    CacheLevel(int level, int size, int block_size, int cycles, int assoc,
                bool write_alloc);
 
     size_t get_n_access() const;
@@ -110,10 +111,14 @@ class CacheLevel
                      DirtyBit& evicted_dirty);
 
   private:
-    const int size_; // = cache size
-    const int cycles_;
-    const int assoc_;
+    const uint32_t level_;
+    const uint32_t size_;
+    const uint32_t cycles_;
+    const uint32_t assoc_;
     const bool write_alloc_;
+
+    CacheLevel* upper_level_;
+    CacheLevel* lower_level_;
 
     // data for printing
     size_t n_of_access_ = 0;
@@ -124,11 +129,18 @@ class CacheLevel
     std::vector<Set> sets_;
 };
 
+struct CacheLevelConfig {
+    uint32_t level;
+    uint32_t size;
+    uint32_t cycles;
+    uint32_t assoc;
+};
+
 class CacheUnit
 {
   public:
-    CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
-              int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
+    CacheUnit(int block_size, int mem_cycles,
+              const std::vector<CacheLevelConfig>& cache_levels,
               bool write_alloc);
 
     void process_request(char operation, RawAddr address);
@@ -141,17 +153,10 @@ class CacheUnit
   private:
     const int block_size_;
     const int mem_cycles_;
-    const int l1_size_;
-    const int l1_cycles_;
-    const int l1_assoc_;
-    const int l2_size_;
-    const int l2_cycles_;
-    const int l2_assoc_;
-
     const bool write_alloc_;
 
-    CacheLevel l1_;
-    CacheLevel l2_;
+    using CacheLevelPtr = std::unique_ptr<CacheLevel>;
+    std::vector<CacheLevelPtr> levels_;
 
     enum state {
         search_l1,
@@ -160,7 +165,6 @@ class CacheUnit
         insert_l2,
         write_back_l2,
     };
-
     state cur_state;
 
     void do_read(RawAddr address);
