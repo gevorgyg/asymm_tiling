@@ -4,9 +4,9 @@
 
 MultiUnit::MultiUnit(CacheUnit cache, PrngFifo prng_fifo, Mat3Tuple mats,
                      size_t tile_w, size_t tile_h, BSource b_source)
-    : cache_(cache), prng_fifo_(prng_fifo), a_(std::get<0>(mats)),
-      b_(std::get<1>(mats)), c_(std::get<2>(mats)), tile_w_(tile_w),
-      tile_h_(tile_h), b_source_(b_source)
+    : cache_(std::move(cache)), prng_fifo_(std::move(prng_fifo)),
+      a_(std::get<0>(mats)), b_(std::get<1>(mats)), c_(std::get<2>(mats)),
+      tile_w_(tile_w), tile_h_(tile_h), b_source_(b_source)
 {
     register_stats();
 }

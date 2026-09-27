@@ -19,13 +19,13 @@ class Registry
 
   public:
     template <typename T>
-    void reg_stat(const char* name, const T* stat)
+    void reg_stat(const std::string& name, const T* stat)
     {
         entries_.emplace_back(RegEnt{name, RegEntVar{stat}});
     }
 
     template <typename T>
-    void reg_stat(const char* name, std::function<T()> stat)
+    void reg_stat(const std::string& name, std::function<T()> stat)
     {
         entries_.emplace_back(RegEnt{name, RegEntVar{stat}});
     }
@@ -34,7 +34,7 @@ class Registry
     {
         std::sort(
             entries_.begin(), entries_.end(),
-            [](const RegEnt& a, const RegEnt& b) { return a.first > b.first; });
+            [](const RegEnt& a, const RegEnt& b) { return a.first < b.first; });
 
         fmt::print("\n{:=^65}\n", " SIMULATION STATS ");
         fmt::print("{:<45} | {:>15}\n", "Metric", "Value");

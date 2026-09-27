@@ -5,10 +5,11 @@
 
 using RawAddr  = uint64_t;
 using Tag      = uint64_t;
-using BitMask  = uint64_t;
 using SetIndex = uint64_t;
+using WayIndex = size_t;
 using DirtyBit = bool;
-using Outcome  = bool;
+using ValidBit = bool;
+using BitMask  = uint64_t;
 
 #define ASYMT_PRNGFIFO_STATS(X)                                                \
     X(size_t, pops)                                                            \
