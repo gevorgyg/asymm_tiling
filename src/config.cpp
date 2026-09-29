@@ -44,6 +44,8 @@ Config::Config()
 
         tile_h = tbl["multiplication"]["tile_h"].value_or<size_t>(m / 2);
         tile_w = tbl["multiplication"]["tile_w"].value_or<size_t>(n / 2);
+        reg_dim = tbl["multiplication"]["reg_dim"].value_or<size_t>(4);
+        mulacc_cost = tbl["multiplication"]["mulacc_cost"].value_or<size_t>(4);
 
         std::string_view b_source_str =
             tbl["multiplication"]["b_source"].value_or<std::string_view>(

@@ -73,6 +73,10 @@ MyOptions::MyOptions(std::string app_description, std::string app_name)
             return ret;
         });
 
+    add_option("--rd, --reg-dim", reg_dim, "choose register tile dimension");
+    add_option("--mc, --mulacc-cost", mulacc_cost,
+               "choose cycles per multiply-accumulate operation");
+
     add_option("-B, --BSource", b_source,
                "Choose B elemnt source between memory or prng fifo")
         ->transform(CLI::CheckedTransformer(b_source_map, CLI::ignore_case));
@@ -109,9 +113,11 @@ void MyOptions::apply_config(const Config& config)
     accsess_cost    = config.accsess_cost;
     seed_size       = config.seed_size;
 
-    tile_w   = config.tile_w;
-    tile_h   = config.tile_h;
-    b_source = config.b_source;
+    tile_w      = config.tile_w;
+    tile_h      = config.tile_h;
+    b_source    = config.b_source;
+    reg_dim     = config.reg_dim;
+    mulacc_cost = config.mulacc_cost;
 }
 
 void MyOptions::post_parse()

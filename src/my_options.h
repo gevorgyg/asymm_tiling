@@ -2,11 +2,9 @@
 #define MY_OPTIONS_H_
 
 #include "config.h"
-#include "multi_unit.h"
 
 struct MyOptions : public CLI::App {
-    using super   = CLI::App;
-    using BSource = MultiUnit::BSource;
+    using super = CLI::App;
     enum oriantation { output, weight };
 
     // multiplication options
@@ -29,6 +27,8 @@ struct MyOptions : public CLI::App {
     size_t tile_h;
     size_t tile_w;
     BSource b_source;
+    size_t reg_dim;
+    size_t mulacc_cost;
 
     // cache unit options
     int block_size;
@@ -58,11 +58,9 @@ struct MyOptions : public CLI::App {
     };
 
     const std::map<std::string, BSource> b_source_map{
-        {"memory", MultiUnit::BSource::memory},
-        {"mem", MultiUnit::BSource::memory},
-        {"m", MultiUnit::BSource::memory},
-        {"fifo", MultiUnit::BSource::fifo},
-        {"f", MultiUnit::BSource::fifo},
+        {"memory", BSource::memory}, {"mem", BSource::memory},
+        {"m", BSource::memory},      {"fifo", BSource::fifo},
+        {"f", BSource::fifo},
     };
 };
 

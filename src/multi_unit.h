@@ -2,6 +2,7 @@
 #define MULTI_UNIT_H_
 
 #include "cachesim.h"
+#include "my_options.h"
 #include "my_utils.h"
 #include "prngfifo.h"
 
@@ -11,14 +12,12 @@ class MultiUnit
                                              const Tile&);
 
   public:
-    enum BSource { fifo, memory };
+    MultiUnit(const MyOptions& options);
 
-    MultiUnit(CacheUnit cache, PrngFifo prng_fifo, Mat3Tuple mats,
-              size_t tile_w, size_t tile_h, BSource b_source);
-
-    void output_stat_matmul();
-
-    void weight_stat_matmul();
+    void run()
+    {
+        (this->*run_matmul)();
+    }
 
     const CacheUnit& cache() const;
     const PrngFifo& prng_fifo() const;
@@ -26,6 +25,8 @@ class MultiUnit
     void register_stats() const;
 
   private:
+    const MyOptions& options_;
+
     BSource b_source_;
 
     CacheUnit cache_;
@@ -36,10 +37,16 @@ class MultiUnit
     const size_t tile_w_{};
     const size_t tile_h_{};
 
-    const size_t inner_dim_{a_.width};
-    const size_t reg_dim_{4};
-    const size_t cache_line_size_{64};
-    const size_t mulacc_cost_{4};
+    const size_t inner_dim_{options_.k};
+    const size_t reg_dim_{options_.reg_dim};
+    const size_t cache_line_size_{size_t{1} << options_.block_size};
+    const size_t mulacc_cost_{options_.mulacc_cost};
+
+    void (MultiUnit::*run_matmul)();
+
+    void output_stat_matmul();
+
+    void weight_stat_matmul();
 
     void load_into_reg(const Tile& t, size_t r, size_t c);
 

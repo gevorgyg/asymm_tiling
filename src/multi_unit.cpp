@@ -1,14 +1,35 @@
 #include "multi_unit.h"
+#include "matrix_factory.h"
 #include "my_utils.h"
 #include "registry.h"
 
-MultiUnit::MultiUnit(CacheUnit cache, PrngFifo prng_fifo, Mat3Tuple mats,
-                     size_t tile_w, size_t tile_h, BSource b_source)
-    : cache_(std::move(cache)), prng_fifo_(std::move(prng_fifo)),
-      a_(std::get<0>(mats)), b_(std::get<1>(mats)), c_(std::get<2>(mats)),
-      tile_w_(tile_w), tile_h_(tile_h), b_source_(b_source)
+MultiUnit::MultiUnit(const MyOptions& options)
+    : options_(options),
+      b_source_(options_.b_source),
+      cache_(options_.block_size, options_.mem_cycles, options_.l1_size,
+             options_.l1_cycles, options_.l1_assoc, options_.l2_size,
+             options_.l2_cycles, options_.l2_assoc, options_.write_alloc),
+      prng_fifo_(options_.capacity, options_.generation_cost,
+                 options_.accsess_cost, options_.seed_size),
+      tile_w_(options_.tile_w), tile_h_(options_.tile_h)
 {
+    // create matrices
+    MatrixFactory mat_factory{options.m, options.k, options.n,
+                              options.small_percision, options.ratio};
+
+    auto mats = mat_factory.create_mats();
+
+    a_ = std::get<0>(mats);
+    b_ = std::get<1>(mats);
+    c_ = std::get<2>(mats);
+
     register_stats();
+
+    if (options_.mult_oriantation == MyOptions::output) {
+        run_matmul = &MultiUnit::output_stat_matmul;
+    } else {
+        run_matmul = &MultiUnit::weight_stat_matmul;
+    }
 }
 
 void MultiUnit::output_stat_matmul()
@@ -32,7 +53,7 @@ const PrngFifo& MultiUnit::prng_fifo() const
 
 void MultiUnit::load_into_reg(const Tile& t, size_t r, size_t c)
 {
-    if (b_source_ == fifo && &t.parent_mat == &b_) {
+    if (b_source_ == BSource::fifo && &t.parent_mat == &b_) {
         prng_fifo_.pop(reg_dim_ * reg_dim_);
         return;
     }
@@ -95,7 +116,7 @@ void MultiUnit::tile_mul(MultiplyMode mult_func)
             tc.base = c_.base +
                       (col * tile_w_ + row * c_.width * tile_h_) * c_.elem_size;
 
-            if (b_source_ == fifo) {
+            if (b_source_ == BSource::fifo) {
                 RawAddr seed_addr = b_.base + col * seed_size;
                 cache_.process_request('r', seed_addr);
                 prng_fifo_.load_seed();

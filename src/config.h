@@ -1,12 +1,11 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#include "multi_unit.h"
+#include "my_utils.h"
 
 class Config
 {
     friend Config& gConfig();
-    using BSource = MultiUnit::BSource;
 
   public:
     // matrix factory options
@@ -25,7 +24,9 @@ class Config
     // multi unit options
     size_t tile_h{m / 2};
     size_t tile_w{n / 2};
-    BSource b_source = BSource::memory;
+    BSource b_source   = BSource::memory;
+    size_t reg_dim     = 4;
+    size_t mulacc_cost = 4;
 
     // cache unit options
     int block_size   = 6;

@@ -30,6 +30,8 @@ using BitMask  = uint64_t;
 //     gRegistry().reg_stat(ASYMT_CREATE_STRING_NAME(name), \
 //                          [this]() { func } ASYMT_CREATE_FIELD_NAME(name));
 
+enum class BSource { fifo, memory };
+
 class Clock
 {
   public:
