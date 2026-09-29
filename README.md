@@ -159,6 +159,13 @@ Override tile dimensions and L1 cache size:
 
 ---
 
+## Report
+
+To convert `report.md` to `report.pdf`, install `pandoc` and run 
+```bash
+pandoc report.md -o report.pdf --pdf-engine=xelatex
+```
+
 ## Output Metrics
 
 Upon completion, the simulator outputs an aligned statistics table:
