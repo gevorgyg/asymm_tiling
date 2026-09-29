@@ -288,15 +288,15 @@ class CacheUnit
     CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
               int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
               bool write_alloc)
-        : CacheUnit(block_size, mem_cycles,
-                    std::vector<CacheLevelConfig>{
-                        {1, static_cast<uint32_t>(l1_size),
-                         static_cast<uint32_t>(l1_cycles),
-                         static_cast<uint32_t>(l1_assoc)},
-                        {2, static_cast<uint32_t>(l2_size),
-                         static_cast<uint32_t>(l2_cycles),
-                         static_cast<uint32_t>(l2_assoc)}},
-                    write_alloc)
+        : CacheUnit(
+              block_size, mem_cycles,
+              std::vector<CacheLevelConfig>{{1, static_cast<uint32_t>(l1_size),
+                                             static_cast<uint32_t>(l1_cycles),
+                                             static_cast<uint32_t>(l1_assoc)},
+                                            {2, static_cast<uint32_t>(l2_size),
+                                             static_cast<uint32_t>(l2_cycles),
+                                             static_cast<uint32_t>(l2_assoc)}},
+              write_alloc)
     {
     }
 
