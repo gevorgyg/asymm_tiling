@@ -47,7 +47,7 @@ def assert_same(cfg: CacheConfig, trace) -> None:
             op, addr = trace[i]
             line = addr >> cfg.block
             sets = ", ".join(
-                f"L{j + 1} set {line % (1 << (lc.size - lc.assoc - cfg.block))}"
+                f"L{j + 1} set {line % lc.sets(cfg.block)}"
                 for j, lc in enumerate(cfg.levels))
             history = "\n".join(
                 f"  [{j}] {o} {a:#x}  ref={ref[j]}"
@@ -82,7 +82,7 @@ def test_reads_and_writes(case):
 def test_sequential_sweep(geometry, write_alloc, policy):
     """Two passes over 2x L2 capacity, 4-byte stride, every 4th a write."""
     cfg = make_config(geometry, write_alloc, policy)
-    span = 2 << cfg.levels[-1].size
+    span = 2 * cfg.levels[-1].bytes()
     trace = [("w" if (a // 4) % 4 == 3 else "r", a)
              for _ in range(2) for a in range(0, span, 4)]
     assert_same(cfg, trace)

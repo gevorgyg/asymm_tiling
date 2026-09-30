@@ -5,10 +5,11 @@ Deliberately simple: one OrderedDict per set, keyed by the full line address
 
 Semantics
 ---------
-Geometry
-    All sizes are log2 (as in config.toml): line = 2^block bytes,
-    ways = 2^assoc, sets = 2^(size - assoc - block).
-    set index = line_addr mod sets.
+Geometry (written as in config.toml)
+    line = 2^block bytes.
+    size: 1..30 is log2 bytes, > 30 is bytes, 0 means the level doesn't exist.
+    assoc: log2 ways, -1 = fully associative (ways = lines).
+    sets = lines / ways, a power of two. set index = line_addr mod sets.
 
 Replacement (per set; free ways are used before anything is evicted, the
 lowest free way first)
@@ -64,9 +65,18 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class LevelConfig:
-    size: int  # log2 bytes
+    size: int   # log2 bytes if <= 30, else bytes
     cycles: int
-    assoc: int  # log2 ways
+    assoc: int  # log2 ways, -1 = fully associative
+
+    def bytes(self) -> int:
+        return self.size if self.size > 30 else 1 << self.size
+
+    def ways(self, block: int) -> int:
+        return self.bytes() >> block if self.assoc == -1 else 1 << self.assoc
+
+    def sets(self, block: int) -> int:
+        return (self.bytes() >> block) // self.ways(block)
 
 
 @dataclass(frozen=True)
@@ -119,8 +129,10 @@ class Level:
         assert policy in POLICIES, policy
         self.policy = policy
         self.cycles = cfg.cycles
-        self.ways = 1 << cfg.assoc
-        self.n_sets = 1 << (cfg.size - cfg.assoc - block)
+        self.ways = cfg.ways(block)
+        self.n_sets = cfg.sets(block)
+        assert self.n_sets * self.ways * (1 << block) == cfg.bytes()
+        assert self.n_sets & (self.n_sets - 1) == 0, "sets must be a power of two"
         assert self.n_sets >= 1, "cache smaller than one set"
         # line_addr -> dirty, ordered by recency (fifo: by fill):
         # first item is the oldest, last the most recent

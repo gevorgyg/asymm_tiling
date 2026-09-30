@@ -55,6 +55,7 @@ printf 'r 0\nw 0\nr 40\n' | ./build/cache_driver 6 100 14 4 3 16 20 3 0
 ```
 
 Args for the cache_driver *(sizes/assoc in log2)*:  
-`./cache_driver block mem l1_size l1_cycles l1_assoc l2_size l2_cycles l2_assoc write_alloc`  
+`./cache_driver block mem l1_size l1_cycles l1_assoc l2_size l2_cycles l2_assoc write_alloc policy`  
+Written as in `config.toml`: sizes > 30 are bytes, `l2_size` 0 means no L2, assoc -1 is fully associative.  
 Output per access (H = hit, M = miss, - = not reached):  
 `cycles L1 L2 mem`

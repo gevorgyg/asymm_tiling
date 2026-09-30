@@ -115,11 +115,18 @@ def run_sim_raw(args: list[str], tmp_path: Path) -> subprocess.CompletedProcess:
 
 @pytest.mark.parametrize("cache, message", [
     # block mem l1_size l1_cyc l1_assoc l2_size l2_cyc l2_assoc
-    (["6", "100", "8", "4", "3", "16", "20", "3"], "L1: size 2^8 B is smaller than one set"),
-    (["6", "100", "14", "4", "3", "8", "20", "3"], "L2: size 2^8 B is smaller than one set"),
-    (["6", "100", "14", "4", "3", "16", "20", "-1"], "can't be negative"),
-    (["6", "100", "14", "4", "3", "31", "20", "3"], "too large"),
-], ids=["l1-zero-sets", "l2-zero-sets", "negative-assoc", "too-large"])
+    (["6", "100", "8", "4", "3", "16", "20", "3"],
+     "L1: 4 lines (256 B) don't split into whole sets of 8 ways"),
+    (["6", "100", "14", "4", "3", "8", "20", "3"],
+     "L2: 4 lines (256 B) don't split into whole sets of 8 ways"),
+    (["6", "100", "14", "4", "3", "16", "20", "-2"], "or -1 for fully associative"),
+    (["6", "100", "1000", "4", "-1", "0", "20", "3"],
+     "L1: size 1000 B is not a whole number of 64 B lines"),
+    (["6", "100", "24576", "4", "3", "0", "20", "3"],
+     "L1: 24576 B / (8 ways x 64 B) = 48 sets, which is not a power of two"),
+    (["25", "100", "30", "4", "3", "0", "20", "3"], "too large"),
+], ids=["l1-zero-sets", "l2-zero-sets", "assoc-below-minus-one",
+        "not-whole-lines", "sets-not-power-of-two", "block-too-large"])
 def test_invalid_cache_from_cli_is_rejected(cache, message, tmp_path):
     r = run_sim_raw(["-c", *cache], tmp_path)
     assert r.returncode != 0
@@ -132,7 +139,37 @@ def test_invalid_cache_from_config_is_rejected(tmp_path):
         "[cache]\nblock_size = 6\nl1_size = 8\nl1_assoc = 3\n")
     r = run_sim_raw([], tmp_path)
     assert r.returncode != 0
-    assert "L1: size 2^8 B is smaller than one set" in r.stderr + r.stdout
+    assert "L1: 4 lines (256 B) don't split into whole sets of 8 ways" \
+        in r.stderr + r.stdout
+
+
+# -- sizes > 30 are bytes, assoc -1 is fully associative -------------------------
+
+def test_assoc_minus_one_is_fully_associative(tmp_path):
+    """16 KB with -1 must behave exactly like 16 KB with 2^8 = 256 ways."""
+    full = run_sim("weight", "memory", False, tmp_path,
+                   cache=["6", "100", "14", "4", "-1", "0", "20", "3"])
+    ways = run_sim("weight", "memory", False, tmp_path,
+                   cache=["6", "100", "14", "4", "8", "0", "20", "3"])
+    assert full == ways
+
+
+def test_size_in_bytes_equals_log2_size(tmp_path):
+    """16384 (bytes) and 14 (log2) are the same cache."""
+    log2 = run_sim("output", "memory", True, tmp_path, cache=DEFAULT_CACHE)
+    byts = run_sim("output", "memory", True, tmp_path,
+                   cache=["6", "100", "16384", "4", "3", "65536", "20", "3"])
+    assert log2 == byts
+
+
+def test_non_power_of_two_fully_assoc_from_config(tmp_path):
+    """A 24 KB fully associative L1 (384 ways, one set), as in the roofline
+    experiment's L1/FIFO splits."""
+    (tmp_path / "config.toml").write_text(
+        "[cache]\nblock_size = 6\nl1_size = 24576\nl1_assoc = -1\nl2_size = 0\n")
+    r = run_sim_raw([], tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert "SIMULATION STATS" in r.stdout
 
 
 def test_minimal_valid_cache_is_accepted(tmp_path):
@@ -175,7 +212,7 @@ def test_l2_size_zero_means_l1_only(orientation, tmp_path):
 def test_l1_size_zero_is_rejected(tmp_path):
     r = run_sim_raw(["-c", "6", "100", "0", "4", "3", "16", "20", "3"], tmp_path)
     assert r.returncode != 0
-    assert "L1: size 2^0 B is smaller than one set" in r.stderr + r.stdout
+    assert "L1: size can't be 0, L1 must exist" in r.stderr + r.stdout
 
 
 # -- FIFO capacity in elements ---------------------------------------------------

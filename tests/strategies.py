@@ -15,6 +15,10 @@ GEOMETRIES = {
     "default":        (6, 14, 3, 16, 3),  # config.toml geometry
     "l1-only":        (4, 8, 1, 0, 0),   # L1: 8 sets x 2 ways, no L2
     "l1-only-fa":     (4, 8, 4, 0, 0),   # L1: 1 set x 16 ways, no L2
+    # sizes > 30 are bytes, assoc -1 = fully associative
+    "odd-fa-l1":      (4, 384, -1, 10, 2),  # L1: 24 lines fully assoc, L2: 16 x 4
+    "odd-fa-l2":      (4, 7, 0, 768, -1),   # L1: 8 sets x 1 way, L2: 48 lines FA
+    "odd-l1-only":    (4, 320, -1, 0, 0),   # L1: 20 lines fully assoc, no L2
 }
 
 
@@ -32,7 +36,7 @@ def make_config(geometry: str, write_alloc: bool,
 def traces(draw, cfg: CacheConfig, ops: str):
     """Traces over a small address window so sets actually conflict."""
     last = cfg.levels[-1]
-    last_lines = 1 << (last.size - cfg.block)
+    last_lines = last.bytes() >> cfg.block
     # working set: fits, just over capacity (where LRU and eviction bugs
     # show), well over capacity
     n_lines = draw(st.sampled_from([

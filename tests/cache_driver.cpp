@@ -3,8 +3,9 @@
 // usage: cache_driver block mem l1_size l1_cycles l1_assoc
 //                     l2_size l2_cycles l2_assoc write_alloc policy  < trace
 //
-// Sizes, associativities and the block size are log2, as in config.toml.
-// policy is one of lru, fifo, mru, random.
+// Sizes, associativities and the block size are written as in config.toml:
+// log2, except a size > 30 is bytes, a size of 0 means no such level and
+// assoc = -1 means fully associative. policy is one of lru, fifo, mru, random.
 // Trace lines are "<r|w> <hex address>". For every access one record is
 // printed:
 //
@@ -50,10 +51,9 @@ int main(int argc, char* argv[])
         a[i] = std::atoi(argv[i + 1]);
     }
 
-    // l2_size = 0 means no L2
-    for (const auto& error :
-         {cache_geometry_error(1, a[2], a[0], a[4]),
-          a[5] == 0 ? std::string{} : cache_geometry_error(2, a[5], a[0], a[7])}) {
+    // same rules as the config (see config_level): l2_size = 0 means no L2
+    for (const auto& error : {config_level_error(1, a[2], a[4], a[0]),
+                              config_level_error(2, a[5], a[7], a[0])}) {
         if (!error.empty()) {
             std::cerr << "invalid cache: " << error << "\n";
             return 2;

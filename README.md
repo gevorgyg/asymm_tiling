@@ -104,12 +104,12 @@ mulacc_cost = 4       # Cycles per multiply-accumulate operation
 [cache]
 block_size = 6        # Cache line size in log2 bytes (6 -> 64 B)
 mem_cycles = 100      # DRAM access latency in cycles
-l1_size = 14          # L1 cache size in log2 bytes (14 -> 16 KB)
+l1_size = 14          # L1 cache size in log2 bytes (14 -> 16 KB), > 30 is bytes (24576 -> 24 KB)
 l1_cycles = 4         # L1 hit latency in cycles
-l1_assoc = 3          # L1 associativity in log2 (3 -> 8-way)
-l2_size = 16          # L2 cache size in log2 bytes (16 -> 64 KB, 0 -> no L2)
+l1_assoc = 3          # L1 associativity in log2 (3 -> 8-way, -1 -> fully associative)
+l2_size = 16          # L2 cache size in log2 bytes (16 -> 64 KB, 0 -> no L2), > 30 is bytes
 l2_cycles = 20        # L2 hit latency in cycles
-l2_assoc = 3          # L2 associativity in log2 (3 -> 8-way)
+l2_assoc = 3          # L2 associativity in log2 (3 -> 8-way, -1 -> fully associative)
 write_alloc = false   # Write-allocate policy (boolean)
 policy = "lru"        # Replacement policy: "lru", "fifo", "mru" or "random"
 ```
@@ -142,7 +142,7 @@ policy = "lru"        # Replacement policy: "lru", "fifo", "mru" or "random"
 | `--fg`, `--fifo-gencost` | `UINT` | PRNG element generation cost in cycles |
 | `--fa`, `--fifo-access` | `UINT` | PRNG FIFO access/pop latency in cycles |
 | `-s`, `--seed-size` | `1, 2, 4, 8` | Seed precision in bytes |
-| `-c`, `--cache` | `[8 INTs]` | Cache parameters in log2: `[block_size, mem_cycles, l1_size, l1_cycles, l1_assoc, l2_size, l2_cycles, l2_assoc]` |
+| `-c`, `--cache` | `[8 INTs]` | Cache parameters in log2: `[block_size, mem_cycles, l1_size, l1_cycles, l1_assoc, l2_size, l2_cycles, l2_assoc]` (sizes > 30 are bytes, assoc -1 is fully associative) |
 | `-w`, `--write-allocate` | Flag | Enable write-allocate cache policy |
 | `--policy` | `lru` \| `fifo` \| `mru` \| `random` | Cache replacement policy |
 
