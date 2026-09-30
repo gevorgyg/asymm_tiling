@@ -303,6 +303,25 @@ class CacheUnit
     void process_request(char operation, RawAddr address);
     void register_stats() const;
 
+    struct LevelStats {
+        size_t accesses;
+        size_t hits;
+        size_t misses;
+        size_t dram_accesses;
+    };
+
+    size_t n_levels() const
+    {
+        return levels_.size();
+    }
+
+    LevelStats level_stats(size_t level) const
+    {
+        const auto& lvl = levels_.at(level);
+        return {lvl->n_of_access_, lvl->n_of_hits_, lvl->n_of_misses_,
+                lvl->n_of_dram_access_};
+    }
+
   private:
     std::vector<CacheLevelPtr> levels_;
 

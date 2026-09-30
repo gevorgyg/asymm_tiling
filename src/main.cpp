@@ -4,6 +4,7 @@
 
 #include <CLI/CLI.hpp>
 #include <fmt/format.h>
+#include <gtest/gtest.h>
 #include <spdlog/spdlog.h>
 
 int main(int argc, char* argv[])
