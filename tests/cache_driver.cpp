@@ -50,8 +50,10 @@ int main(int argc, char* argv[])
         a[i] = std::atoi(argv[i + 1]);
     }
 
-    for (const auto& error : {cache_geometry_error(1, a[2], a[0], a[4]),
-                              cache_geometry_error(2, a[5], a[0], a[7])}) {
+    // l2_size = 0 means no L2
+    for (const auto& error :
+         {cache_geometry_error(1, a[2], a[0], a[4]),
+          a[5] == 0 ? std::string{} : cache_geometry_error(2, a[5], a[0], a[7])}) {
         if (!error.empty()) {
             std::cerr << "invalid cache: " << error << "\n";
             return 2;

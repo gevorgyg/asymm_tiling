@@ -16,7 +16,7 @@ class Config
     uint32_t ratio           = 4;
 
     // prnf fifo options
-    size_t capacity        = 14;
+    size_t capacity        = 16384; // elements
     size_t generation_cost = 10;
     size_t accsess_cost    = 2;
     uint32_t seed_size     = 1;

@@ -20,7 +20,7 @@ class PrngFifo
   private:
     size_t size_{0};
     size_t prev_cycles_ = 0;
-    const size_t capacity_;
+    const size_t capacity_; // in elements
     const size_t generation_cost_; // per element
     const size_t accsess_cost_;
     const size_t seed_size_;

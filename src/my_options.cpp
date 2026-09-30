@@ -42,7 +42,8 @@ MyOptions::MyOptions(std::string app_description, std::string app_name)
             return ret;
         });
 
-    add_option("--fc, --fifo-capacity", capacity, "choose fifo capacity");
+    add_option("--fc, --fifo-capacity", capacity,
+               "choose fifo capacity in elements");
 
     add_option("--fg, --fifo-gencost", generation_cost,
                "choose fifo generation cost");
@@ -146,9 +147,12 @@ void MyOptions::post_parse()
 
 void MyOptions::validate_cache() const
 {
+    // l2_size = 0 means no L2 (see CacheUnit), L1 must exist
     for (const auto& error :
          {cache_geometry_error(1, l1_size, block_size, l1_assoc),
-          cache_geometry_error(2, l2_size, block_size, l2_assoc)}) {
+          l2_size == 0
+              ? std::string{}
+              : cache_geometry_error(2, l2_size, block_size, l2_assoc)}) {
         if (!error.empty()) {
             throw CLI::ValidationError("cache", error);
         }

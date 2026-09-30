@@ -28,15 +28,21 @@ MACS = N_TILES * REGS_PER_TILE_SIDE ** 2 * REGS_ALONG_K  # mulacc() calls
 LINES_A, LINES_B, LINES_C = 16, 4, 16
 
 
+# block mem l1_size l1_cyc l1_assoc l2_size l2_cyc l2_assoc
+DEFAULT_CACHE = ["6", "100", "14", "4", "3", "16", "20", "3"]
+NO_L2_CACHE = ["6", "100", "14", "4", "3", "0", "20", "3"]
+
+
 def run_sim(orientation: str, b_source: str, write_alloc: bool,
-            tmp_path: Path, policy: str = "lru") -> dict[str, float]:
+            tmp_path: Path, policy: str = "lru", cache=DEFAULT_CACHE,
+            fifo_capacity: int = 16384) -> dict[str, float]:
     args = [
         str(SIM), "-o", orientation, "-B", b_source,
         "-m", str(DIM), "-k", str(DIM), "-n", str(DIM), "-p", "1", "-r", "4",
         "--th", str(TILE), "--tw", str(TILE), "--rd", str(REG),
         "--mc", str(MULACC_COST),
-        "-c", "6", "100", "14", "4", "3", "16", "20", "3",
-        "--fc", "14", "--fg", "10", "--fa", "2", "-s", "1",
+        "-c", *cache,
+        "--fc", str(fifo_capacity), "--fg", "10", "--fa", "2", "-s", "1",
         "--write-allocate" if write_alloc else "--no-write-allocate",
         "--policy", policy,
     ]
@@ -149,3 +155,39 @@ def test_unknown_policy_from_config_is_rejected(tmp_path):
     r = run_sim_raw([], tmp_path)
     assert r.returncode != 0
     assert 'unknown cache policy "lur"' in r.stderr + r.stdout
+
+
+# -- L1 only (l2_size = 0) ---------------------------------------------------------
+
+@pytest.mark.parametrize("orientation", ["output", "weight"])
+def test_l2_size_zero_means_l1_only(orientation, tmp_path):
+    s = run_sim(orientation, "memory", False, tmp_path, cache=NO_L2_CACHE)
+
+    assert not any(name.startswith("CacheUnit: L2") for name in s)
+    # every L1 miss goes straight to memory
+    assert s["CacheUnit: L1 misses"] == LINES_A + LINES_B + LINES_C
+    assert s["CacheUnit: mem reads"] == s["CacheUnit: L1 misses"]
+    # L1 hit latency 4, memory 100, nothing in between
+    assert s["CacheUnit: total access cycles"] == \
+        s["CacheUnit: L1 accesses"] * 4 + s["CacheUnit: mem reads"] * 100
+
+
+def test_l1_size_zero_is_rejected(tmp_path):
+    r = run_sim_raw(["-c", "6", "100", "0", "4", "3", "16", "20", "3"], tmp_path)
+    assert r.returncode != 0
+    assert "L1: size 2^0 B is smaller than one set" in r.stderr + r.stdout
+
+
+# -- FIFO capacity in elements ---------------------------------------------------
+
+def test_fifo_capacity_is_in_elements(tmp_path):
+    """A tile's B block is K x TILE = 128 elements. 16384 and 20000 (not a power
+    of two) never fill up; 16 elements (one register) makes the consumer wait
+    on generation much more. In log2 units 16 would be 65536 and change
+    nothing, so this also pins the unit."""
+    big = run_sim("weight", "fifo", False, tmp_path, fifo_capacity=16384)
+    odd = run_sim("weight", "fifo", False, tmp_path, fifo_capacity=20000)
+    tiny = run_sim("weight", "fifo", False, tmp_path, fifo_capacity=16)
+
+    assert odd["PrngFifo: stall_cycles"] == big["PrngFifo: stall_cycles"]
+    assert tiny["PrngFifo: stall_cycles"] > big["PrngFifo: stall_cycles"]

@@ -38,7 +38,7 @@ Config::Config()
             tbl["matrix"]["small_percision"].value_or<uint32_t>(1);
         ratio = tbl["matrix"]["ratio"].value_or<uint32_t>(4);
 
-        capacity        = tbl["fifo"]["capacity"].value_or<size_t>(14);
+        capacity        = tbl["fifo"]["capacity"].value_or<size_t>(16384);
         generation_cost = tbl["fifo"]["generation_cost"].value_or<size_t>(10);
         accsess_cost    = tbl["fifo"]["accsess_cost"].value_or<size_t>(2);
         seed_size       = tbl["fifo"]["seed_size"].value_or<uint32_t>(1);

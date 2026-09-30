@@ -89,7 +89,7 @@ small_percision = 1   # Low-precision element size in bytes (e.g. 1 for INT8)
 ratio = 4             # Precision ratio between high and low precision (high / low)
 
 [fifo]
-capacity = 14         # PRNG-FIFO depth in log2 elements (14 -> 16384)
+capacity = 16384      # PRNG-FIFO depth in elements
 generation_cost = 10  # Cycles required to generate an element
 accsess_cost = 2      # Cycles to pop an element from the FIFO
 seed_size = 1         # Seed size in bytes
@@ -107,7 +107,7 @@ mem_cycles = 100      # DRAM access latency in cycles
 l1_size = 14          # L1 cache size in log2 bytes (14 -> 16 KB)
 l1_cycles = 4         # L1 hit latency in cycles
 l1_assoc = 3          # L1 associativity in log2 (3 -> 8-way)
-l2_size = 16          # L2 cache size in log2 bytes (16 -> 64 KB)
+l2_size = 16          # L2 cache size in log2 bytes (16 -> 64 KB, 0 -> no L2)
 l2_cycles = 20        # L2 hit latency in cycles
 l2_assoc = 3          # L2 associativity in log2 (3 -> 8-way)
 write_alloc = false   # Write-allocate policy (boolean)
@@ -138,7 +138,7 @@ policy = "lru"        # Replacement policy: "lru", "fifo", "mru" or "random"
 | `--tw`, `--tile-width` | `UINT` | Tile width dimension |
 | `--rd`, `--reg-dim` | `UINT` | Register tile dimension |
 | `--mc`, `--mulacc-cost` | `UINT` | Cycles per multiply-accumulate operation |
-| `--fc`, `--fifo-capacity` | `UINT` | Capacity of PRNG FIFO in log2 elements |
+| `--fc`, `--fifo-capacity` | `UINT` | Capacity of PRNG FIFO in elements |
 | `--fg`, `--fifo-gencost` | `UINT` | PRNG element generation cost in cycles |
 | `--fa`, `--fifo-access` | `UINT` | PRNG FIFO access/pop latency in cycles |
 | `-s`, `--seed-size` | `1, 2, 4, 8` | Seed precision in bytes |

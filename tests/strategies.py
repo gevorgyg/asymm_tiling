@@ -13,16 +13,19 @@ GEOMETRIES = {
     "small-assoc":    (4, 8, 1, 10, 2),  # L1: 8 sets x 2 ways, L2: 16 x 4
     "fully-assoc-l1": (4, 6, 2, 8, 2),   # L1: 1 set  x 4 ways, L2: 4 x 4
     "default":        (6, 14, 3, 16, 3),  # config.toml geometry
+    "l1-only":        (4, 8, 1, 0, 0),   # L1: 8 sets x 2 ways, no L2
+    "l1-only-fa":     (4, 8, 4, 0, 0),   # L1: 1 set x 16 ways, no L2
 }
 
 
 def make_config(geometry: str, write_alloc: bool,
                 policy: str = "lru") -> CacheConfig:
+    """l2_size = 0 means no L2, as in the simulator."""
     block, l1s, l1a, l2s, l2a = GEOMETRIES[geometry]
-    return CacheConfig(block, MEM_CYC,
-                       (LevelConfig(l1s, L1_CYC, l1a),
-                        LevelConfig(l2s, L2_CYC, l2a)),
-                       write_alloc, policy)
+    levels = [LevelConfig(l1s, L1_CYC, l1a)]
+    if l2s != 0:
+        levels.append(LevelConfig(l2s, L2_CYC, l2a))
+    return CacheConfig(block, MEM_CYC, tuple(levels), write_alloc, policy)
 
 
 @st.composite

@@ -78,9 +78,11 @@ class CacheConfig:
     policy: str = "lru"  # lru | fifo | mru | random
 
     def driver_args(self) -> list[str]:
-        """Arguments for tests/cache_driver.cpp (two levels only)."""
-        assert len(self.levels) == 2
-        l1, l2 = self.levels
+        """Arguments for tests/cache_driver.cpp (one or two levels; a single
+        level is passed as l2_size = 0, i.e. no L2)."""
+        assert len(self.levels) in (1, 2)
+        l1 = self.levels[0]
+        l2 = self.levels[1] if len(self.levels) == 2 else LevelConfig(0, 0, 0)
         return [str(v) for v in (self.block, self.mem_cycles,
                                  l1.size, l1.cycles, l1.assoc,
                                  l2.size, l2.cycles, l2.assoc,

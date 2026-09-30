@@ -126,12 +126,20 @@ CacheUnit::CacheUnit(int block_size, int mem_cycles,
     : block_size_(block_size), mem_cycles_(mem_cycles),
       write_alloc_(write_alloc), policy_(policy)
 {
-    // construct the levels vector
+    // construct the levels vector, a level of size 0 doesn't exist (e.g.
+    // l2_size = 0 -> L1 only, L1 misses go to memory)
     for (const auto& level_config : cache_levels) {
+        if (level_config.size == 0) {
+            continue;
+        }
         levels_.push_back(std::make_unique<CacheLevel>(
             level_config.level, level_config.size, block_size_,
             level_config.cycles, level_config.assoc, write_alloc_,
             mem_cycles_, policy_));
+    }
+
+    if (levels_.empty()) {
+        throw std::invalid_argument("the cache needs at least one level");
     }
 
     // assign level pointers

@@ -3,7 +3,7 @@
 
 PrngFifo::PrngFifo(size_t capacity, size_t generation_cost, size_t accsess_cost,
                    size_t seed_size)
-    : capacity_(1 << capacity), generation_cost_(generation_cost),
+    : capacity_(capacity), generation_cost_(generation_cost),
       accsess_cost_(accsess_cost), seed_size_(seed_size)
 {
 }
