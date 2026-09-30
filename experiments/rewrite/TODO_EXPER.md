@@ -39,6 +39,31 @@ re-run on the rewrite. Evidence for each item: `SUMMARY.md` and
 - [ ] **"What the Model Assumes".** "Seed traffic not modeled": the rewrite
       reads one seed per tile through the cache. It's negligible, but it is
       modeled now.
+      - [ ] "Tiles divide the matrix evenly": no longer needed. The simulator
+            clips edge tiles and register blocks (commit `be2543e`), and the
+            model's B term has a general form (next item).
+- [ ] **Model formula** ("FIFO is Async", "Replacing C_A/T_N with alpha", the
+      boxed formula; the report's `main.typ` line 131 too).
+      - Write `T/MNK = max(alpha(T_M, T_N), g_c · ⌈M/T_M⌉ / M)` instead of
+        `g_c / T_M`, or state that `g_c / T_M` assumes T_M divides M.
+      - Why: B-stationary regenerates B once per row of tiles, so
+        ⌈M/T_M⌉·K·N elements for M·N·K MACs. When generation dominates, the
+        simulator matches the new term within 0.3 % for every TM (M=100,
+        gc=400: TM = 50, 64 and 80 all cost gc/50, since all need 2 tile
+        rows; `gc/TM` claims 80 is 1.6× cheaper than 50).
+      - Effect (`out/model_sweep`, 198 conditions, 3 L1 sizes × 6 matrix
+        shapes × 11 gc, 22176 runs, tiles not restricted to divisors):
+
+        | B term | exact tile | TM* right | within 5 % | worst gap |
+        |---|---|---|---|---|
+        | `gc/TM` (slides) | 63 % | 68 % | 83 % | 20.6 % |
+        | `gc·⌈M/TM⌉/M` | 76 % | 85 % | 93 % | 15.8 % |
+
+        On the presentation's shape 192×256×256: within 5 % in 33/33 cases,
+        worst 1.6 % (13.3 % with `gc/TM`, because 80 and 128 don't divide
+        192).
+      - [ ] A new slide/section: the model holds beyond the original setup
+            (other matrix shapes, L1 sizes, non-dividing tiles).
 - [ ] **"Traffic Minimum at the Predicted Tile" (`fa_reads.png`).** Reproduced
       exactly; the optimal T_N/T_M is identical in 8/8 families. Optionally
       regenerate the figure from the rewrite.
@@ -138,15 +163,105 @@ These all have hard-coded old numbers; regenerate before any reuse.
       assoc -1 is fully associative. All 2561 earlier runs are bit-identical
       after the change.
 - [x] **Roofline** re-run: 96/108 exact, TM* 108/108 (see the slide item).
+- [x] **Tile / register clipping** for tiles that don't divide the matrix
+      (commit `be2543e`): all 6041 earlier runs bit-identical, 9 new tests.
+- [x] **Model sweep** (`model_sweep.py`), with the corrected B term (see
+      "Model formula").
 - [ ] **Associativity study** (asked for): re-run alpha, E8, dataflow and
       roofline with an 8-way L1 instead of fully associative. Run it twice:
       with the power-of-two dims (N = K = 256, which alias into 2 of 32
       sets), and with non-power-of-two dims, to separate "8-way" from
       "unlucky stride".
+      - [x] Preliminary (`assoc_check.py`, small sample: 16 KB, 3 shapes,
+            32 tiles, 8 gc, 24 conditions per cache):
+        - Caches: fully associative (≈ an accelerator's scratchpad), 8-way
+          (≈ CPU L1D), 4-way (≈ mobile L1D). 2-way was dropped as
+          unrealistic.
+        - The model, with alpha calibrated on the same cache, works about
+          as well: TM* right 92 % for all three; within 5 % 96 / 92 / 92 %.
+          `max+S` keeps the exact-tile rate at 88 % on all three (plain max
+          drops to 71 % 8-way, 62 % 4-way).
+        - But the best tile depends heavily on the cache. Using the fully
+          associative best tile costs a median:
+          - 8-way: +568 % at 192×256×256 (stride aliasing), +27 % at 100³,
+            +10 % at 200×300×250;
+          - 4-way: +568 / +18 / +7 %.
+        - So the presentation's specific optimal tiles (fully associative)
+          don't transfer to real set-associative caches. The method
+          (calibrate alpha on the real cache) does.
+      - [ ] Confirm on the full model_sweep grid (3 L1 × 6 shapes, 8-way
+            and 4-way, ~45k runs, ~25 min).
+      - [ ] 12-way (e.g. 48 KB, a recent Intel L1D) can't be expressed:
+            assoc is log2, and -1 only means fully associative. It would
+            need assoc to accept a non-power-of-two way count, with a clear
+            rule to tell it from log2.
 - [ ] Regenerate all figures from the rewrite results; update gen_charts.py
       or write new plot scripts under `experiments/rewrite/`.
 
 ## Open investigations
+
+- [ ] **Remaining model misses** (`out/model_sweep`, the "Misses" table):
+      13 of 198 conditions are more than 5 % off (worst 15.8 %), spread over
+      gc 15–200.
+      - It's `max()`, not C thrashing. `max()` is accurate when one term
+        dominates, but when alpha ≈ B term the measured time is well above
+        it, still below the sum. Worst case, 32 KB, 150×222×190, gc=50:
+        - (64,64): alpha 1.079, B 1.000, max 1.079, measured **1.270**
+          (+18 %);
+        - (80,64): alpha 1.096, B 0.667, max 1.096, measured 1.097.
+        The model thinks the balanced tile is cheaper, so it picks it.
+      - In 8 of the 13, the best tile "doesn't fit" by the old ws_lines
+        formula, but e.g. (80,64) at 32 KB barely thrashes (alpha only 1.6 %
+        above (64,64)). The old ws < 300 threshold is too conservative at
+        larger L1. With the old safe() filter the model gets 185/198 within
+        5 %, but the filter itself costs up to 10.2 % vs the true best.
+      - Suspected cause (untested): the FIFO restarts empty every tile
+        (`load_seed`) and B is consumed in bursts of 16. With balanced
+        rates it never builds a buffer and keeps stalling.
+      - [x] Fitted replacements for max() (`overlap_fit.py`,
+            `out/overlap_fit`, from the cached sweep):
+        - T / max is ~1.000 when one term dominates and peaks at
+          B/alpha ≈ 1 (median 1.05, p90 1.25, max 1.47). The spread at
+          balance is wide and grows with TM (median 1.02 at small TM,
+          1.06–1.13 at TM ≥ 48).
+        - The median excess over max() is exactly one FIFO startup per tile,
+          S = tiles · 16 · gc / MNK: the FIFO restarts empty every tile.
+        - Tile selection (198 conditions; cross-validated = p fitted on 5
+          shapes, tested on the 6th):
+
+          | variant | exact | within 5 % | worst | CV exact | CV within 5 % |
+          |---|---|---|---|---|---|
+          | max(alpha, B) | 76 % | 93 % | 15.8 % | 76 % | 93 % |
+          | max + S | 83 % | 91 % | 21.0 % | 83 % | 91 % |
+          | (alpha^p + B^p)^(1/p), p = 9.5 | 76 % | 95 % | 13.0 % | 76 % | 95 % |
+          | smooth + S, p = 12.5 | 84 % | 95 % | 13.9 % | 82 % | 94 % |
+
+        - The best is smooth + S: +8 points exact, +2 points within 5 %,
+          worst 15.8 → 13.9 %. p is stable across held-out shapes (10–17).
+          The gain is real but modest. No single-parameter form captures
+          the wide spread at balance, so the worst misses stay ~13 %.
+      - [ ] Decide for the slides: keep max() (simple, 93 % within 5 %),
+            or add S and the smooth max (84 % exact, 95 % within 5 %). The
+            startup term S is physically derived and worth mentioning
+            either way.
+      - [x] Register-size test (`overlap_regdim.py`, small subset: 16 KB,
+            192×256×256 and 100³, reg_dim 2 / 4 / 8, 1728 runs):
+        - S = tiles · reg² · gc / MNK holds for every register size: the
+          median excess over max() / S is 1.00 / 1.00 / 0.99. The startup
+          term is physical and confirmed.
+        - The fitted p is NOT constant: smooth p = 10.5 / 5.5 / 4 for
+          reg 2 / 4 / 8. Bigger bursts lose more overlap. p also depends on
+          the data (reg=4: 5.5 on this subset, 9.5 on the full sweep). So
+          the smooth max is a curve fit that hides a burst-size effect.
+        - Only 16 conditions per register size, too few to compare
+          tile-selection accuracy.
+      - [ ] To go further: model the FIFO buffer (occupancy per B block with
+            bursty consumption: reg² elements per pop, TM/4 inner steps per
+            pop), which should explain the TM and reg_dim dependence at
+            balance and replace the fitted p.
+- [ ] At gc = 400 the exact-tile rate is low (28 %, `gc/TM`: 17 %) but every
+      prediction is within 0.4 %: B-bound, so TN barely matters and ties
+      pick a different TN. Decide whether to count TN ties as correct.
 
 - [ ] C-stationary traffic matches less well than B-stationary: 27/108
       identical at 16 KB, worst 13 %; 50 % at 32 KB. The gc=0 cycle ratio

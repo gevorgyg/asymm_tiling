@@ -1,9 +1,15 @@
 """How often does the math model pick the best tile, on many more cases?
 
-Model: T / MNK = max(alpha(TM, TN), gc / TM), alpha calibrated once at gc = 0
-per (L1 size, matrix shape). Prediction: argmin over all tiles, ties to the
-lower alpha (as the old roofline validation). Compared with the empirically
-best tile at each gc.
+Model: T / MNK = max(alpha(TM, TN), gc * ceil(M/TM) / M), alpha calibrated
+once at gc = 0 per (L1 size, matrix shape). Prediction: argmin over all
+tiles, ties to the lower alpha (as the old roofline validation). Compared
+with the empirically best tile at each gc.
+
+The B term: B-stationary regenerates B once per row of tiles, so
+ceil(M/TM) * K * N elements for M * N * K MACs. That is gc / TM only when TM
+divides M (the presentation's model); for other tiles gc / TM underestimates
+the cost (M=100: TM=64 and TM=50 both take 2 tile rows, cost gc/50). The old
+gc / TM model is kept as a comparison row.
 
 Setup (the model's assumptions): B-stationary, B from the FIFO, 4-byte
 elements, fully associative L1, no L2, L1 4 / memory 180 cycles, mulacc not
@@ -33,6 +39,14 @@ MATRICES = [                      # (M, K, N)
 TM = [4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128]
 TN = [4, 8, 12, 16, 24, 32, 48, 64]
 GC = [2, 5, 10, 15, 20, 30, 50, 75, 100, 200, 400]
+
+# B-generation term per MAC, as a function of (gc, TM, M)
+NEW = "gc*ceil(M/TM)/M"
+OLD = "gc/TM"
+MODELS = {
+    NEW: lambda gc, tm, m: gc * -(-m // tm) / m,
+    OLD: lambda gc, tm, _m: gc / tm,
+}
 
 
 def configs() -> list[tuple]:
@@ -66,11 +80,13 @@ def main() -> None:
         cal = by_gc[0]
         for gc in GC:
             meas = by_gc[gc]
-            pred = min(meas, key=lambda t: (max(cal[t], gc / t[0]), cal[t]))
             best = min(meas, key=meas.get)
-            rows.append({"l1": l1, "shape": shape, "gc": gc, "pred": pred,
-                         "best": best, "gap": meas[pred] / meas[best] - 1,
-                         "n_tiles": len(meas)})
+            for model, b_cost in MODELS.items():
+                pred = min(meas, key=lambda t: (max(cal[t], b_cost(gc, t[0], shape[0])),
+                                                cal[t]))
+                rows.append({"model": model, "l1": l1, "shape": shape, "gc": gc,
+                             "pred": pred, "best": best,
+                             "gap": meas[pred] / meas[best] - 1})
 
     def summary(rs: list[dict]) -> str:
         n = len(rs)
@@ -82,15 +98,20 @@ def main() -> None:
                 f"| {sum(g <= 0.05 for g in gaps) / n:.0%} "
                 f"| {statistics.median(gaps):.2%} | {max(gaps):.1%} |")
 
-    head = ("| exact tile | TM* right | within 1 % | within 5 % "
+    head = ("| model | exact tile | TM* right | within 1 % | within 5 % "
             "| median gap | worst gap |")
-    sep = "|---|---|---|---|---|---|"
+    sep = "|---|---|---|---|---|---|---|"
+    n_cond = len(rows) // len(MODELS)
     lines = [f"# {NAME}", "", __doc__.strip(), "",
-             f"{len(rows)} conditions ({len(L1_SIZES)} L1 sizes x "
+             f"{n_cond} conditions ({len(L1_SIZES)} L1 sizes x "
              f"{len(MATRICES)} matrices x {len(GC)} gc), "
              f"{len(params)} simulator runs. gap = cycles(predicted tile) / "
-             f"cycles(best tile) - 1.", "",
-             "## Overall", "", head, sep, summary(rows), ""]
+             f"cycles(best tile) - 1. Rows with `{OLD}` are the "
+             f"presentation's term, for comparison.", "",
+             "## Overall", "", head, sep]
+    lines += [f"| `{m}` " + summary([r for r in rows if r["model"] == m])
+              for m in MODELS]
+    lines.append("")
 
     for title, key, values in (("L1 size", "l1", L1_SIZES),
                                ("matrix (M, K, N)", "shape", MATRICES),
@@ -98,17 +119,20 @@ def main() -> None:
         lines += [f"## By {title}", "", f"| {title} " + head, "|---" + sep]
         for v in values:
             label = f"{v // 1024} KB" if key == "l1" else str(v)
-            lines.append(f"| {label} " + summary([r for r in rows if r[key] == v]))
+            for m in MODELS:
+                lines.append(f"| {label} | `{m}` " + summary(
+                    [r for r in rows if r[key] == v and r["model"] == m]))
         lines.append("")
 
-    lines += ["## Misses (predicted ≠ best), worst first", "",
+    lines += [f"## Misses of `{NEW}` (predicted ≠ best), worst first", "",
               "| L1 | matrix | gc | predicted | best | gap |", "|---|---|---|---|---|---|"]
-    for r in sorted((r for r in rows if r["pred"] != r["best"]), key=lambda r: -r["gap"]):
+    misses = (r for r in rows if r["model"] == NEW and r["pred"] != r["best"])
+    for r in sorted(misses, key=lambda r: -r["gap"]):
         lines.append(f"| {r['l1'] // 1024} KB | {r['shape']} | {r['gc']} "
                      f"| {r['pred']} | {r['best']} | {r['gap']:.2%} |")
 
     (out / "README.md").write_text("\n".join(lines) + "\n")
-    print("\n".join(lines[lines.index("## Overall"):lines.index("## Misses (predicted ≠ best), worst first")]))
+    print("\n".join(lines[lines.index("## Overall"):lines.index("## By L1 size")]))
 
 
 if __name__ == "__main__":
