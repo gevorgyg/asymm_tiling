@@ -21,14 +21,15 @@ int my_log2(int size)
     return result;
 }
 
-/* return 2^exponent */
-constexpr int ttp(int exponent)
+/* number of ways: assoc, or every line of the cache when assoc = 0 (fully
+ * associative). size in bytes, block_size log2 */
+int n_of_ways(int size, int block_size, int assoc)
 {
-    return (1 << exponent);
+    return assoc == 0 ? (size >> block_size) : assoc;
 }
 
 /* number of sets of a cache level, throws on a geometry that can't be built.
- * all arguments are log2 */
+ * size in bytes, block_size log2, assoc in ways (0 = fully associative) */
 int checked_n_of_sets(int level, int size, int block_size, int assoc)
 {
     std::string error = cache_geometry_error(level, size, block_size, assoc);
@@ -36,32 +37,74 @@ int checked_n_of_sets(int level, int size, int block_size, int assoc)
         throw std::invalid_argument(error);
     }
 
-    return ttp(size - assoc - block_size);
+    return (size >> block_size) / n_of_ways(size, block_size, assoc);
 }
 
 } // namespace
 
 std::string cache_geometry_error(int level, int size, int block_size, int assoc)
 {
-    if (size < 0 || block_size < 0 || assoc < 0) {
-        return fmt::format("L{}: size ({}), block size ({}) and assoc ({}) are "
-                           "log2 and can't be negative",
+    if (size <= 0 || block_size < 0 || assoc < 0) {
+        return fmt::format("L{}: size ({} B) must be positive, block size "
+                           "({}, log2) and assoc ({} ways) can't be negative",
                            level, size, block_size, assoc);
     }
 
-    if (size > 30) {
-        return fmt::format("L{}: size 2^{} B is too large (max 2^30)", level,
-                           size);
+    if (block_size > 20 || size > (1 << 30)) {
+        return fmt::format("L{}: size {} B or block size 2^{} B is too large "
+                           "(max 2^30 B and 2^20 B)",
+                           level, size, block_size);
     }
 
-    if (size < assoc + block_size) {
-        return fmt::format("L{}: size 2^{} B is smaller than one set of 2^{} "
-                           "ways x 2^{} B lines (need size >= assoc + "
-                           "block_size)",
-                           level, size, assoc, block_size);
+    const int line = 1 << block_size;
+    if (size % line != 0) {
+        return fmt::format("L{}: size {} B is not a whole number of {} B lines",
+                           level, size, line);
+    }
+
+    const int lines = size / line;
+    const int ways  = n_of_ways(size, block_size, assoc);
+    if (ways > lines || lines % ways != 0) {
+        return fmt::format("L{}: {} lines ({} B) don't split into whole sets "
+                           "of {} ways",
+                           level, lines, size, ways);
+    }
+
+    // the set index is taken from address bits
+    const int sets = lines / ways;
+    if (sets & (sets - 1)) {
+        return fmt::format("L{}: {} B / ({} ways x {} B) = {} sets, which is not "
+                           "a power of two",
+                           level, size, ways, line, sets);
     }
 
     return "";
+}
+
+CacheLevelConfig config_level(uint32_t level, int size, int cycles, int assoc)
+{
+    const int bytes = size <= 30 ? (size == 0 ? 0 : 1 << size) : size;
+    const int ways  = assoc == -1 ? 0 : 1 << assoc;
+    return {level, static_cast<uint32_t>(bytes), static_cast<uint32_t>(cycles),
+            static_cast<uint32_t>(ways)};
+}
+
+std::string config_level_error(int level, int size, int assoc, int block_size)
+{
+    if (size < 0) {
+        return fmt::format("L{}: size ({}) can't be negative", level, size);
+    }
+    if (assoc < -1 || assoc > 30) {
+        return fmt::format("L{}: assoc ({}, log2) must be between 0 and 30, or "
+                           "-1 for fully associative",
+                           level, assoc);
+    }
+    if (size == 0) {
+        return level == 1 ? "L1: size can't be 0, L1 must exist" : "";
+    }
+
+    const CacheLevelConfig config = config_level(level, size, 0, assoc);
+    return cache_geometry_error(level, config.size, block_size, config.assoc);
 }
 
 AddrSplitter::AddrSplitter(int n_of_sets, int block_size)
@@ -93,10 +136,11 @@ CacheLevel::CacheLevel(int level, int size, int block_size, int cycles,
     // splitter is the first member initialized, so it validates the geometry
     // before anything else uses it
     : splitter(checked_n_of_sets(level, size, block_size, assoc), block_size),
-      level_nmbr_(level), size_(size), cycles_(cycles), assoc_(ttp(assoc)),
-      write_alloc_(write_alloc), mem_cycles_(mem_cycles)
+      level_nmbr_(level), size_(size), cycles_(cycles),
+      assoc_(n_of_ways(size, block_size, assoc)), write_alloc_(write_alloc),
+      mem_cycles_(mem_cycles)
 {
-    const int n_of_sets = ttp(size - assoc - block_size);
+    const int n_of_sets = (size >> block_size) / assoc_;
     for (int i = 0; i < n_of_sets; ++i) {
         // fixed, non zero, per set seed so random replacement is reproducible
         // (must match tests/ref_cache.py)

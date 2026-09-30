@@ -147,12 +147,10 @@ void MyOptions::post_parse()
 
 void MyOptions::validate_cache() const
 {
-    // l2_size = 0 means no L2 (see CacheUnit), L1 must exist
+    // l2_size = 0 means no L2 (see config_level), L1 must exist
     for (const auto& error :
-         {cache_geometry_error(1, l1_size, block_size, l1_assoc),
-          l2_size == 0
-              ? std::string{}
-              : cache_geometry_error(2, l2_size, block_size, l2_assoc)}) {
+         {config_level_error(1, l1_size, l1_assoc, block_size),
+          config_level_error(2, l2_size, l2_assoc, block_size)}) {
         if (!error.empty()) {
             throw CLI::ValidationError("cache", error);
         }

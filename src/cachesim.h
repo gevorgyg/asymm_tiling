@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+// a cache level in hardware units: size in bytes (0 = the level doesn't
+// exist), assoc in ways (0 = fully associative)
 struct CacheLevelConfig {
     uint32_t level;
     uint32_t size;
@@ -17,10 +19,23 @@ struct CacheLevelConfig {
     uint32_t assoc;
 };
 
-// why a cache level with this geometry (all log2) can't be built, or "" if it
-// can. CacheLevel throws std::invalid_argument with this message.
+// why a cache level with this geometry can't be built, or "" if it can.
+// size in bytes, block_size log2, assoc in ways (0 = fully associative).
+// The number of sets must be a power of two (the set index is address bits).
+// CacheLevel throws std::invalid_argument with this message.
 std::string cache_geometry_error(int level, int size, int block_size,
                                  int assoc);
+
+// A cache level as the config / CLI write it, converted to hardware units:
+//   size:  0 = the level doesn't exist (not allowed for L1),
+//          1..30 = log2 bytes (14 -> 16 KB),
+//          > 30  = bytes, for sizes that aren't a power of two (24576)
+//   assoc: log2 ways, -1 = fully associative
+CacheLevelConfig config_level(uint32_t level, int size, int cycles, int assoc);
+
+// why config_level(...) can't be built, or "" if it can (includes
+// cache_geometry_error of the converted level)
+std::string config_level_error(int level, int size, int assoc, int block_size);
 
 struct AddrParts {
     RawAddr raw;
@@ -345,18 +360,14 @@ class CacheUnit
               const std::vector<CacheLevelConfig>& cache_levels,
               bool write_alloc, ReplPolicy policy);
 
+    // two levels as the config / CLI write them (see config_level)
     CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
               int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
               bool write_alloc, ReplPolicy policy)
-        : CacheUnit(
-              block_size, mem_cycles,
-              std::vector<CacheLevelConfig>{{1, static_cast<uint32_t>(l1_size),
-                                             static_cast<uint32_t>(l1_cycles),
-                                             static_cast<uint32_t>(l1_assoc)},
-                                            {2, static_cast<uint32_t>(l2_size),
-                                             static_cast<uint32_t>(l2_cycles),
-                                             static_cast<uint32_t>(l2_assoc)}},
-              write_alloc, policy)
+        : CacheUnit(block_size, mem_cycles,
+                    {config_level(1, l1_size, l1_cycles, l1_assoc),
+                     config_level(2, l2_size, l2_cycles, l2_assoc)},
+                    write_alloc, policy)
     {
     }
 
