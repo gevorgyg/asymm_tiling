@@ -1,5 +1,6 @@
 
 #include "my_options.h"
+#include "cachesim.h"
 
 MyOptions::MyOptions(std::string app_description, std::string app_name)
     : App(app_description, app_name)
@@ -88,6 +89,11 @@ MyOptions::MyOptions(std::string app_description, std::string app_name)
 
     add_flag("-w, --write-allocate, --no-write-allocate{false}", write_alloc,
              "set write allocate");
+
+    final_callback([this]() {
+        post_parse();
+        validate_cache();
+    });
 }
 
 void MyOptions::apply_config(const Config& config)
@@ -131,5 +137,16 @@ void MyOptions::post_parse()
         l2_size    = cache_options[5];
         l2_cycles  = cache_options[6];
         l2_assoc   = cache_options[7];
+    }
+}
+
+void MyOptions::validate_cache() const
+{
+    for (const auto& error :
+         {cache_geometry_error(1, l1_size, block_size, l1_assoc),
+          cache_geometry_error(2, l2_size, block_size, l2_assoc)}) {
+        if (!error.empty()) {
+            throw CLI::ValidationError("cache", error);
+        }
     }
 }

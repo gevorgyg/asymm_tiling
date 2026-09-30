@@ -3,6 +3,7 @@
 #include "registry.h"
 #include <cassert>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 namespace
@@ -26,13 +27,48 @@ constexpr int ttp(int exponent)
     return (1 << exponent);
 }
 
+/* number of sets of a cache level, throws on a geometry that can't be built.
+ * all arguments are log2 */
+int checked_n_of_sets(int level, int size, int block_size, int assoc)
+{
+    std::string error = cache_geometry_error(level, size, block_size, assoc);
+    if (!error.empty()) {
+        throw std::invalid_argument(error);
+    }
+
+    return ttp(size - assoc - block_size);
+}
+
 } // namespace
+
+std::string cache_geometry_error(int level, int size, int block_size, int assoc)
+{
+    if (size < 0 || block_size < 0 || assoc < 0) {
+        return fmt::format("L{}: size ({}), block size ({}) and assoc ({}) are "
+                           "log2 and can't be negative",
+                           level, size, block_size, assoc);
+    }
+
+    if (size > 30) {
+        return fmt::format("L{}: size 2^{} B is too large (max 2^30)", level,
+                           size);
+    }
+
+    if (size < assoc + block_size) {
+        return fmt::format("L{}: size 2^{} B is smaller than one set of 2^{} "
+                           "ways x 2^{} B lines (need size >= assoc + "
+                           "block_size)",
+                           level, size, assoc, block_size);
+    }
+
+    return "";
+}
 
 AddrSplitter::AddrSplitter(int n_of_sets, int block_size)
     : block_size_(block_size),
       b_tag_size_(B_ADDR_SIZE - block_size - my_log2(n_of_sets)),
-      tag_mask_(~((1 << (B_ADDR_SIZE - b_tag_size_)) - 1)),
-      set_mask_(((1 << my_log2(n_of_sets)) - 1) << block_size_)
+      tag_mask_(~((BitMask{1} << (B_ADDR_SIZE - b_tag_size_)) - 1)),
+      set_mask_(((BitMask{1} << my_log2(n_of_sets)) - 1) << block_size_)
 {
 }
 
@@ -53,11 +89,14 @@ SetIndex AddrSplitter::create_index(RawAddr address) const
 
 CacheLevel::CacheLevel(int level, int size, int block_size, int cycles,
                        int assoc, bool write_alloc, int mem_cycles)
-    : level_nmbr_(level), size_(size), cycles_(cycles), assoc_(ttp(assoc)),
-      write_alloc_(write_alloc), mem_cycles_(mem_cycles),
-      splitter((ttp(size) / ttp(assoc)) / ttp(block_size), block_size)
+    // splitter is the first member initialized, so it validates the geometry
+    // before anything else uses it
+    : splitter(checked_n_of_sets(level, size, block_size, assoc), block_size),
+      level_nmbr_(level), size_(size), cycles_(cycles), assoc_(ttp(assoc)),
+      write_alloc_(write_alloc), mem_cycles_(mem_cycles)
 {
-    for (int i = 0; i < ((ttp(size) / ttp(assoc)) / ttp(block_size)); ++i) {
+    const int n_of_sets = ttp(size - assoc - block_size);
+    for (int i = 0; i < n_of_sets; ++i) {
         sets_.emplace_back(assoc_);
     }
 }
@@ -156,15 +195,18 @@ void CacheUnit::register_stats() const
                                         : 0.0;
                 });
         }
+
+        gRegistry().reg_stat(fmt::format("CacheUnit: L{} writebacks", level),
+                             &levels_[i]->n_of_writebacks_);
     }
-    gRegistry().reg_stat<size_t>("CacheUnit: total access cycles", [this]() {
-        size_t total_cycles = 0;
-        for (const auto& lvl : levels_) {
-            total_cycles += lvl->n_of_access_ * lvl->cycles_;
-            total_cycles += lvl->n_of_dram_access_ * mem_cycles_;
-        }
-        return total_cycles;
+    gRegistry().reg_stat<size_t>("CacheUnit: mem reads", [this]() {
+        return levels_.back()->n_of_mem_reads_;
     });
+    gRegistry().reg_stat<size_t>("CacheUnit: mem writes", [this]() {
+        return levels_.back()->n_of_mem_writes();
+    });
+    gRegistry().reg_stat<size_t>("CacheUnit: total access cycles",
+                                 [this]() { return total_access_cycles(); });
     gRegistry().reg_stat<size_t>("CacheUnit: total number of access", [this]() {
         auto& lvl = this->levels_[0];
         return lvl->n_of_access_;
@@ -175,11 +217,21 @@ void CacheUnit::register_stats() const
         if (!total_access)
             return 0.0;
 
-        size_t total_cycles = 0;
-        for (const auto& lvl : levels_) {
-            total_cycles += lvl->n_of_access_ * lvl->cycles_;
-            total_cycles += lvl->n_of_dram_access_ * mem_cycles_;
-        }
-        return (double)total_cycles / total_access;
+        return (double)total_access_cycles() / total_access;
     });
+}
+
+size_t CacheUnit::total_access_cycles() const
+{
+    size_t total_cycles = 0;
+    for (const auto& lvl : levels_) {
+        total_cycles += lvl->n_of_access_ * lvl->cycles_;
+    }
+
+    // only demand memory accesses cost cycles, writebacks are free
+    const auto& last = levels_.back();
+    total_cycles +=
+        (last->n_of_mem_reads_ + last->n_of_mem_write_misses_) * mem_cycles_;
+
+    return total_cycles;
 }

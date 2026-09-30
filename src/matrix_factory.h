@@ -4,6 +4,8 @@ class MatrixFactory
 {
 
     static constexpr uint32_t kAlign_ = 0b100;
+    // fixed (not null) base so runs are reproducible, A starts here
+    static constexpr RawAddr kBaseAddr_ = 0x1000;
 
   public:
     MatrixFactory(uint32_t m, uint32_t k, uint32_t n, uint32_t small_percision,
@@ -15,5 +17,4 @@ class MatrixFactory
     const uint32_t small_perc_;
     const uint32_t ratio_;
     const uint32_t m_, k_, n_;
-    SimpleRandomNumberGenerator generate_;
 };

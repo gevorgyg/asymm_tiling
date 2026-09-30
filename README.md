@@ -174,23 +174,29 @@ Upon completion, the simulator outputs an aligned statistics table:
 ======================= SIMULATION STATS ========================
 Metric                                        |           Value
 -----------------------------------------------------------------
-Simulation: Total cycles                      |         1575036
-Simulation: Total MACs                        | 0.6349061227806857
-PrngFifo: stalls                              |               4
-PrngFifo: stall_cycles                        |             640
-PrngFifo: pops                                |            1300
-PrngFifo: Stall Rate [%]                      | 0.3076923076923077
-CacheUnit: total number of access             |          253504
-CacheUnit: total access cycles                |         1504196
-CacheUnit: l1 miss_rate %                     | 6.9442691239585965
-CacheUnit: l2 local_miss_rate %               | 7.271074755737332
-CacheUnit: l2 global_miss_rate %              | 0.5049229992426155
-CacheUnit: cache avg_access_time              | 5.9336184044433224
-CacheUnit: L1 accesses                        |          253504
-CacheUnit: L1 hits                            |          235900
-CacheUnit: L1 misses                          |           17604
-CacheUnit: L2 accesses                        |           17604
-CacheUnit: L2 hits                            |           16324
+CacheUnit: L1 accesses                        |          219704
+CacheUnit: L1 hit_rate %                      | 93.8526380948913
+CacheUnit: L1 hits                            |          206198
+CacheUnit: L1 local_miss_rate %               | 6.147361905108692
+CacheUnit: L1 misses                          |           13506
+CacheUnit: L1 writebacks                      |           11933
+CacheUnit: L2 accesses                        |           13506
+CacheUnit: L2 global_miss_rate %              | 0.5826020463896879
+CacheUnit: L2 hit_rate %                      | 90.52273063823486
+CacheUnit: L2 hits                            |           12226
+CacheUnit: L2 local_miss_rate %               | 9.47726936176514
 CacheUnit: L2 misses                          |            1280
+CacheUnit: L2 writebacks                      |             119
+CacheUnit: cache avg_access_time              | 5.812074427411426
+CacheUnit: mem reads                          |            1280
+CacheUnit: mem writes                         |             119
+CacheUnit: total access cycles                |         1276936
+CacheUnit: total number of access             |          219704
+PrngFifo: Stall Rate [%]                      | 0.3076923076923077
+PrngFifo: pops                                |            1300
+PrngFifo: stall_cycles                        |             640
+PrngFifo: stalls                              |               4
+Simulation: Total MACs                        | 0.741963056175507
+Simulation: Total cycles                      |         1347776
 =================================================================
 ```

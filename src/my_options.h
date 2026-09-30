@@ -46,10 +46,14 @@ struct MyOptions : public CLI::App {
 
     void apply_config(const Config& config);
 
-    void post_parse();
-
   private:
     std::array<int, 8> cache_options;
+
+    // run by CLI11 at the end of parsing (see final_callback in the ctor)
+    void post_parse();
+
+    // throws CLI::ValidationError, reported by CLI11_PARSE like any bad flag
+    void validate_cache() const;
 
     const std::map<std::string, oriantation> oriantation_map{
         {"output", output}, {"out", output}, {"o", output},

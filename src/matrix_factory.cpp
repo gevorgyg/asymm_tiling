@@ -10,8 +10,7 @@ MatrixFactory::MatrixFactory(uint32_t m, uint32_t k, uint32_t n,
 
 Mat3Tuple MatrixFactory::create_mats()
 {
-    RawAddr start_addr   = generate_();
-    RawAddr aligned_addr = start_addr & ~(kAlign_ - 1);
+    RawAddr aligned_addr = kBaseAddr_;
     RawAddr next_addr =
         (aligned_addr + small_perc_ * ratio_ * m_ * k_) & ~(kAlign_ - 1);
     RawAddr final_addr = (next_addr + small_perc_ * k_ * n_) & ~(kAlign_ - 1);

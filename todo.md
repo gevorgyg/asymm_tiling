@@ -4,7 +4,9 @@
 [x] - add stat tracking to each componant -> each componant registers his stats to the registry.  
 [x] - add print of all at the end of the run.  
 [x] - add toml config file support.  
-[ ] - refractor the cache design to more layers.  
-[ ] - run verification tests.  
+[x] - refractor the cache design to more layers.  
+[x] - run verification tests.  
 [ ] - reproduce presentation experiments.  
 [ ] - plan and run new experiments.  
+[ ] - finish report.  
+[ ] - finish presentation.  

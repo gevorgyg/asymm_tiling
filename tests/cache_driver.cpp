@@ -12,6 +12,8 @@
 // cycles  - clock delta of the access
 // L1, L2  - H (hit), M (miss) or - (level not accessed)
 // mem     - number of memory accesses (reads + writes) caused by the access
+//
+// Exits with 3 if CacheUnit::total_access_cycles() disagrees with the clock.
 
 #include "cachesim.h"
 
@@ -34,6 +36,14 @@ int main(int argc, char* argv[])
         a[i] = std::atoi(argv[i + 1]);
     }
 
+    for (const auto& error : {cache_geometry_error(1, a[2], a[0], a[4]),
+                              cache_geometry_error(2, a[5], a[0], a[7])}) {
+        if (!error.empty()) {
+            std::cerr << "invalid cache: " << error << "\n";
+            return 2;
+        }
+    }
+
     CacheUnit cache{a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8] != 0};
     Clock::reset();
 
@@ -50,7 +60,7 @@ int main(int argc, char* argv[])
         size_t mem_before = 0;
         for (size_t i = 0; i < n_levels; ++i) {
             before[i] = cache.level_stats(i);
-            mem_before += before[i].dram_accesses;
+            mem_before += before[i].mem_reads + before[i].mem_writes;
         }
         size_t cycles_before = Clock::cur_cycles();
 
@@ -61,7 +71,7 @@ int main(int argc, char* argv[])
         size_t mem_after = 0;
         for (size_t i = 0; i < n_levels; ++i) {
             auto after = cache.level_stats(i);
-            mem_after += after.dram_accesses;
+            mem_after += after.mem_reads + after.mem_writes;
 
             char outcome = '-';
             if (after.hits > before[i].hits) {
@@ -79,5 +89,12 @@ int main(int argc, char* argv[])
     }
 
     std::fwrite(out.data(), 1, out.size(), stdout);
+
+    // the stats must account for exactly the cycles the cache ticked
+    if (cache.total_access_cycles() != Clock::cur_cycles()) {
+        std::cerr << "total_access_cycles " << cache.total_access_cycles()
+                  << " != clock " << Clock::cur_cycles() << "\n";
+        return 3;
+    }
     return 0;
 }

@@ -149,6 +149,7 @@ class RefCache:
         self.levels = [Level(lc, cfg.block) for lc in cfg.levels]
         self.mem_reads = 0
         self.mem_writes = 0
+        self.mem_write_log: list[int] = []  # line of every memory write, in order
 
     # -- public -------------------------------------------------------------
 
@@ -199,7 +200,7 @@ class RefCache:
     def _write_no_alloc(self, line: int) -> tuple[int, list[str]]:
         hit_level, cycles, outcomes = self._probe(line)
         if hit_level == len(self.levels):
-            self.mem_writes += 1
+            self._mem_write(line)
         else:
             self.levels[hit_level].mark_dirty(line)
         return cycles, outcomes
@@ -214,10 +215,14 @@ class RefCache:
 
     def _writeback(self, level: int, line: int) -> None:
         if level == len(self.levels):
-            self.mem_writes += 1
+            self._mem_write(line)
             return
         lvl = self.levels[level]
         if lvl.contains(line):
             lvl.mark_dirty(line)
         else:
             self._evicted(level, lvl.fill(line, dirty=True))
+
+    def _mem_write(self, line: int) -> None:
+        self.mem_writes += 1
+        self.mem_write_log.append(line)

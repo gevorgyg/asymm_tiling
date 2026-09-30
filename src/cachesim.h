@@ -7,6 +7,7 @@
 #include <cassert>
 #include <memory>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <vector>
 
 struct CacheLevelConfig {
@@ -15,6 +16,11 @@ struct CacheLevelConfig {
     uint32_t cycles;
     uint32_t assoc;
 };
+
+// why a cache level with this geometry (all log2) can't be built, or "" if it
+// can. CacheLevel throws std::invalid_argument with this message.
+std::string cache_geometry_error(int level, int size, int block_size,
+                                 int assoc);
 
 struct AddrParts {
     RawAddr raw;
@@ -108,7 +114,8 @@ class Set
     {
     }
 
-    CacheLine* find(const AddrParts& addr)
+    // lookup without updating the replacement policy
+    CacheLine* peek(const AddrParts& addr)
     {
         auto it = std::find_if(
             ways_.begin(), ways_.end(), [&](const CacheLine& line) -> bool {
@@ -119,10 +126,20 @@ class Set
             return nullptr;
         }
 
-        // relevant only for lru
-        policy_->touch(it - ways_.begin());
-
         return &(*it);
+    }
+
+    // demand lookup, a hit updates the replacement policy
+    CacheLine* find(const AddrParts& addr)
+    {
+        CacheLine* line = peek(addr);
+
+        if (line) {
+            // relevant only for lru
+            policy_->touch(line - ways_.data());
+        }
+
+        return line;
     }
 
     bool try_insert(const CacheLine& new_line)
@@ -165,15 +182,19 @@ class CacheLevel
     CacheLevel(int level, int size, int block_size, int cycles, int assoc,
                bool write_alloc, int mem_cycles);
 
+    // demand lookup, a hit updates the replacement policy
     CacheLine* find(const AddrParts& addr)
     {
-        CacheLine* target = sets_[addr.set].find(addr);
-        if (!target) {
-            return nullptr;
-        }
-        return target;
+        return sets_[addr.set].find(addr);
     }
 
+    // lookup without updating the replacement policy
+    CacheLine* peek(const AddrParts& addr)
+    {
+        return sets_[addr.set].peek(addr);
+    }
+
+    // insert a line that is not present, a dirty victim is written back
     void insert(const CacheLine& new_line)
     {
         SetIndex set = splitter(new_line.addr).set;
@@ -188,12 +209,29 @@ class CacheLevel
         // need to evict, do write back
         auto victim = sets_[set].insert(new_line);
         if (victim->dirty) {
+            ++n_of_writebacks_;
             if (lower_level_) {
-                lower_level_->insert(*victim);
-            } else {
-                log_mem_access();
+                lower_level_->writeback(victim->addr);
             }
+            // else the victim goes to memory: counted by n_of_writebacks_ of
+            // the last level, free like every writeback
         }
+    }
+
+    // a dirty line evicted from the level above. Free: no cycles and not
+    // counted as an access. Present -> mark dirty in place without touching
+    // LRU, absent -> install dirty (no memory fetch, the whole line is written)
+    void writeback(const RawAddr& raw_addr)
+    {
+        auto addr = splitter(raw_addr);
+
+        CacheLine* target = peek(addr);
+        if (target) {
+            target->dirty = true;
+            return;
+        }
+
+        insert(CacheLine{raw_addr, addr.tag, true, true});
     }
 
     void read(const RawAddr& raw_addr)
@@ -215,7 +253,8 @@ class CacheLevel
         if (lower_level_) {
             lower_level_->read(raw_addr);
         } else {
-            log_mem_access();
+            ++n_of_mem_reads_;
+            Clock::tick(mem_cycles_);
         }
 
         insert(CacheLine{raw_addr, addr.tag, true, false});
@@ -226,27 +265,38 @@ class CacheLevel
         auto addr = splitter(raw_addr);
 
         if (write_alloc_) {
+            // same fills and latency as a read, then dirty the line
             read(raw_addr);
-            CacheLine* target = find(addr);
-            if (target) {
-                target->dirty = true;
-            }
+            CacheLine* target = peek(addr);
+            assert(target);
+            target->dirty = true;
             return;
         }
+
+        ++n_of_access_;
+        Clock::tick(cycles_);
 
         CacheLine* target = find(addr);
-        if (!target) {
-            if (lower_level_) {
-                lower_level_->write(raw_addr);
-            } else {
-                log_mem_access();
-            }
+
+        if (target) {
+            ++n_of_hits_;
+            target->dirty = true;
             return;
         }
 
-        target->dirty = true;
+        ++n_of_misses_;
+
+        // no write allocate: pass the write down, allocate nowhere
+        if (lower_level_) {
+            lower_level_->write(raw_addr);
+        } else {
+            ++n_of_mem_write_misses_;
+            Clock::tick(mem_cycles_);
+        }
     }
 
+    // keep as the first data member: its initialization validates the
+    // geometry before the other members use it (see CacheLevel::CacheLevel)
     const AddrSplitter splitter;
 
   private:
@@ -256,22 +306,31 @@ class CacheLevel
     const uint32_t assoc_;
     const bool write_alloc_;
 
-    CacheLevel* upper_level_;
-    CacheLevel* lower_level_;
+    CacheLevel* upper_level_ = nullptr;
+    CacheLevel* lower_level_ = nullptr;
 
     int mem_cycles_;
 
     std::vector<Set> sets_;
 
-    size_t n_of_misses_      = 0;
-    size_t n_of_hits_        = 0;
-    size_t n_of_access_      = 0;
-    size_t n_of_dram_access_ = 0;
+    size_t n_of_misses_     = 0;
+    size_t n_of_hits_       = 0;
+    size_t n_of_access_     = 0;
+    size_t n_of_writebacks_ = 0; // dirty lines evicted from this level
 
-    void log_mem_access()
+    // memory traffic, only the last level has these
+    size_t n_of_mem_reads_        = 0; // demand read misses
+    size_t n_of_mem_write_misses_ = 0; // demand write misses (no write alloc)
+
+    bool is_last() const
     {
-        ++n_of_dram_access_;
-        Clock::tick(mem_cycles_);
+        return lower_level_ == nullptr;
+    }
+
+    // memory writes: demand write misses and (free) writebacks
+    size_t n_of_mem_writes() const
+    {
+        return n_of_mem_write_misses_ + (is_last() ? n_of_writebacks_ : 0);
     }
 };
 
@@ -307,7 +366,9 @@ class CacheUnit
         size_t accesses;
         size_t hits;
         size_t misses;
-        size_t dram_accesses;
+        size_t writebacks;
+        size_t mem_reads;  // non zero only for the last level
+        size_t mem_writes; // non zero only for the last level
     };
 
     size_t n_levels() const
@@ -318,9 +379,13 @@ class CacheUnit
     LevelStats level_stats(size_t level) const
     {
         const auto& lvl = levels_.at(level);
-        return {lvl->n_of_access_, lvl->n_of_hits_, lvl->n_of_misses_,
-                lvl->n_of_dram_access_};
+        return {lvl->n_of_access_,     lvl->n_of_hits_,
+                lvl->n_of_misses_,     lvl->n_of_writebacks_,
+                lvl->n_of_mem_reads_, lvl->n_of_mem_writes()};
     }
+
+    // cycles spent in the cache unit (writebacks are free)
+    size_t total_access_cycles() const;
 
   private:
     std::vector<CacheLevelPtr> levels_;
@@ -336,11 +401,6 @@ class CacheUnit
     void do_write(RawAddr address)
     {
         levels_[0]->write(address);
-    }
-
-    void log_mem_access()
-    {
-        Clock::tick(mem_cycles_);
     }
 };
 

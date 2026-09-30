@@ -11,34 +11,16 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given
 
 from ref_cache import CacheConfig, LevelConfig, RefCache
+from strategies import (GEOMETRIES, L1_CYC, L2_CYC, MEM_CYC, config_and_trace,
+                        make_config)
 
 DRIVER = Path(__file__).resolve().parent.parent / "build" / "cache_driver"
 
 pytestmark = pytest.mark.skipif(
     not DRIVER.exists(), reason="build/cache_driver not built (run ./compbuild)")
-
-# distinct latencies so every path (L1 / L2 / mem) has a unique cycle count
-L1_CYC, L2_CYC, MEM_CYC = 4, 20, 100
-
-# (block, l1_size, l1_assoc, l2_size, l2_assoc), all log2
-GEOMETRIES = {
-    "direct-mapped":  (4, 7, 0, 9, 0),   # L1: 8 sets x 1 way,  L2: 32 x 1
-    "small-assoc":    (4, 8, 1, 10, 2),  # L1: 8 sets x 2 ways, L2: 16 x 4
-    "fully-assoc-l1": (4, 6, 2, 8, 2),   # L1: 1 set  x 4 ways, L2: 4 x 4
-    "default":        (6, 14, 3, 16, 3),  # config.toml geometry
-}
-
-
-def make_config(geometry: str, write_alloc: bool) -> CacheConfig:
-    block, l1s, l1a, l2s, l2a = GEOMETRIES[geometry]
-    return CacheConfig(block, MEM_CYC,
-                       (LevelConfig(l1s, L1_CYC, l1a),
-                        LevelConfig(l2s, L2_CYC, l2a)),
-                       write_alloc)
-
 
 def run_driver(cfg: CacheConfig, trace) -> list[tuple]:
     stdin = "".join(f"{op} {addr:x}\n" for op, addr in trace)
@@ -80,42 +62,14 @@ def assert_same(cfg: CacheConfig, trace) -> None:
                 f"recent accesses:\n{history}")
 
 
-# -- trace generation --------------------------------------------------------
-
-@st.composite
-def traces(draw, cfg: CacheConfig, ops: str):
-    """Traces over a small address window so sets actually conflict."""
-    l2 = cfg.levels[-1]
-    l2_lines = 1 << (l2.size - cfg.block)
-    n_lines = draw(st.sampled_from([l2_lines // 2, l2_lines * 2, l2_lines * 4]))
-    base = draw(st.sampled_from([0, 0x7F3A_1000_0000]))  # exercise high tag bits
-    line_bytes = 1 << cfg.block
-
-    access = st.tuples(
-        st.sampled_from(ops),
-        st.builds(lambda l, off: base + l * line_bytes + off,
-                  st.integers(0, n_lines - 1),
-                  st.integers(0, line_bytes - 1)))
-    return draw(st.lists(access, min_size=1, max_size=400))
-
-
-def config_and_trace(ops: str):
-    return st.builds(
-        lambda g, wa: make_config(g, wa),
-        st.sampled_from(list(GEOMETRIES)), st.booleans(),
-    ).flatmap(lambda cfg: st.tuples(st.just(cfg), traces(cfg, ops)))
-
-
 # -- tests -------------------------------------------------------------------
 
-@settings(max_examples=300, deadline=None)
 @given(config_and_trace("r"))
 def test_read_only(case):
     cfg, trace = case
     assert_same(cfg, trace)
 
 
-@settings(max_examples=300, deadline=None)
 @given(config_and_trace("rrw"))
 def test_reads_and_writes(case):
     cfg, trace = case
@@ -131,3 +85,20 @@ def test_sequential_sweep(geometry, write_alloc):
     trace = [("w" if (a // 4) % 4 == 3 else "r", a)
              for _ in range(2) for a in range(0, span, 4)]
     assert_same(cfg, trace)
+
+
+# L1 and L2 both 1 set x 2 ways (16 B lines), so L2 can evict lines L1 keeps.
+# Traces from test_ref_cache.py, for writeback paths random traces rarely hit.
+TINY_NINE = CacheConfig(4, MEM_CYC,
+                        (LevelConfig(5, L1_CYC, 1), LevelConfig(5, L2_CYC, 1)),
+                        write_alloc=True)
+
+
+@pytest.mark.parametrize("trace", [
+    # dirty L1 victim absent from L2 -> installed in L2, then re-read from L2
+    [("w", 0x00), ("r", 0x10), ("r", 0x10), ("r", 0x20), ("r", 0x00)],
+    # dirty line travels L1 -> L2 -> memory (free writeback)
+    [("w", 0x00), ("r", 0x10), ("r", 0x20), ("r", 0x30), ("r", 0x40)],
+], ids=["writeback-installs-in-l2", "writeback-reaches-memory"])
+def test_writeback_scenarios(trace):
+    assert_same(TINY_NINE, trace)

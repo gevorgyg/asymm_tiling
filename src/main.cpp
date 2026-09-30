@@ -16,7 +16,6 @@ int main(int argc, char* argv[])
 
     // overwrite things given from CLI
     CLI11_PARSE(options, argc, argv);
-    options.post_parse();
 
     spdlog::info("Asymm Matrix Multiplication Log Start");
 
