@@ -28,3 +28,4 @@ l2_size = 16
 l2_cycles = 20
 l2_assoc = 3
 write_alloc = false
+policy = "lru"

@@ -123,3 +123,58 @@ def test_dirty_l2_eviction_is_one_free_memory_write():
     r = c.access("r", 0x40)  # L2 evicts 00* -> memory
     assert (r.cycles, r.mem_reads, r.mem_writes) == (L1 + L2 + MEM, 1, 1)
     assert c.levels[1].stats.writebacks == 1
+
+
+# -- replacement policies ------------------------------------------------------
+# L1: 1 set x 2 ways, L2 big and direct mapped so it never interferes
+
+def policy_cache(policy):
+    return RefCache(CacheConfig(4, MEM, (LevelConfig(5, L1, 1),
+                                         LevelConfig(12, L2, 0)),
+                                False, policy))
+
+
+def test_fifo_hit_does_not_save_the_oldest_line():
+    c = policy_cache("fifo")
+    c.access("r", 0x00)
+    c.access("r", 0x10)
+    c.access("r", 0x00)  # hit, but 0x00 is still the oldest fill
+    c.access("r", 0x20)  # evicts 0x00 (lru would evict 0x10)
+    assert c.access("r", 0x10).outcomes[0] == "H"
+    assert c.access("r", 0x00).outcomes[0] == "M"
+
+
+def test_mru_evicts_the_most_recent_line():
+    c = policy_cache("mru")
+    c.access("r", 0x00)
+    c.access("r", 0x10)  # most recent
+    c.access("r", 0x20)  # evicts 0x10
+    assert c.access("r", 0x00).outcomes[0] == "H"
+    assert c.access("r", 0x10).outcomes[0] == "M"
+
+
+def test_lru_evicts_the_least_recent_line():
+    c = policy_cache("lru")
+    c.access("r", 0x00)
+    c.access("r", 0x10)
+    c.access("r", 0x00)
+    c.access("r", 0x20)  # evicts 0x10
+    assert c.access("r", 0x00).outcomes[0] == "H"
+    assert c.access("r", 0x10).outcomes[0] == "M"
+
+
+def test_random_is_reproducible_and_uses_every_way():
+    trace = [("r", 0x10 * i) for i in range(200)]  # all different lines
+    a, b = policy_cache("random"), policy_cache("random")
+    a.run(trace)
+    b.run(trace)
+    assert a.levels[0].sets == b.levels[0].sets  # same seed, same victims
+
+    ways_chosen = set()
+    c = policy_cache("random")
+    for op, addr in trace:
+        before = dict(c.levels[0].way_of[0])
+        c.access(op, addr)
+        evicted = before.keys() - c.levels[0].way_of[0].keys()
+        ways_chosen |= {before[line] for line in evicted}
+    assert ways_chosen == {0, 1}

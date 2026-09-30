@@ -88,7 +88,8 @@ SetIndex AddrSplitter::create_index(RawAddr address) const
 }
 
 CacheLevel::CacheLevel(int level, int size, int block_size, int cycles,
-                       int assoc, bool write_alloc, int mem_cycles)
+                       int assoc, bool write_alloc, int mem_cycles,
+                       ReplPolicy policy)
     // splitter is the first member initialized, so it validates the geometry
     // before anything else uses it
     : splitter(checked_n_of_sets(level, size, block_size, assoc), block_size),
@@ -97,7 +98,10 @@ CacheLevel::CacheLevel(int level, int size, int block_size, int cycles,
 {
     const int n_of_sets = ttp(size - assoc - block_size);
     for (int i = 0; i < n_of_sets; ++i) {
-        sets_.emplace_back(assoc_);
+        // fixed, non zero, per set seed so random replacement is reproducible
+        // (must match tests/ref_cache.py)
+        const uint64_t seed = (uint64_t(i) + 1) * 0x9E3779B97F4A7C15ULL;
+        sets_.emplace_back(assoc_, policy, seed);
     }
 }
 
@@ -118,16 +122,16 @@ void CacheUnit::process_request(char operation, RawAddr address)
 
 CacheUnit::CacheUnit(int block_size, int mem_cycles,
                      const std::vector<CacheLevelConfig>& cache_levels,
-                     bool write_alloc)
+                     bool write_alloc, ReplPolicy policy)
     : block_size_(block_size), mem_cycles_(mem_cycles),
-      write_alloc_(write_alloc)
+      write_alloc_(write_alloc), policy_(policy)
 {
     // construct the levels vector
     for (const auto& level_config : cache_levels) {
         levels_.push_back(std::make_unique<CacheLevel>(
             level_config.level, level_config.size, block_size_,
             level_config.cycles, level_config.assoc, write_alloc_,
-            mem_cycles_));
+            mem_cycles_, policy_));
     }
 
     // assign level pointers

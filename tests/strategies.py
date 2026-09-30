@@ -2,7 +2,7 @@
 
 from hypothesis import strategies as st
 
-from ref_cache import CacheConfig, LevelConfig
+from ref_cache import POLICIES, CacheConfig, LevelConfig
 
 # distinct latencies so every path (L1 / L2 / mem) has a unique cycle count
 L1_CYC, L2_CYC, MEM_CYC = 4, 20, 100
@@ -16,12 +16,13 @@ GEOMETRIES = {
 }
 
 
-def make_config(geometry: str, write_alloc: bool) -> CacheConfig:
+def make_config(geometry: str, write_alloc: bool,
+                policy: str = "lru") -> CacheConfig:
     block, l1s, l1a, l2s, l2a = GEOMETRIES[geometry]
     return CacheConfig(block, MEM_CYC,
                        (LevelConfig(l1s, L1_CYC, l1a),
                         LevelConfig(l2s, L2_CYC, l2a)),
-                       write_alloc)
+                       write_alloc, policy)
 
 
 @st.composite
@@ -49,7 +50,9 @@ def traces(draw, cfg: CacheConfig, ops: str):
 
 
 def config_and_trace(ops: str):
-    """A two-level config from GEOMETRIES (either write policy) + a trace."""
+    """A two-level config from GEOMETRIES (any write and replacement
+    policy) + a trace."""
     return st.builds(
         make_config, st.sampled_from(list(GEOMETRIES)), st.booleans(),
+        st.sampled_from(POLICIES),
     ).flatmap(lambda cfg: st.tuples(st.just(cfg), traces(cfg, ops)))

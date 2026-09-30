@@ -89,7 +89,7 @@ small_percision = 1   # Low-precision element size in bytes (e.g. 1 for INT8)
 ratio = 4             # Precision ratio between high and low precision (high / low)
 
 [fifo]
-capacity = 14         # PRNG-FIFO depth in elements
+capacity = 14         # PRNG-FIFO depth in log2 elements (14 -> 16384)
 generation_cost = 10  # Cycles required to generate an element
 accsess_cost = 2      # Cycles to pop an element from the FIFO
 seed_size = 1         # Seed size in bytes
@@ -98,6 +98,8 @@ seed_size = 1         # Seed size in bytes
 tile_h = 50           # Tile height (rows)
 tile_w = 50           # Tile width (columns)
 b_source = "fifo"     # Source of matrix B: "memory" or "fifo"
+reg_dim = 4           # Register tile dimension (reg_dim x reg_dim elements)
+mulacc_cost = 4       # Cycles per multiply-accumulate operation
 
 [cache]
 block_size = 6        # Cache line size in log2 bytes (6 -> 64 B)
@@ -109,6 +111,7 @@ l2_size = 16          # L2 cache size in log2 bytes (16 -> 64 KB)
 l2_cycles = 20        # L2 hit latency in cycles
 l2_assoc = 3          # L2 associativity in log2 (3 -> 8-way)
 write_alloc = false   # Write-allocate policy (boolean)
+policy = "lru"        # Replacement policy: "lru", "fifo", "mru" or "random"
 ```
 
 ---
@@ -133,12 +136,15 @@ write_alloc = false   # Write-allocate policy (boolean)
 | `-B`, `--BSource` | `memory` \| `fifo` | Operand $B$ source (DRAM memory or PRNG FIFO) |
 | `--th`, `--tile-height` | `UINT` | Tile height dimension |
 | `--tw`, `--tile-width` | `UINT` | Tile width dimension |
-| `--fc`, `--fifo-capacity` | `UINT` | Capacity of PRNG FIFO |
+| `--rd`, `--reg-dim` | `UINT` | Register tile dimension |
+| `--mc`, `--mulacc-cost` | `UINT` | Cycles per multiply-accumulate operation |
+| `--fc`, `--fifo-capacity` | `UINT` | Capacity of PRNG FIFO in log2 elements |
 | `--fg`, `--fifo-gencost` | `UINT` | PRNG element generation cost in cycles |
 | `--fa`, `--fifo-access` | `UINT` | PRNG FIFO access/pop latency in cycles |
 | `-s`, `--seed-size` | `1, 2, 4, 8` | Seed precision in bytes |
 | `-c`, `--cache` | `[8 INTs]` | Cache parameters in log2: `[block_size, mem_cycles, l1_size, l1_cycles, l1_assoc, l2_size, l2_cycles, l2_assoc]` |
 | `-w`, `--write-allocate` | Flag | Enable write-allocate cache policy |
+| `--policy` | `lru` \| `fifo` \| `mru` \| `random` | Cache replacement policy |
 
 ### Examples
 
@@ -200,3 +206,7 @@ Simulation: Total MACs                        | 0.741963056175507
 Simulation: Total cycles                      |         1347776
 =================================================================
 ```
+
+## Known Issues
+
+1. Simulator logic allows for 1,2,...,k cache levels. But input arguments through the CLI and also through the config.toml file only allow for up to two levels of cache. 

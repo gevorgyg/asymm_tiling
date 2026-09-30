@@ -32,6 +32,9 @@ using BitMask  = uint64_t;
 
 enum class BSource { fifo, memory };
 
+// cache replacement policy, see Set in cachesim.h
+enum class ReplPolicy { lru, fifo, mru, random };
+
 class Clock
 {
   public:

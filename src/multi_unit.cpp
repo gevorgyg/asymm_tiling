@@ -8,7 +8,8 @@ MultiUnit::MultiUnit(const MyOptions& options)
       b_source_(options_.b_source),
       cache_(options_.block_size, options_.mem_cycles, options_.l1_size,
              options_.l1_cycles, options_.l1_assoc, options_.l2_size,
-             options_.l2_cycles, options_.l2_assoc, options_.write_alloc),
+             options_.l2_cycles, options_.l2_assoc, options_.write_alloc,
+             options_.policy),
       prng_fifo_(options_.capacity, options_.generation_cost,
                  options_.accsess_cost, options_.seed_size),
       tile_w_(options_.tile_w), tile_h_(options_.tile_h)

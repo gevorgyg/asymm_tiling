@@ -1,9 +1,10 @@
 // Trace-driven driver for CacheUnit, used by the python differential tests.
 //
 // usage: cache_driver block mem l1_size l1_cycles l1_assoc
-//                     l2_size l2_cycles l2_assoc write_alloc  < trace
+//                     l2_size l2_cycles l2_assoc write_alloc policy  < trace
 //
 // Sizes, associativities and the block size are log2, as in config.toml.
+// policy is one of lru, fifo, mru, random.
 // Trace lines are "<r|w> <hex address>". For every access one record is
 // printed:
 //
@@ -20,14 +21,27 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
 int main(int argc, char* argv[])
 {
-    if (argc != 10) {
+    if (argc != 11) {
         std::cerr << "usage: cache_driver block mem l1_size l1_cycles l1_assoc "
-                     "l2_size l2_cycles l2_assoc write_alloc < trace\n";
+                     "l2_size l2_cycles l2_assoc write_alloc policy < trace\n";
+        return 2;
+    }
+
+    const std::map<std::string, ReplPolicy> policies{
+        {"lru", ReplPolicy::lru},
+        {"fifo", ReplPolicy::fifo},
+        {"mru", ReplPolicy::mru},
+        {"random", ReplPolicy::random},
+    };
+    auto policy = policies.find(argv[10]);
+    if (policy == policies.end()) {
+        std::cerr << "unknown policy: " << argv[10] << "\n";
         return 2;
     }
 
@@ -44,7 +58,8 @@ int main(int argc, char* argv[])
         }
     }
 
-    CacheUnit cache{a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8] != 0};
+    CacheUnit cache{a[0], a[1], a[2], a[3], a[4],
+                    a[5], a[6], a[7], a[8] != 0, policy->second};
     Clock::reset();
 
     const size_t n_levels = cache.n_levels();

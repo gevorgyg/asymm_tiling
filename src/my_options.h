@@ -40,6 +40,7 @@ struct MyOptions : public CLI::App {
     int l2_cycles;
     int l2_assoc;
     bool write_alloc;
+    ReplPolicy policy;
 
     explicit MyOptions(std::string app_description = "",
                        std::string app_name        = "");
@@ -65,6 +66,13 @@ struct MyOptions : public CLI::App {
         {"memory", BSource::memory}, {"mem", BSource::memory},
         {"m", BSource::memory},      {"fifo", BSource::fifo},
         {"f", BSource::fifo},
+    };
+
+    const std::map<std::string, ReplPolicy> policy_map{
+        {"lru", ReplPolicy::lru},
+        {"fifo", ReplPolicy::fifo},
+        {"mru", ReplPolicy::mru},
+        {"random", ReplPolicy::random},
     };
 };
 

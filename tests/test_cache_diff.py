@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from hypothesis import given
 
-from ref_cache import CacheConfig, LevelConfig, RefCache
+from ref_cache import POLICIES, CacheConfig, LevelConfig, RefCache
 from strategies import (GEOMETRIES, L1_CYC, L2_CYC, MEM_CYC, config_and_trace,
                         make_config)
 
@@ -78,9 +78,10 @@ def test_reads_and_writes(case):
 
 @pytest.mark.parametrize("geometry", list(GEOMETRIES))
 @pytest.mark.parametrize("write_alloc", [False, True])
-def test_sequential_sweep(geometry, write_alloc):
+@pytest.mark.parametrize("policy", POLICIES)
+def test_sequential_sweep(geometry, write_alloc, policy):
     """Two passes over 2x L2 capacity, 4-byte stride, every 4th a write."""
-    cfg = make_config(geometry, write_alloc)
+    cfg = make_config(geometry, write_alloc, policy)
     span = 2 << cfg.levels[-1].size
     trace = [("w" if (a // 4) % 4 == 3 else "r", a)
              for _ in range(2) for a in range(0, span, 4)]

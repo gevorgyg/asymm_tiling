@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <string_view>
 #include <toml++/toml.hpp>
 
@@ -66,6 +67,23 @@ Config::Config()
         l2_assoc   = tbl["cache"]["l2_assoc"].value_or<int>(3);
 
         write_alloc = tbl["cache"]["write_alloc"].value_or<bool>(false);
+
+        std::string_view policy_str =
+            tbl["cache"]["policy"].value_or<std::string_view>("lru");
+        if (policy_str == "lru") {
+            policy = ReplPolicy::lru;
+        } else if (policy_str == "fifo") {
+            policy = ReplPolicy::fifo;
+        } else if (policy_str == "mru") {
+            policy = ReplPolicy::mru;
+        } else if (policy_str == "random") {
+            policy = ReplPolicy::random;
+        } else {
+            // a typo must not silently run a different policy
+            std::cerr << p.string() << ": unknown cache policy \""
+                      << policy_str << "\" (lru, fifo, mru, random)\n";
+            std::exit(1);
+        }
 
         config_found = true;
     }

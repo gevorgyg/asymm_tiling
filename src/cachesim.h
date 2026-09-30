@@ -46,75 +46,37 @@ class AddrSplitter
     SetIndex create_index(RawAddr address) const;
 };
 
-class ReplacementPolicy
-{
-  public:
-    virtual ~ReplacementPolicy()        = default;
-    virtual void touch(size_t way)      = 0;
-    virtual void insert(size_t way)     = 0;
-    virtual void invalidate(size_t way) = 0;
-    virtual size_t find_victim() const  = 0;
-};
-
-class LruPolicy : public ReplacementPolicy
-{
-  public:
-    explicit LruPolicy(size_t assoc)
-    {
-        order_.reserve(assoc);
-        for (size_t i = 0; i < assoc; ++i)
-            order_.push_back(i);
-    }
-
-    void touch(size_t way) override
-    {
-        auto it = std::find(order_.begin(), order_.end(), way);
-        if (it != order_.end()) {
-            std::rotate(order_.begin(), it, it + 1);
-        }
-    }
-
-    virtual void insert(size_t way) override
-    {
-        touch(way);
-    }
-
-    virtual void invalidate(size_t way) override
-    {
-    }
-
-    virtual size_t find_victim() const override
-    {
-        return order_.back();
-    }
-
-  private:
-    std::vector<WayIndex> order_;
-};
-
-class FifoPolicy : public ReplacementPolicy
-{
-};
-
-class RandomPolicy : public ReplacementPolicy
-{
-};
-
 struct CacheLine /* (aka way) */ {
     RawAddr addr   = 0;
     Tag tag        = 0;
     ValidBit valid = false;
     DirtyBit dirty = false;
+
+    // age stamp, set by the owning Set when the line is filled and (except
+    // for fifo) when it is used
+    uint64_t stamp = 0;
 };
 
+// Replacement by age stamps. Every stamp is the set's next counter value, so
+// stamps in a set are unique and order the lines by age.
+//
+//   policy | stamp on fill | stamp on hit | victim
+//   lru    | yes           | yes          | smallest stamp (least recent)
+//   fifo   | yes           | no           | smallest stamp (oldest fill)
+//   mru    | yes           | yes          | largest stamp (most recent)
+//   random | yes           | yes          | way (rng % ways), deterministic
+//
+// Free ways are always used before anything is evicted, lowest way first.
 class Set
 {
   public:
-    Set(int assoc) : ways_(assoc), policy_(std::make_unique<LruPolicy>(assoc))
+    Set(size_t assoc, ReplPolicy policy, uint64_t seed)
+        : ways_(assoc), policy_(policy), rng_(seed)
     {
+        assert(seed != 0); // xorshift gets stuck at 0
     }
 
-    // lookup without updating the replacement policy
+    // lookup without updating the stamps
     CacheLine* peek(const AddrParts& addr)
     {
         auto it = std::find_if(
@@ -129,25 +91,25 @@ class Set
         return &(*it);
     }
 
-    // demand lookup, a hit updates the replacement policy
+    // demand lookup, a hit refreshes the stamp (except for fifo)
     CacheLine* find(const AddrParts& addr)
     {
         CacheLine* line = peek(addr);
 
-        if (line) {
-            // relevant only for lru
-            policy_->touch(line - ways_.data());
+        if (line && policy_ != ReplPolicy::fifo) {
+            stamp(*line);
         }
 
         return line;
     }
 
+    // insert into the lowest free way, false if the set is full
     bool try_insert(const CacheLine& new_line)
     {
-        for (int i = 0; i < ways_.size(); ++i) {
-            if (!ways_[i].valid) {
-                ways_[i] = new_line;
-                policy_->insert(i);
+        for (auto& way : ways_) {
+            if (!way.valid) {
+                way = new_line;
+                stamp(way);
                 return true;
             }
         }
@@ -155,20 +117,59 @@ class Set
         return false;
     }
 
-    std::unique_ptr<CacheLine> insert(const CacheLine& new_line)
+    // replace the victim (the set must be full), returns the evicted line by
+    // value (a copy, no heap allocation)
+    CacheLine insert(const CacheLine& new_line)
     {
-        size_t victim_index = policy_->find_victim();
-        auto victim         = std::make_unique<CacheLine>(ways_[victim_index]);
-        ways_[victim_index] = new_line;
-
-        policy_->insert(victim_index);
+        CacheLine& way   = ways_[victim_index()];
+        CacheLine victim = way;
+        way              = new_line;
+        stamp(way);
 
         return victim;
     }
 
   private:
     std::vector<CacheLine> ways_; // each way is a cacheline
-    std::unique_ptr<ReplacementPolicy> policy_;
+    const ReplPolicy policy_;
+    uint64_t clock_ = 0; // last stamp handed out in this set
+    uint64_t rng_;       // xorshift64 state, only used by random
+
+    void stamp(CacheLine& line)
+    {
+        line.stamp = ++clock_;
+    }
+
+    size_t victim_index()
+    {
+        auto by_stamp = [](const CacheLine& a, const CacheLine& b) {
+            return a.stamp < b.stamp;
+        };
+
+        switch (policy_) {
+        case ReplPolicy::lru:
+        case ReplPolicy::fifo:
+            return std::min_element(ways_.begin(), ways_.end(), by_stamp) -
+                   ways_.begin();
+        case ReplPolicy::mru:
+            return std::max_element(ways_.begin(), ways_.end(), by_stamp) -
+                   ways_.begin();
+        case ReplPolicy::random:
+            return next_random() % ways_.size();
+        }
+
+        assert(false && "unknown replacement policy");
+        return 0;
+    }
+
+    // xorshift64 (Marsaglia), must match tests/ref_cache.py
+    uint64_t next_random()
+    {
+        rng_ ^= rng_ << 13;
+        rng_ ^= rng_ >> 7;
+        rng_ ^= rng_ << 17;
+        return rng_;
+    }
 };
 
 // farward declare
@@ -180,7 +181,7 @@ class CacheLevel
 
   public:
     CacheLevel(int level, int size, int block_size, int cycles, int assoc,
-               bool write_alloc, int mem_cycles);
+               bool write_alloc, int mem_cycles, ReplPolicy policy);
 
     // demand lookup, a hit updates the replacement policy
     CacheLine* find(const AddrParts& addr)
@@ -208,10 +209,10 @@ class CacheLevel
 
         // need to evict, do write back
         auto victim = sets_[set].insert(new_line);
-        if (victim->dirty) {
+        if (victim.dirty) {
             ++n_of_writebacks_;
             if (lower_level_) {
-                lower_level_->writeback(victim->addr);
+                lower_level_->writeback(victim.addr);
             }
             // else the victim goes to memory: counted by n_of_writebacks_ of
             // the last level, free like every writeback
@@ -342,11 +343,11 @@ class CacheUnit
   public:
     CacheUnit(int block_size, int mem_cycles,
               const std::vector<CacheLevelConfig>& cache_levels,
-              bool write_alloc);
+              bool write_alloc, ReplPolicy policy);
 
     CacheUnit(int block_size, int mem_cycles, int l1_size, int l1_cycles,
               int l1_assoc, int l2_size, int l2_cycles, int l2_assoc,
-              bool write_alloc)
+              bool write_alloc, ReplPolicy policy)
         : CacheUnit(
               block_size, mem_cycles,
               std::vector<CacheLevelConfig>{{1, static_cast<uint32_t>(l1_size),
@@ -355,7 +356,7 @@ class CacheUnit
                                             {2, static_cast<uint32_t>(l2_size),
                                              static_cast<uint32_t>(l2_cycles),
                                              static_cast<uint32_t>(l2_assoc)}},
-              write_alloc)
+              write_alloc, policy)
     {
     }
 
@@ -393,6 +394,7 @@ class CacheUnit
     const int block_size_;
     const int mem_cycles_;
     const bool write_alloc_;
+    const ReplPolicy policy_;
 
     void do_read(RawAddr address)
     {

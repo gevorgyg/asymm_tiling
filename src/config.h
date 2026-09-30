@@ -38,6 +38,7 @@ class Config
     int l2_cycles    = 20;
     int l2_assoc     = 3;
     bool write_alloc = false;
+    ReplPolicy policy = ReplPolicy::lru;
 
     bool is_found() const;
 

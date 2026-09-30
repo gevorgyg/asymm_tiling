@@ -90,6 +90,9 @@ MyOptions::MyOptions(std::string app_description, std::string app_name)
     add_flag("-w, --write-allocate, --no-write-allocate{false}", write_alloc,
              "set write allocate");
 
+    add_option("--policy", policy, "cache replacement policy")
+        ->transform(CLI::CheckedTransformer(policy_map, CLI::ignore_case));
+
     final_callback([this]() {
         post_parse();
         validate_cache();
@@ -113,6 +116,7 @@ void MyOptions::apply_config(const Config& config)
     l2_cycles   = config.l2_cycles;
     l2_assoc    = config.l2_assoc;
     write_alloc = config.write_alloc;
+    policy      = config.policy;
 
     capacity        = config.capacity;
     generation_cost = config.generation_cost;

@@ -29,7 +29,7 @@ LINES_A, LINES_B, LINES_C = 16, 4, 16
 
 
 def run_sim(orientation: str, b_source: str, write_alloc: bool,
-            tmp_path: Path) -> dict[str, float]:
+            tmp_path: Path, policy: str = "lru") -> dict[str, float]:
     args = [
         str(SIM), "-o", orientation, "-B", b_source,
         "-m", str(DIM), "-k", str(DIM), "-n", str(DIM), "-p", "1", "-r", "4",
@@ -38,6 +38,7 @@ def run_sim(orientation: str, b_source: str, write_alloc: bool,
         "-c", "6", "100", "14", "4", "3", "16", "20", "3",
         "--fc", "14", "--fg", "10", "--fa", "2", "-s", "1",
         "--write-allocate" if write_alloc else "--no-write-allocate",
+        "--policy", policy,
     ]
     # run where no config.toml can be found, so only the flags above count
     env = {**os.environ, "HOME": str(tmp_path), "XDG_CONFIG_HOME": str(tmp_path)}
@@ -54,9 +55,11 @@ def run_sim(orientation: str, b_source: str, write_alloc: bool,
 
 @pytest.mark.parametrize("orientation", ["output", "weight"])
 @pytest.mark.parametrize("write_alloc", [False, True])
+@pytest.mark.parametrize("policy", ["lru", "fifo", "mru", "random"])
 def test_everything_fits_only_compulsory_misses(orientation, write_alloc,
-                                                tmp_path):
-    s = run_sim(orientation, "memory", write_alloc, tmp_path)
+                                                policy, tmp_path):
+    """Nothing is evicted, so the policy must not matter."""
+    s = run_sim(orientation, "memory", write_alloc, tmp_path, policy)
 
     # each line of A, B and C is fetched from memory exactly once
     assert s["CacheUnit: L1 misses"] == LINES_A + LINES_B + LINES_C
@@ -133,3 +136,16 @@ def test_minimal_valid_cache_is_accepted(tmp_path):
                     tmp_path)
     assert r.returncode == 0, r.stderr
     assert "SIMULATION STATS" in r.stdout
+
+
+def test_unknown_policy_from_cli_is_rejected(tmp_path):
+    r = run_sim_raw(["--policy", "plru"], tmp_path)
+    assert r.returncode != 0
+    assert "plru" in r.stderr + r.stdout
+
+
+def test_unknown_policy_from_config_is_rejected(tmp_path):
+    (tmp_path / "config.toml").write_text('[cache]\npolicy = "lur"\n')
+    r = run_sim_raw([], tmp_path)
+    assert r.returncode != 0
+    assert 'unknown cache policy "lur"' in r.stderr + r.stdout

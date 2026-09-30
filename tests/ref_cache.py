@@ -10,10 +10,16 @@ Geometry
     ways = 2^assoc, sets = 2^(size - assoc - block).
     set index = line_addr mod sets.
 
-Replacement
-    LRU per set. Only demand accesses (a hit, or the fill after a miss)
-    update recency. A newly filled line is MRU. Free (invalid) ways are used
-    before anything is evicted.
+Replacement (per set; free ways are used before anything is evicted, the
+lowest free way first)
+    lru     evict the least recently used line
+    fifo    evict the line filled longest ago (hits don't count)
+    mru     evict the most recently used line
+    random  evict the line in way (xorshift64() % ways); every set has its own
+            xorshift64 state seeded with (set index + 1) * 0x9E3779B97F4A7C15,
+            advanced once per eviction in that set
+    "Used" means a demand access: a hit, or the fill after a miss. A fill
+    (including a writeback install) makes the line the most recent.
 
 What counts as an access
     Reads and writes both count as accesses (and hits/misses) at every level
@@ -69,6 +75,7 @@ class CacheConfig:
     mem_cycles: int
     levels: tuple[LevelConfig, ...]
     write_alloc: bool
+    policy: str = "lru"  # lru | fifo | mru | random
 
     def driver_args(self) -> list[str]:
         """Arguments for tests/cache_driver.cpp (two levels only)."""
@@ -77,7 +84,7 @@ class CacheConfig:
         return [str(v) for v in (self.block, self.mem_cycles,
                                  l1.size, l1.cycles, l1.assoc,
                                  l2.size, l2.cycles, l2.assoc,
-                                 int(self.write_alloc))]
+                                 int(self.write_alloc), self.policy)]
 
 
 @dataclass
@@ -101,14 +108,25 @@ class Record:
         return self.mem_reads + self.mem_writes
 
 
+MASK64 = (1 << 64) - 1
+POLICIES = ("lru", "fifo", "mru", "random")
+
+
 class Level:
-    def __init__(self, cfg: LevelConfig, block: int):
+    def __init__(self, cfg: LevelConfig, block: int, policy: str = "lru"):
+        assert policy in POLICIES, policy
+        self.policy = policy
         self.cycles = cfg.cycles
         self.ways = 1 << cfg.assoc
         self.n_sets = 1 << (cfg.size - cfg.assoc - block)
         assert self.n_sets >= 1, "cache smaller than one set"
-        # line_addr -> dirty; first item is LRU, last is MRU
+        # line_addr -> dirty, ordered by recency (fifo: by fill):
+        # first item is the oldest, last the most recent
         self.sets = [OrderedDict() for _ in range(self.n_sets)]
+        # line_addr -> way it occupies (only random needs it)
+        self.way_of = [{} for _ in range(self.n_sets)]
+        self.rng = [((i + 1) * 0x9E3779B97F4A7C15) & MASK64
+                    for i in range(self.n_sets)]
         self.stats = LevelStats()
 
     def _set(self, line: int) -> OrderedDict:
@@ -123,19 +141,47 @@ class Level:
         self.stats.accesses += 1
         s = self._set(line)
         if line in s:
-            s.move_to_end(line)
+            if self.policy != "fifo":
+                s.move_to_end(line)
             self.stats.hits += 1
             return True
         self.stats.misses += 1
         return False
 
     def fill(self, line: int, dirty: bool) -> tuple[int, bool] | None:
-        """Insert a line that is not present as MRU; return the victim."""
-        s = self._set(line)
+        """Insert a line that is not present as the most recent one; return
+        the victim (line, dirty) or None."""
+        index = line % self.n_sets
+        s, way_of = self.sets[index], self.way_of[index]
         assert line not in s
-        victim = s.popitem(last=False) if len(s) == self.ways else None
+
+        victim = None
+        if len(s) < self.ways:
+            used = set(way_of.values())
+            way = min(w for w in range(self.ways) if w not in used)
+        else:
+            if self.policy in ("lru", "fifo"):
+                victim_line = next(iter(s))
+            elif self.policy == "mru":
+                victim_line = next(reversed(s))
+            else:
+                victim_way = self._xorshift(index) % self.ways
+                victim_line = next(l for l, w in way_of.items() if w == victim_way)
+            victim = (victim_line, s.pop(victim_line))
+            way = way_of.pop(victim_line)
+
         s[line] = dirty
+        way_of[line] = way
         return victim
+
+    def _xorshift(self, index: int) -> int:
+        """xorshift64 (Marsaglia), same as Set::next_random in cachesim.h."""
+        x = self.rng[index]
+        x ^= (x << 13) & MASK64
+        x ^= x >> 7
+        x ^= (x << 17) & MASK64
+        self.rng[index] = x
+        return x
 
     def mark_dirty(self, line: int) -> None:
         s = self._set(line)
@@ -146,7 +192,7 @@ class Level:
 class RefCache:
     def __init__(self, cfg: CacheConfig):
         self.cfg = cfg
-        self.levels = [Level(lc, cfg.block) for lc in cfg.levels]
+        self.levels = [Level(lc, cfg.block, cfg.policy) for lc in cfg.levels]
         self.mem_reads = 0
         self.mem_writes = 0
         self.mem_write_log: list[int] = []  # line of every memory write, in order
