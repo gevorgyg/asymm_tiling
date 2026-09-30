@@ -61,6 +61,11 @@ class MultiUnit
     void tile_mul(MultiplyMode mult_func);
 
     void calculate_addr(const Tile& t, size_t r, size_t c, char operation);
+
+    // rows / cols of register block (r, c) of tile t, less than reg_dim_ at
+    // the tile's bottom / right edge when reg_dim_ doesn't divide it
+    size_t block_rows(const Tile& t, size_t r) const;
+    size_t block_cols(const Tile& t, size_t c) const;
 };
 
 #endif

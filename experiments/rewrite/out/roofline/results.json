@@ -1,5 +1,5 @@
 {
- "sim_sha": "e8555bd8b53e8d937b14ed83f28157206f4bd82ad4f2158d667e6a0ca7ae2656",
+ "sim_sha": "9cdda6f150517aa7ee8271ed7c6bd0033c5ad2893d2b46252dc8f69f1a19d48c",
  "results": {
   "{\"b_source\": \"fifo\", \"block_size\": 6, \"fifo_access\": 2, \"fifo_capacity\": 14336, \"gen_cost\": 10, \"k\": 256, \"l1_assoc\": 7, \"l1_cycles\": 4, \"l1_size\": 13, \"l2_assoc\": 3, \"l2_cycles\": 14, \"l2_size\": 0, \"m\": 192, \"mem_cycles\": 180, \"mulacc_cost\": 0, \"n\": 256, \"orientation\": \"weight\", \"policy\": \"lru\", \"ratio\": 1, \"reg_dim\": 4, \"seed_size\": 8, \"small_precision\": 4, \"tile_h\": 4, \"tile_w\": 4, \"write_alloc\": true}": {
    "CacheUnit: L1 accesses": 2362368.0,

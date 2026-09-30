@@ -228,3 +228,76 @@ def test_fifo_capacity_is_in_elements(tmp_path):
 
     assert odd["PrngFifo: stall_cycles"] == big["PrngFifo: stall_cycles"]
     assert tiny["PrngFifo: stall_cycles"] > big["PrngFifo: stall_cycles"]
+
+
+# -- tiles that don't divide the matrix ------------------------------------------
+
+def cdiv(a: int, b: int) -> int:
+    return -(-a // b)
+
+
+def run_dims(tmp_path: Path, m: int, k: int, n: int, th: int, tw: int,
+             orientation: str = "output", b_source: str = "fifo") -> dict[str, float]:
+    """4-byte A/B/C, 4x4 registers, 16 KB fully associative L1, no L2,
+    so nothing is ever evicted."""
+    r = run_sim_raw([
+        "-o", orientation, "-B", b_source,
+        "-m", str(m), "-k", str(k), "-n", str(n), "-p", "4", "-r", "1",
+        "--th", str(th), "--tw", str(tw), "--rd", "4", "--mc", "1",
+        "-c", "6", "100", "14", "4", "-1", "0", "20", "3",
+        "--fc", "16384", "--fg", "0", "--fa", "1", "-s", "1",
+        "--no-write-allocate", "--policy", "lru",
+    ], tmp_path)
+    assert r.returncode == 0, r.stderr
+    stats = {}
+    for line in r.stdout.splitlines():
+        name, sep, value = line.partition("|")
+        if sep and name.strip() != "Metric":
+            stats[name.strip()] = float(value)
+    return stats
+
+
+@pytest.mark.parametrize("dim", [64, 30])
+def test_output_stationary_work_does_not_depend_on_tiling(dim, tmp_path):
+    """Output-stationary does the same 4x4 register blocks whatever the tiling
+    (tiles only reorder them), so the work must be identical. Before tiles were
+    clipped, a non-dividing tile processed whole tiles past the matrix edge
+    (64x64 with TM=48 did 1.5x the work). dim=30 also has partial register
+    blocks at the matrix edge."""
+    tilings = [(4, 4), (8, 12), (12, 20), (28, 8), (dim, dim)]
+    mem = [run_dims(tmp_path, dim, dim, dim, th, tw, b_source="memory")
+           for th, tw in tilings]
+    fifo = [run_dims(tmp_path, dim, dim, dim, th, tw) for th, tw in tilings]
+    assert len({s["CacheUnit: L1 accesses"] for s in mem}) == 1
+    assert len({s["PrngFifo: pops"] for s in fifo}) == 1
+
+
+@pytest.mark.parametrize("orientation", ["output", "weight"])
+@pytest.mark.parametrize("th, tw", [(12, 20), (7, 9), (30, 30)])
+def test_edge_tiles_touch_only_matrix_lines(orientation, th, tw, tmp_path):
+    """Everything fits in L1 and B comes from the FIFO, so the L1 misses are
+    exactly the lines of A, C and the seed reads. Any access past a matrix
+    edge would add lines. TM=7 / TN=9 also clip register blocks inside tiles."""
+    m = k = n = 30
+    s = run_dims(tmp_path, m, k, n, th, tw, orientation=orientation)
+
+    def lines(start: int, size: int) -> set[int]:
+        return set(range(start // 64, (start + size - 1) // 64 + 1))
+
+    a0 = 0x1000                    # MatrixFactory: A, B, C back to back
+    b0 = a0 + m * k * 4
+    c0 = b0 + k * n * 4
+    seeds = {(b0 + col) // 64 for col in range(cdiv(n, tw))}   # 1-byte seeds
+    expected = lines(a0, m * k * 4) | lines(c0, m * n * 4) | seeds
+    assert s["CacheUnit: L1 misses"] == len(expected)
+
+
+def test_weight_stationary_pops_follow_clipped_tiles(tmp_path):
+    """One FIFO pop per B register block: per row of tiles, ceil(K/4) blocks
+    down each tile column times ceil(width/4) across, with the last tile
+    column only 10 wide (30 = 20 + 10). Unclipped it would be 240."""
+    m, k, n, th, tw = 30, 30, 30, 12, 20
+    s = run_dims(tmp_path, m, k, n, th, tw, orientation="weight")
+    widths = [min(tw, n - j) for j in range(0, n, tw)]
+    per_row_of_tiles = sum(cdiv(k, 4) * cdiv(w, 4) for w in widths)
+    assert s["PrngFifo: pops"] == cdiv(m, th) * per_row_of_tiles == 192

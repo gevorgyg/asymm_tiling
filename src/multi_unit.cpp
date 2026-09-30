@@ -55,7 +55,7 @@ const PrngFifo& MultiUnit::prng_fifo() const
 void MultiUnit::load_into_reg(const Tile& t, size_t r, size_t c)
 {
     if (b_source_ == BSource::fifo && &t.parent_mat == &b_) {
-        prng_fifo_.pop(reg_dim_ * reg_dim_);
+        prng_fifo_.pop(block_rows(t, r) * block_cols(t, c));
         return;
     }
 
@@ -112,10 +112,13 @@ void MultiUnit::tile_mul(MultiplyMode mult_func)
 
     for (int row = 0; row < ceil(a_.height, tile_h_); ++row) {
         ta.base = a_.base + (row * a_.width * tile_h_) * a_.elem_size;
+        // the last tile row / column only covers what is left of the matrix
+        ta.height = tc.height = std::min(tile_h_, a_.height - row * tile_h_);
         for (int col = 0; col < ceil(b_.width, tile_w_); ++col) {
             tb.base = b_.base + (col * tile_w_) * b_.elem_size;
             tc.base = c_.base +
                       (col * tile_w_ + row * c_.width * tile_h_) * c_.elem_size;
+            tb.width = tc.width = std::min(tile_w_, b_.width - col * tile_w_);
 
             if (b_source_ == BSource::fifo) {
                 RawAddr seed_addr = b_.base + col * seed_size;
@@ -133,9 +136,9 @@ void MultiUnit::calculate_addr(const Tile& t, size_t r, size_t c,
 {
     size_t row           = r * reg_dim_;
     size_t col           = c * reg_dim_;
-    size_t row_byte_size = reg_dim_ * t.parent_mat.elem_size;
+    size_t row_byte_size = block_cols(t, c) * t.parent_mat.elem_size;
 
-    for (size_t i = 0; i < reg_dim_; ++i) {
+    for (size_t i = 0; i < block_rows(t, r); ++i) {
         RawAddr addr                     = t.get_addr(row + i, col);
         RawAddr cache_aligned_addr_start = addr & ~(cache_line_size_ - 1);
         RawAddr cache_aligned_addr_end =
@@ -146,6 +149,16 @@ void MultiUnit::calculate_addr(const Tile& t, size_t r, size_t c,
             cache_.process_request(operation, line);
         }
     }
+}
+
+size_t MultiUnit::block_rows(const Tile& t, size_t r) const
+{
+    return std::min(reg_dim_, t.height - r * reg_dim_);
+}
+
+size_t MultiUnit::block_cols(const Tile& t, size_t c) const
+{
+    return std::min(reg_dim_, t.width - c * reg_dim_);
 }
 
 void MultiUnit::register_stats() const
