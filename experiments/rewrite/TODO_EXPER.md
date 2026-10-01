@@ -137,6 +137,501 @@ re-run on the rewrite. Evidence for each item: `SUMMARY.md` and
       `pre-rewrite-experiments/v5-results/math-model-no-l2/plot_all.py`
       `plot_e8_vs_square`, which uses the old results.json.
 
+## Report (`report/typst/main.typ`)
+
+- [x] "Our Model": formula is now
+      `max(alpha, g_c·⌈M/T_M⌉/M) + g_c·R_M R_N·⌈M/T_M⌉⌈N/T_N⌉/(MNK)`,
+      with each term explained. The max() perfect-overlap assumption is
+      stated, and Findings are referenced.
+- [ ] Findings: document step by step how we got from
+      `max(alpha, g_c/T_M)` to that formula:
+      1. non-dividing tiles → the ⌈M/T_M⌉ B term (measured within 0.3 %;
+         accuracy 63 → 76 % exact);
+      2. the FIFO startup term (median excess / S = 1.00, for every
+         register size);
+      3. max() fails when alpha ≈ B (smooth max, why p isn't a constant);
+      4. associativity: calibrate on the real cache.
+- [x] Methodology "Architecture" (+ UML figure), "Correctness" (rewritten
+      from scratch, no mutation testing), units table, Simulation
+      Parameters (§2.2). Introduction: Background, Importance (with RandNLA
+      references), Theoretical Results; bibliography in `refs.bib`.
+
+### Next: customer experiments (approved 2026-10-01, start 2026-10-02)
+
+The user approved all of them; start with small samples.
+- Software engineer:
+  - [ ] S1: tile without autotuning (counting alpha + per-row formula);
+  - [ ] S2: how much autotuning is needed (full / dividing / coarse /
+    analytic / default);
+  - [ ] S3: other matrix shapes;
+  - [ ] S4: a safe tile under unknown gc (minimax regret);
+  - [ ] S5: register block R;
+  - [ ] S6: element size.
+- Hardware engineer:
+  - [ ] H1: PRNG speed budget (gc within 5/10 % of free);
+  - [ ] H2: bigger L1 vs faster PRNG;
+  - [ ] H3: FIFO size and the SRAM split;
+  - [ ] H4: is full associativity worth it;
+  - [ ] H5: L2 and memory latency;
+  - [ ] H6: register count.
+
+Details are in the memory note project_next_customer_config.
+
+Also open:
+- write report §3.5 (Refining The Model), §3.7 (Set-Associative), §4
+  Discussion, §5 Conclusion, §3.1 (F1);
+- redo F7 with the per-row formula (the user will "refine the whole thing
+  later");
+- the T_M = 192 point beyond gc 600 is only in the coarse sample.
+
+### Report structure (the user's choice, 2026-10-01)
+
+No separate "Findings" section: each experiment explains its own result
+(setup → figure → what we see → why). The user found "results first,
+explanations later" hard to read.
+- 3 Experiments And Results:
+  - 3.1 Reproducing The Original Paper (F1, TODO)
+  - 3.2 B- vs C-stationary (done). Moved first by the user: it justifies
+    using B-stationary in all the model experiments.
+  - 3.3 alpha (done)
+  - 3.4 memory vs generation (done)
+  - 3.5 **Refining The Model** (TODO): the step-by-step formula (B per
+    tile row, S, per-row max), F7 bars + scatter, what's still off
+  - 3.6 Choosing The Tile (done)
+  - 3.7 **Set-Associative Caches** (TODO)
+- 4 Discussion (TODO, short): the three regimes, the engineer's procedure,
+  limitations
+- 5 Conclusion (TODO)
+
+The TODO sections have `//` outlines in main.typ.
+
+### Figures and insights (Experiments / Findings)
+
+Figures are minimal (no titles or in-plot text); captions and text carry the
+explanation. Scripts: `experiments/rewrite/fig_*.py`, output in
+`experiments/rewrite/figures/` (PNG to view, SVG for the report).
+
+**No old results anywhere in the report or the figures (the user,
+2026-10-01: "we're in a new phase").** Don't compare with the presentation,
+the old simulator or the old numbers, and don't call figures "replaces
+slide X". The old-vs-new comparisons in this file are background for me
+only.
+
+Plan, from the presentation's figures: F1 traffic minimum (paper), F2 alpha,
+F3 model intuition, F4 dataflow crossover, F5 best (T_M*, T_N*) vs gc,
+F6 optimal vs square, F7 roofline / model accuracy. B/A balance dropped
+(it would need per-matrix traffic counters).
+
+- [x] **F2, alpha (`fig_alpha`)**: alpha vs T_M (4..128 in steps of 4), one
+      line per T_N in {4, 8, 16, 32, 64}, gc = 0. Insights for the text:
+  - Same structure as the presentation, with alpha ~3× smaller:
+    - L1-resident tiles (T_M ≤ 12) cost ~0.85 cycles / MAC;
+    - A-tile cliff at T_M = 16 (16 × 256 × 4 B = 16 KB = L1);
+    - 1/T_N levels after it;
+    - C-tile cliffs for wide tiles.
+  - The denser grid moves the T_N = 32 cliff: the presentation showed it
+    "at 96" because its grid jumped from 64 to 96. It actually starts ~72
+    and is complete by 88.
+  - Non-monotone curves come from non-dividing tiles. alpha is the
+    row-weighted mix of the full tiles and the clipped edge tile.
+    - T_N = 32 drops at T_M = 112: 192 = 112 + 80, and the 80-row tile still
+      fits. The mix predicts 2.975, measured 2.98 (104 + 88: 3.916 vs 3.92).
+    - The small dips at T_M = 20, 36, 60, 92 are the tilings whose edge tile
+      has ≤ 12 rows (an A tile that small fits in L1).
+  - **In the report (§3.2 "The Memory Cost α", 2026-10-01)**, with an
+    exact decomposition, verified against the measurements:
+    alpha = 0.75 (3 L1 accesses per R_M row per k-step = 3/16 per MAC × 4
+    cycles) + 180 × (A misses + C misses) + 1/(8·T_M) (FIFO pops).
+    16 elements per line.
+    - A misses: 1/(16N) if the A tile (T_M KB) fits, else 1/(16·T_N)
+      (re-read for each of the N/T_N tiles in its row).
+    - C misses: 1/(16K) while T_M·(⌈T_N/16⌉ + 1) ≤ 256 lines, else
+      1/(16·R_M) = 1/64 (C tile reloaded every k-block).
+    - Predicted / measured: T_M = 8 0.854 / 0.854–0.856; T_M = 32 3.610 /
+      3.616 … 0.974 / 0.974; T_M = 100 (T_N 32, 64) 3.915 / 3.916, 3.740 /
+      3.740. Within 0.3 % everywhere.
+    - The second cliff starts before the limit (T_N 32: rises from
+      T_M 68, the limit is 85). Not explained yet; the report says only
+      "starts a little earlier".
+    - Edge-tile mix check: T_M 72, T_N 64 → (144·3.74 + 48·1.51)/192 =
+      3.18 = measured.
+- [!] **MAJOR (2026-10-01): the max must be taken PER ROW OF TILES, not
+      on the averages.** Found while re-checking F3.
+      - B-stationary generates B once per row of tiles. A row of r rows
+        costs max(r·alpha(r), gc) per K·N, so
+        T/MNK = (1/M) Σ_rows max(r_i·alpha(r_i, T_N), gc) + S.
+        For a dividing tile this IS max(alpha, gc/T_M). For a non-dividing
+        one, the short edge row is generation-bound even when the full rows
+        are memory-bound, and max(average alpha, average B) hides that.
+      - alpha(r) for a row of exactly r rows: invert the row-weighted mix
+        from the gc = 0 runs, smallest r first:
+        pure[T_M] = (M·alpha_mix[T_M] − e·pure[e]) / (M − e), e = M mod T_M.
+      - F3 data (T_N 32, gc 30 and 200): worst error 26.5 % → 0.2 %, and
+        the right T_M at both gc. Hand check T_M 60, gc 30: (3·max(1.15·60,
+        30) + max(0.85·12, 30))/192 = 1.234 = measured.
+      - F5 grid (63k runs): within 1 % 76.7 % → 96.1 %; the model's pick
+        exact 36/41, worst 1.5 % (was 29 %).
+      - **This retracts the "partial overlap near balance" explanation**
+        for most misses (F3's T_M 88 +25 %, the smooth-max p ≈ 12.5 fit,
+        F7's "misses near B/alpha ≈ 1"). Those were mostly edge rows.
+      - Still off: 408 of 63k runs > 5 %, 277 of them with T_N ≡ 12
+        (mod 16). Rows not aligned to lines, thrashing tiles (alpha ~5).
+        E.g. 96×12 (divides M): alpha 5.22, gc 300 measured 5.96 vs 5.24
+        (+14 %), gc 500 7.06 vs 5.25 (+34 %). Real partial overlap on
+        thrashing tiles, mechanism not verified. Never near the best tile.
+      - **DECIDED with the user:** "Our Model" keeps the simple formula and
+        states it assumes T_M | M (one sentence added). The Findings present
+        per-row max as the extension to the other tile heights, as the last
+        step of the step-by-step derivation.
+        - Procedure explained to the user: autotune alpha for all
+          (T_M, T_N) at gc = 0, then per gc evaluate the formula for every
+          pair and pick the minimum. Per row only reads one more entry of
+          the same alpha table (the edge height). Nothing extra is
+          simulated.
+        - Restricting T_M to divisors of M with the simple formula loses at
+          most 6.8 % on the F5 grid (gc 35, where 40×64 is the best; 1.8 %
+          at gc 40; 1.5 % at gc 350). Per row over all tiles: worst 1.5 %.
+        - Worked example used with the user: gc 30, T_N 32. The average
+          picks T_M 60 (predicted 1.130, measures 1.234); per row picks 64
+          (1.148, measured best 1.149). alpha for 60 rows =
+          (192·1.129 − 12·0.848)/180 = 1.148.
+      - TODO: redo F7 with per-row max (needs alpha for every edge height:
+        the coarse model_sweep grid can't be inverted, the F5 grid can).
+- **F3 in the report (§3.3 "Memory Cost Against Generation Cost",
+  2026-10-01).** It covers:
+  - the staircase;
+  - gc 30: B-bound for T_M ≤ 24, alpha-bound from 28; best 64 (1.149),
+    and 32/48 are within 0.3 %;
+  - gc 200: B-bound up to 84, and 64..84 all cost 3.127; T_M ≥ 96 costs
+    ≥ 3.25;
+  - dividing tiles within 0.2 % of max + S; non-dividing ones up to +26 %,
+    with a forward reference to the Findings (per row);
+  - the trade-off paragraph.
+
+  The overlap explanation is NOT used: see the per-row entry above.
+- **F4 in the report (§3.4 "B-Stationary Against C-Stationary",
+  2026-10-01)**, with both figures (fig_dataflow, fig_dataflow_ratio). It
+  covers:
+  - 64×32: C 1.68× faster at gc ≤ 2, crossover 4–5 (R_M·alpha_B = 4.59),
+    B 1.31× at 6, 6.5× at 30, 16× from 80; the model within 0.2 %;
+  - B bends at T_M·alpha_B ≈ 73;
+  - low-gc explanation: same misses, L1 hits 0.1875 vs 0.0645/MAC, with
+    the alpha decomposition;
+  - other tiles: ratio at gc 0 is 0.43–0.6 (0.23 at T_M 128), the
+    crossings at 4 / 5 / 12 match R_M·alpha_B, the limits T_M/R_M, and
+    T_M = 4 → 1;
+  - best vs best.
+
+  New detail: alpha_C = 0.377 for T_M ≤ 8 (C-stationary's A tile fits)
+  vs 0.685 from T_M = 16.
+- **F5 + F6 in the report (§3.5 "Choosing The Tile", 2026-10-01)**: the
+  trajectory table, why T_M rises and T_N falls, ties, the T_M cap (192 →
+  alpha 23.25, best only at gc 2000–2500 in the coarse sweep), the model
+  (39/41 within 0.1 %, misses at gc 300/350 → Findings), the default
+  16×32, the F6 limits, overall vs best square.
+  - Checked: every best tile has the lowest alpha of all widths at its
+    height, and no wider tile is cheaper. It's NOT "the widest below the
+    cliff": e.g. 32×96 ties 32×88, and widths in between (92) are worse.
+    Some widths not multiple of 16 (e.g. 40×76 2.84, 64×44 2.93) are much
+    worse than their neighbors. Probably line alignment; not analysed.
+- [x] **F3, model intuition (`fig_model`)**: alpha (gc = 0), the B term
+      staircase and the measured T for gc = 30 and 200, at T_N = 32. y-axis
+      cut at 6. Insights:
+  - **Why a staircase:** B is regenerated once per row of tiles, so its
+    cost gc·⌈M/T_M⌉/M only changes when the number of tile rows changes
+    (M = 192: T_M 64..95 all need 3 rows, 96..191 need 2). A bigger tile
+    within a step doesn't help B: the last tile row is just smaller.
+    gc/T_M is the special case of dividing tiles. The staircase touches it
+    at the divisors and is above it elsewhere.
+  - **gc = 30:** the measurements sit exactly on the upper envelope
+    max(alpha, B). The optimum is the alpha-bound plateau T_M 32..64.
+  - **gc = 200** shows the limit of max() (the overlap). At T_M = 88,
+    alpha 3.7 and B 3.1 are close: max = 3.7, sum = 6.8, measured 4.6
+    (+25 %). At T_M 112..128 the measurement is 10–20 % above max even
+    though B < alpha: bigger tiles mean burstier consumption. Consequence:
+    the model predicts the best T_M at 112..128, but the measured best is
+    T_M 64..80, ~6 % faster.
+  - **Overlap, as explained to the user (use in the text):** the PRNG fills
+    the FIFO in the background while the core loads A/C and computes.
+    - Perfect overlap: T = max(alpha, B). No overlap: T = alpha + B. The
+      reality is in between.
+    - The core works in bursts: it pops one 4×4 block of B, then does T_M/4
+      steps of A/C work. When the two rates are similar it often arrives
+      before the next 16 elements are ready and stalls. The buffer the
+      generator builds while it is ahead is small and lost at every tile
+      (the FIFO restarts empty).
+    - When one side clearly dominates, the other hides in its shadow and
+      max() is exact. The error grows with T_M.
+- [x] **F4, dataflow (`fig_dataflow`)**: B-stationary vs C-stationary
+      against gc (0..30, steps of 1) at the slide's tile T_M = 64,
+      T_N = 32. Measured (colored) + model (thin dark dashed on top). This
+      replaces the presentation's table (gc 0/10/100), which loses its point
+      now that the crossover moved below 10. A table with gc 0/4/10/100 is
+      the alternative if the figure is unwanted.
+      **"Model" lines (explained to the user):** the formula's prediction
+      for each dataflow, using only the gc = 0 run (alpha) plus the B term.
+      They coincide with the measurements everywhere. Insights:
+  - The model is exact for both dataflows: B-stationary
+    max(alpha_B, gc/64) with alpha_B = 1.148; C-stationary max(alpha_C, gc/4)
+    with alpha_C = 0.685. C-stationary regenerates B for every block of
+    R_M = 4 rows, so its B cost is gc/R_M.
+  - Crossover gc* = R_M · alpha_B = 4 × 1.148 = 4.59. Measured: C is 1.68×
+    faster at gc ≤ 2 and 1.15× at gc = 4; B is faster from gc = 6 (1.31×),
+    6.5× at gc = 30.
+  - The slide's message holds (C-stationary wins only at tiny gc), but the
+    crossover moved from ~14 to ~4.6 because alpha is ~3× smaller in the
+    rewrite.
+  - **B-stationary is not constant, it's just hidden (the user asked).**
+    Its cost is max(alpha_B, gc/64), flat until gc = 64 · 1.148 ≈ 73, then
+    rising with slope 1/64: 16× gentler than C-stationary's 1/4, because each
+    generated element is reused across 64 rows instead of 4. Measured:
+    1.150 at gc 70, 1.158 at 74, 1.252 at 80, 1.564 at 100, 3.127 at 200,
+    always within 0.2 % of the model. No overlap loss even at the balance
+    point here (1.158 vs 1.156); the max() error from F3 shows up at larger
+    T_M. **Done:** F4's x-axis is now gc 0–100 with y cut at 4 (C-stationary
+    leaves the plot at ~16, B-stationary bends at ~73). Markers every 5
+    points.
+  - **How exact is "exact" (the user asked):** over gc 0..100, measured /
+    model − 1 is +0.13 % median / +0.19 % worst (at gc 73, the balance
+    point) for B-stationary, and +0.003 % / +0.05 % (at gc 3) for
+    C-stationary. It's never below the model: max() is the perfect-overlap
+    best case. The B-stationary +0.13 % is the startup term, which F4's
+    dashed line omits (≈ gc·16·24 tiles / MNK, e.g. 0.0015 at gc 50).
+    Caveats for the text:
+    - "empirical" = our simulator, and alpha comes from the same
+      simulator, so this validates the formula against the simulator, not
+      real hardware;
+    - exact at this tile only (F3: up to +25 % at large T_M near balance;
+      6-shape sweep: within 5 % in 93 %);
+    - the C-stationary formula is checked at one tile only.
+  - **Why C-stationary wins at very low gc (to explain in the text; the
+    user asked):** at gc = 0 only alpha counts, and the two dataflows have
+    IDENTICAL memory traffic (L1 misses 0.00220 / MAC each at 64×32). The
+    whole difference is L1 hits:
+    - B-stationary: 0.1875 accesses / MAC = 12 per 4×4×4 block (load A 4
+      lines, load C 4, store C 4), because C streams through while B stays;
+    - C-stationary: 0.0645 / MAC (≈ load A only), because C stays in the
+      registers for the whole K loop.
+
+    The decomposition is exact:
+    - alpha_B = 0.1875·4 + 0.0022·180 = 0.750 + 0.396 = 1.146 (measured
+      1.148);
+    - alpha_C = 0.0645·4 + 0.396 + 0.0156·2 (FIFO pops) = 0.685 (measured
+      0.685).
+
+    C-stationary's price is regenerating B every R_M rows, which dominates
+    once gc > R_M·alpha_B.
+  - **Does it hold for other tiles? (the user asked)** Checked on 85 tiles
+    (T_M 4..128 step 8 × T_N {4..64}, gc up to 30, from the best-vs-best
+    cache):
+    - C-stationary ends up slower than B-stationary on every tile except
+      T_M = 4. That exception confirms the mechanism: with T_M = R_M = 4,
+      B-stationary reuses each element over only 4 rows, the same as
+      C-stationary, so both pay gc/4 (measured C/B = 1.00 on all five
+      T_M = 4 tiles). B-stationary's whole advantage is reuse over T_M rows
+      instead of R_M.
+    - At gc 30: C/B median 3.4×, max 7.7×. In the B-bound limit the ratio
+      tends to T_M / R_M (= M / (R_M·⌈M/T_M⌉)), e.g. 16× at T_M = 64.
+    - Predicted crossover gc* = R_M · alpha_B inside the measured gc
+      interval on 80/85 tiles; the 5 misses are the T_M = 4 tiles (no
+      crossover). gc* ranges 3.4 .. 15.7 over tiles.
+    - C-stationary formula max(alpha_C, gc/4): median error 0.008 %. Only
+      very small tiles (T_M ≤ 8, narrow T_N) near balance (gc 2–8) are off,
+      by up to +9.8 %: the same partial-overlap effect.
+    - **F4b (`fig_dataflow_ratio`, `figures/dataflow/`)**: T_C / T_B vs
+      gc (0–100) at T_N = 32, one line per T_M ∈ {4, 8, 16, 32, 64, 128},
+      log2 y-axis, reference line at 1. What it shows:
+      - Every line starts below 1 (C wins) and crosses 1 at gc ≈ 3..13.
+      - While B-stationary is still memory-bound,
+        T_C/T_B ≈ gc / (R_M · alpha_B). alpha_B ≈ 1.15 for T_M 16..64, so
+        these lines share one rising curve.
+      - Each line levels off at M / (R_M·⌈M/T_M⌉) (= T_M/R_M when T_M
+        divides M) once B-stationary is generation-bound too, at gc ≈
+        T_M · alpha_B. Measured at gc 100: T_M 8/16/32/64 → exactly
+        2.00 / 4.00 / 7.99 / 15.98.
+      - T_M = 4 stays at 1 (no reuse advantage).
+      - T_M = 128 rises slowly: its tile thrashes (alpha_B ≈ 3.0), so it's
+        still memory-bound at gc 100 (ratio ~8; its limit 24 needs
+        gc ≳ 290).
+  - **C-stationary model line kept (user's choice)**, with one sentence in
+    "Our Model": the same max() form applies to output-stationary with B
+    cost g_c/R_M (B regenerated per register block of R_M rows; it's the
+    presentation's "Which Loop Order Fits the FIFO?" slide). T_M ≫ R_M is
+    why weight-stationary is the focus.
+  - Best-vs-best (each dataflow at its own best tile; grid T_M 4..128
+    step 8 × T_N {4..64}; `out/fig_dataflow/README.md`), for the text:
+    - C wins at gc 0–1 (2.26×: 0.377 vs 0.854, both at 8×64), gc 2 (1.70×)
+      and gc 3 (1.14×). B wins from gc 4 (1.17×), 2.57× at 10, 7.70× at 30.
+    - Crossover between gc 3 and 4, predicted by the same formula:
+      gc* = R_M · alpha_B(best) = 4 × 0.854 = 3.4. It's earlier than at the
+      fixed 64×32 tile (4.6) because B-stationary's best tile is cheaper.
+    - C-stationary's best tile at gc ≥ 3 is a tie: its cost is gc/4 for any
+      tile with alpha ≤ gc/4, so the listed tile is arbitrary.
+- [~] **F5, best tile vs gc (`fig_best_tile`, `figures/tile_choice/`)**:
+      B-stationary, default setup. One plot like the presentation's
+      `best_shape_per_gc` (the user prefers it): T_M* blue, T_N* red, log2 y,
+      symlog gc axis. Measured argmin (solid + markers) and the model's pick
+      (thin dashed in the same color: max(alpha, gc·⌈M/T_M⌉/M) + S, alpha
+      from gc = 0). An earlier version with two panels and a near-tie band
+      was replaced. Near ties are listed in the README table instead.
+      Small sample done (T_M 4,8..192 step 8 × T_N {4..128} 9 values ×
+      18 gc, 2 min; `out/fig_best_tile/README_small.md`). Full run
+      (T_M 4..192 step 4 × T_N 4..128 step 4 × 38 gc ≈ 58k runs) is the
+      `results.json` there (done, ~36 min; `out/fig_best_tile/README.md`).
+  - **Full run (1536 tiles × 38 gc):** 12×32 (gc 0–10) → 24×128 (12–20) →
+    32×88 (23–30) → 40×64 (35–40) → 48×48 (45–50) → 64×32 (60–80) →
+    96×16 (100–350).
+    - Same start (12, 32) and end (96, 16) as the presentation's
+      `best_shape_per_gc` (old: 12×32 → 32×64 at ~42 → 64×32 at 150 →
+      96×16 at 250). The transitions now come earlier (alpha is ~3× smaller)
+      and the dense grid shows the intermediate shapes.
+    - 12×32: the A tile (12 KB) fits in L1. T_N doesn't matter there: 34–38
+      tiles are within 1 % at gc ≤ 6, all with T_M = 12.
+    - The model's pick costs 0.0 % extra at 36/38 gc. The argmin differs at
+      gc 90/230/260 only through near ties (e.g. 68×32 vs 64×32), still
+      0.0 %. It fails at gc 300 (+29 %, picks 128×48) and 350 (+7 %, picks
+      108×112). Both are near-balance partial-overlap cases (F3).
+    - The T_N jump to 128 at gc 400 is a tie: 62 tiles within 1 %.
+    - The 16×32 default: +36 % at gc ≤ 10, +100 % at gc 30, +300 % at
+      gc 80, +500 % (6×) from gc ≈ 160.
+  - **gc range: F5 and F6 now stop at gc = 600 (the user's choice).** The
+    run to 5000 was stopped. Extending to 600 costs only 4 gc × 1536 tiles
+    (~4 min, ~1 min per gc). The 5000 sample below is only in
+    `results_small.json` and goes in the text, not the figure.
+    Done: at gc 400–600 the best tile is 96–104 × 128 with 62–263 tiles
+    within 1 % (B-bound tie). F6 gains sit at their limits there (92 / 83 /
+    67 / 33 %), and overall best vs best square is 0 %. Predicted and confirmed: T_M = 192 (one tile row, B
+    generated once, gc/192) has alpha 23.25 (LRU thrash). It beats the
+    T_M 96..128 tiles (gc/96) once gc/96 > 23.25, i.e. gc ≳ 2230.
+    Small sample: 96×128 at gc 2000 (20.83), 192×128 at 2500 (23.26). From
+    there the cost is flat at alpha(192) ≈ 23.26 up to gc = 192·23.26
+    ≈ 4470, then rises as gc/192 (26.05 at 5000).
+    - For 400 ≤ gc ≤ 2000 the T_N choice is a tie (41–45 tiles within 1 %):
+      in the B-bound regime only ⌈M/T_M⌉ matters, as long as alpha < B.
+    - Point for the text: the best tile has three regimes:
+      - alpha-bound: small T_M, the tile fits;
+      - balanced: T_M grows, T_N shrinks to keep fitting;
+      - generation-bound: fewest tile rows, even at the price of a
+        thrashing cache, because B is regenerated per tile row.
+  Insights from the small sample (they still hold):
+  - **The trajectory:** T_M* rises and T_N* falls as gc grows:
+    8×96 (gc ≤ 5) → 24×128 (7–20) → 32×96 (30) → 40×64 (40) → 48×48 (50) →
+    64×32 (70) → 96×16 (100–300). The model picks the same tile at 16 of 18
+    gc. At gc 7 it is late by one step (its pick costs +0.9 %).
+  - **Why T_M rises:** to keep generation hidden, B (gc·⌈M/T_M⌉/M) must
+    stay below alpha, so T_M must grow roughly like gc / alpha.
+  - **Why T_N falls (mechanism checked in `src/multi_unit.cpp:77-80`):**
+    B-stationary loops k-block → n-block → row-block. Every k step sweeps
+    the WHOLE C tile plus one A line per row. So the C tile (in cache lines)
+    plus T_M A lines must stay in L1:
+    T_M · (C lines per tile row + 1) · 64 B ≲ 16 KB. While it fits, alpha
+    follows the 1/T_N levels (A is re-read N/T_N times, so wider is
+    better). Past it, LRU on a cyclic sweep misses every time. So the best
+    tile is the widest one that still fits at the T_M that gc forces:
+    T_M·T_N stays ~2–3k elements. alpha at gc 0 shows the cliff
+    (e.g. 24×128 0.887 but 32×128 3.654; 64×32 1.148 but 64×64 3.740;
+    96×16 1.499 but 96×24 4.740: T_N = 24 is not line-aligned, so a row
+    touches 2–3 lines).
+  - **Why T_M never reaches M = 192 (one tile row, gc/192):** alpha(192, any
+    T_N) = 23.25. Even T_N = 4 needs 192 C lines + 192 A lines = 24 KB >
+    16 KB, so every A and C access misses (8 misses × 184 cycles per 64
+    MACs ≈ 23). With this loop order, T_M ≤ L1 / (2 · 64 B) = 128 is a hard
+    cap at 16 KB. That's why T_M* stops at 96 (2 tile rows) for gc ≥ 100.
+  - **Low gc (≤ 5):** T_M = 8: the A tile (8 KB) stays in L1, so T_N
+    barely matters. The band covers T_N 4..96 (8 tiles within 1 %).
+  - **gc ≥ 100:** B-bound. Every T_M with ⌈M/T_M⌉ = 2 (96..128) costs the
+    same gc/96, so the T_M band is 96–128. At gc 400, 21 tiles are within
+    1 %, and T_N* jumping to 128 is a tie, not a trend.
+  - **Model miss at gc 300:** the model picks 128×48 (alpha 2.99 just
+    below B = 3.125, so max() says 3.13) but it measures 4.04 (+29 %): the
+    F3 partial-overlap loss at large T_M near balance. The measured best
+    96×16 has alpha 1.50 ≪ B, which is safe. Lesson for the customer
+    section: prefer tiles with alpha well below B (a margin), not just
+    alpha ≤ B.
+  - The default tile 16×32 is 30–41 % slower than the best at gc ≤ 20, and
+    +500 % (6×) at gc ≥ 150.
+- [x] **F6, best vs square (`fig_vs_square`, `figures/tile_choice/`)**:
+      replaces the presentation's `optimal_vs_square`, with the same
+      definitions. For a fixed T_N ∈ {8, 16, 32, 64}: the best T_M against
+      the square T_M = T_N. Gain = time saved = (T_sq − T_best)/T_sq.
+      There's no new run: it reuses fig_best_tile's cache (gc 0–400, T_M
+      4..192 step 4).
+      - `fig_vs_square`: gain vs gc (the figure for the report);
+      - `fig_vs_square_cost`: cycles/MAC, best solid vs square dashed
+        (backup, busy with 8 lines);
+      - README: also overall best vs best square.
+      Insights:
+  - **Low gc (alpha-bound):** the gain is how badly the square tile fits L1.
+    - T_N = 64: 64×64 thrashes (alpha 3.74) vs 8×64 (0.85): 77 % saved.
+    - T_N = 16: 44 %. T_N = 32: 26 %.
+    - T_N = 8: ~1 %, because 8×8 already fits.
+  - **High gc (B-bound): the gain tends to an exact limit.** The square
+    tile pays gc·⌈M/T_N⌉/M, the best pays gc/96 (2 tile rows). So
+    gain → 1 − 2/⌈192/T_N⌉: 91.7 / 83.3 / 66.7 / 33.3 % for T_N
+    8/16/32/64. Measured at gc 400: 92 / 83 / 67 / 33 %.
+  - **Dips to 0:** where the square tile costs the same as the best T_M for
+    that T_N.
+    - T_N = 32 at gc 14–35: 32×32 and the best 64×32 are both on the
+      alpha plateau (≈ 1.15).
+    - T_N = 64 at gc 180–230: every T_M ≥ 64 at width 64 thrashes at the
+      same alpha ≈ 3.74, and that exceeds their B terms.
+  - T_N = 32 plateau at exactly 50 % (gc 80–200): best is 64×32 (3 tile
+    rows, gc/64) vs 32×32 (gc/32). 96×32 would be gc/96 but it thrashes
+    (alpha 3.9) until gc ≳ 230.
+  - **Overall best vs best square (fairer, from the README):** 0 % at
+    gc ≤ 10 (12×12 is as good as 12×32), 15–16 % at gc 12–20, 0 % at gc
+    45–50 (48×48 IS the best), 25–50 % at gc 70–200 (max 50 % at gc 160:
+    96×16 1.67 vs 48×48 3.34), back to 0 % at gc 400 (B-bound tie: 96×96 has
+    the same tile rows). Honest message for the text: at a fixed T_N
+    (e.g. set by the hardware or the N dimension) the right T_M saves up to
+    92 %. If any square is allowed, asymmetry still saves up to 50 %, mainly
+    for 60 ≲ gc ≲ 300, where a square tile can't be both tall (few tile
+    rows) and small enough to fit L1.
+  - Presentation numbers vs now: slide "gc 100: 20–65 %, 250: ~85 %, 400:
+    up to 90 %". Now gc 100: 44–82 %, 400: 33–92 %. Same story.
+- [x] **F7, model accuracy (`fig_model_accuracy`, `figures/model/`)**.
+      Per case (config × gc > 0): excess = T(model's tile)/T(best) − 1, both
+      measured. All sets are scored with the report's formula
+      max(alpha, gc·⌈M/T_M⌉/M) + S, ties to the lower alpha, alpha from
+      gc = 0 on the same config. No new runs.
+      **User's choice: the bars first (how accurate), then the scatter
+      (why).** The cumulative-share version was dropped, and so was the old
+      roofline set (no old results in the report, see the top note).
+      - `fig_model_accuracy`: stacked horizontal bars per set: exact /
+        within 1 % / within 5 % / worse (blue ramp, red = worse);
+      - `fig_model_accuracy_balance`: excess vs B/alpha of the model's tile,
+        with a line at 1.
+      **How to explain them (the user didn't follow the first explanation):**
+      - excess = how much slower the model's tile is than the truly best
+        one (0 % = the model was right);
+      - B/alpha < 1: memory dominates; > 1: generation dominates; 1: equal;
+      - dots on the bottom line = right picks; every dot above it sits
+        near 1.
+      Results (`out/fig_model_accuracy/README.md`):
+
+      | cases | n | exact | T_M* | ≤ 1 % | ≤ 5 % | worst |
+      |---|---|---|---|---|---|---|
+      | 6 matrices × 3 L1 sizes, fully assoc | 198 | 83 % | 87 % | 86 % | 91 % | 21 % |
+      | 6 matrices × 3 L1 sizes, 8-way | 198 | 74 % | 84 % | 81 % | 91 % | 21 % |
+      | 6 matrices × 3 L1 sizes, 4-way | 198 | 70 % | 84 % | 78 % | 90 % | 21 % |
+      | default setup, all tiles (F5, gc ≤ 600) | 41 | 85 % | 85 % | 95 % | 95 % | 29 % |
+
+      Set names (renamed by the user's request; "6 shapes" and "dense
+      tiles" were unclear):
+      - "6 matrices × 3 L1 sizes": the coarse tile grid (~100 tiles), 11 gc;
+      - "default setup, all tiles": 192×256×256, 16 KB fully associative,
+        every tile in steps of 4 (1536 tiles), 41 gc.
+      | all | 635 | 77 % | 85 % | 83 % | 91 % | 29 % |
+  - **The misses are all near balance:** 107 of the 110 cases with excess
+    > 1 % have 0.5 < B/alpha < 2. Far from balance the model is exact.
+    That's the partial-overlap effect from F3: max() assumes perfect
+    overlap, which only holds when one cost clearly dominates.
+  - Exact picks drop with associativity (83 → 74 → 70 %), but "within 5 %"
+    barely moves (91 / 91 / 90 %). Set conflicts make more near-ties.
+  - Side note (not for the report): with S, the old roofline set is
+    108/108. S breaks T_N ties toward fewer, wider tiles.
+- [ ] F1 paper traffic.
+
 ## Charts in `gen_charts.py` not on the slides (report candidates)
 
 These all have hard-coded old numbers; regenerate before any reuse.
@@ -189,8 +684,22 @@ These all have hard-coded old numbers; regenerate before any reuse.
         - So the presentation's specific optimal tiles (fully associative)
           don't transfer to real set-associative caches. The method
           (calibrate alpha on the real cache) does.
-      - [ ] Confirm on the full model_sweep grid (3 L1 × 6 shapes, 8-way
-            and 4-way, ~45k runs, ~25 min).
+      - [x] Confirmed on the full grid (`assoc_sweep.py`, 3 L1 × 6 shapes ×
+            11 gc = 198 conditions per cache, 44k new runs, 17 min):
+
+            | cache | TM* right | within 5 % | exact max | exact max+S | worst |
+            |---|---|---|---|---|---|
+            | fully assoc | 85 % | 93 % | 76 % | 83 % | 15.8 % |
+            | 8-way | 84 % | 94 % | 52 % | 74 % | 15.0 % |
+            | 4-way | 81 % | 94 % | 49 % | 70 % | 16.5 % |
+
+        - The model is as good on 8-way and 4-way caches. The startup term S
+          matters more there (exact 52 → 74 %).
+        - The fully associative best tile on a set-associative cache costs
+          a median of +175 … +616 % (worst > 2000 %) for the power-of-two
+          shapes (192×256×256, 384×256×512, 256×512×128), and 0 … 29 %
+          (worst 13 … 201 %) for the others. Advice: calibrate on the real
+          cache; avoid or pad power-of-two row strides.
       - [ ] 12-way (e.g. 48 KB, a recent Intel L1D) can't be expressed:
             assoc is log2, and -1 only means fully associative. It would
             need assoc to accept a non-power-of-two way count, with a clear

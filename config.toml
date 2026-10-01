@@ -1,31 +1,31 @@
 [matrix]
-m = 100
-k = 100
-n = 100
-small_percision = 1
-ratio = 4
+m = 192
+k = 256
+n = 256
+small_percision = 4
+ratio = 1
 
 [fifo]
 capacity = 16384
 generation_cost = 10
 accsess_cost = 2
-seed_size = 1
+seed_size = 8
 
 [multiplication]
-tile_h = 50
-tile_w = 50
+tile_h = 16
+tile_w = 32
 b_source = "fifo"
 reg_dim = 4
-mulacc_cost = 4
+mulacc_cost = 0
 
 [cache]
 block_size = 6
-mem_cycles = 100
+mem_cycles = 180
 l1_size = 14
 l1_cycles = 4
-l1_assoc = 3
-l2_size = 16
-l2_cycles = 20
+l1_assoc = -1
+l2_size = 0
+l2_cycles = 14
 l2_assoc = 3
-write_alloc = false
+write_alloc = true
 policy = "lru"

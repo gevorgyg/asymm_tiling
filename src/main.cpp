@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     // overwrite things given from CLI
     CLI11_PARSE(options, argc, argv);
 
-    spdlog::info("Asymm Matrix Multiplication Log Start");
+    spdlog::debug("Asymm Matrix Multiplication Log Start");
 
     MultiUnit m{options};
 

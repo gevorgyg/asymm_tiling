@@ -26,16 +26,16 @@
     <rect y="24" width="270" height="10" fill="#eff6ff"/>
     <text x="135" y="22" text-anchor="middle" font-weight="bold" font-size="14" fill="#1e3a8a">MultiUnit</text>
     <!-- Fields -->
-    <text x="14" y="52" font-size="11" fill="#334155">- m_, k_, n_: size_t</text>
-    <text x="14" y="68" font-size="11" fill="#334155">- small_precision_, ratio_: size_t</text>
-    <text x="14" y="84" font-size="11" fill="#334155">- tile_h_, tile_w_: size_t</text>
-    <text x="14" y="100" font-size="11" fill="#334155">- orientation_: Orientation</text>
-    <text x="14" y="116" font-size="11" fill="#334155">- cache_: std::unique_ptr&lt;CacheUnit&gt;</text>
+    <text x="14" y="52" font-size="11" fill="#334155">- cache_: CacheUnit</text>
+    <text x="14" y="68" font-size="11" fill="#334155">- prng_fifo_: PrngFifo</text>
+    <text x="14" y="84" font-size="11" fill="#334155">- a_, b_, c_: Matrix</text>
+    <text x="14" y="100" font-size="11" fill="#334155">- tile_h_, tile_w_, reg_dim_: size_t</text>
+    <text x="14" y="116" font-size="11" fill="#334155">- b_source_: BSource</text>
     <!-- Methods -->
-    <text x="14" y="148" font-size="11" fill="#0f172a">+ multiply(): void</text>
-    <text x="14" y="164" font-size="11" fill="#0f172a">+ c_stationary_tiling(): void</text>
-    <text x="14" y="180" font-size="11" fill="#0f172a">+ b_stationary_tiling(): void</text>
-    <text x="14" y="196" font-size="11" fill="#0f172a">+ register_stats(): void</text>
+    <text x="14" y="148" font-size="11" fill="#0f172a">+ run(): void</text>
+    <text x="14" y="164" font-size="11" fill="#0f172a">- tile_mul(mode): void</text>
+    <text x="14" y="180" font-size="11" fill="#0f172a">- load_into_reg / store_from_reg(t, r, c)</text>
+    <text x="14" y="196" font-size="11" fill="#0f172a">- calculate_addr(t, r, c, op): void</text>
   </g>
 
   <!-- PRNGFIFO (Hardware Accelerator) -->
@@ -48,14 +48,14 @@
     <rect y="24" width="270" height="10" fill="#ecfdf5"/>
     <text x="135" y="22" text-anchor="middle" font-weight="bold" font-size="14" fill="#065f46">PrngFifo</text>
     <!-- Fields -->
-    <text x="14" y="52" font-size="11" fill="#334155">- capacity_: size_t</text>
+    <text x="14" y="52" font-size="11" fill="#334155">- capacity_: size_t (elements)</text>
     <text x="14" y="68" font-size="11" fill="#334155">- generation_cost_: size_t (gc)</text>
-    <text x="14" y="84" font-size="11" fill="#334155">- access_cost_: size_t (ac)</text>
-    <text x="14" y="100" font-size="11" fill="#334155">- stalls_, stall_cycles_: uint64_t</text>
-    <text x="14" y="116" font-size="11" fill="#334155">- pops_: uint64_t</text>
+    <text x="14" y="84" font-size="11" fill="#334155">- accsess_cost_: size_t (per pop)</text>
+    <text x="14" y="100" font-size="11" fill="#334155">- size_, prev_cycles_: size_t</text>
+    <text x="14" y="116" font-size="11" fill="#334155">- pops_, stalls_, stall_cycles_: size_t</text>
     <!-- Methods -->
-    <text x="14" y="138" font-size="11" fill="#0f172a">+ pop(): void</text>
-    <text x="14" y="154" font-size="11" fill="#0f172a">+ is_empty(): bool</text>
+    <text x="14" y="138" font-size="11" fill="#0f172a">+ pop(elements: size_t): void</text>
+    <text x="14" y="154" font-size="11" fill="#0f172a">+ load_seed(): void</text>
     <text x="14" y="170" font-size="11" fill="#0f172a">+ register_stats(): void</text>
   </g>
 
@@ -71,11 +71,11 @@
     <text x="145" y="22" text-anchor="middle" font-weight="bold" font-size="14" fill="#5b21b6">CacheUnit</text>
     <!-- Fields -->
     <text x="14" y="52" font-size="11" fill="#334155">- levels_: vector&lt;unique_ptr&lt;CacheLevel&gt;&gt;</text>
-    <text x="14" y="68" font-size="11" fill="#334155">- block_size_, mem_cycles_: size_t</text>
-    <text x="14" y="84" font-size="11" fill="#334155">- total_access_cycles_: uint64_t</text>
+    <text x="14" y="68" font-size="11" fill="#334155">- block_size_, mem_cycles_: int</text>
+    <text x="14" y="84" font-size="11" fill="#334155">- write_alloc_: bool, policy_: ReplPolicy</text>
     <!-- Methods -->
-    <text x="14" y="116" font-size="11" fill="#0f172a">+ do_read(addr: RawAddr): void</text>
-    <text x="14" y="132" font-size="11" fill="#0f172a">+ do_write(addr: RawAddr): void</text>
+    <text x="14" y="116" font-size="11" fill="#0f172a">+ process_request(op: char, addr: RawAddr)</text>
+    <text x="14" y="132" font-size="11" fill="#0f172a">+ level_stats(i), total_access_cycles()</text>
     <text x="14" y="148" font-size="11" fill="#0f172a">+ register_stats(): void</text>
   </g>
 
@@ -89,32 +89,33 @@
     <rect y="24" width="290" height="10" fill="#eef2ff"/>
     <text x="145" y="22" text-anchor="middle" font-weight="bold" font-size="14" fill="#312e81">CacheLevel</text>
     <!-- Fields -->
-    <text x="14" y="52" font-size="11" fill="#334155">- sets_: vector&lt;Set&gt;</text>
-    <text x="14" y="68" font-size="11" fill="#334155">- level_idx_, assoc_, cycles_: size_t</text>
-    <text x="14" y="84" font-size="11" fill="#334155">- write_allocate_: bool</text>
+    <text x="14" y="52" font-size="11" fill="#334155">- sets_: vector&lt;Set&gt;, splitter: AddrSplitter</text>
+    <text x="14" y="68" font-size="11" fill="#334155">- size_ (bytes), assoc_ (ways), cycles_</text>
+    <text x="14" y="84" font-size="11" fill="#334155">- write_alloc_: bool</text>
     <text x="14" y="100" font-size="11" fill="#334155">- upper_level_, lower_level_: CacheLevel*</text>
     <!-- Methods -->
-    <text x="14" y="132" font-size="11" fill="#0f172a">+ read(addr: RawAddr): void</text>
-    <text x="14" y="148" font-size="11" fill="#0f172a">+ write(addr: RawAddr): void</text>
+    <text x="14" y="132" font-size="11" fill="#0f172a">+ read(addr), write(addr): void</text>
+    <text x="14" y="148" font-size="11" fill="#0f172a">+ writeback(addr): void</text>
     <text x="14" y="164" font-size="11" fill="#0f172a">+ insert(line: CacheLine): void</text>
   </g>
 
   <!-- SET -->
   <g transform="translate(390, 455)" filter="url(#shadow)">
-    <rect width="290" height="145" rx="6" fill="#f8fafc" stroke="#334155" stroke-width="1.8"/>
+    <rect width="290" height="161" rx="6" fill="#f8fafc" stroke="#334155" stroke-width="1.8"/>
     <path d="M 0 34 L 290 34" stroke="#334155" stroke-width="1.2"/>
-    <path d="M 0 80 L 290 80" stroke="#cbd5e1" stroke-width="1"/>
+    <path d="M 0 96 L 290 96" stroke="#cbd5e1" stroke-width="1"/>
     <!-- Header -->
     <rect width="290" height="34" rx="6" fill="#f1f5f9"/>
     <rect y="24" width="290" height="10" fill="#f1f5f9"/>
     <text x="145" y="22" text-anchor="middle" font-weight="bold" font-size="14" fill="#0f172a">Set</text>
     <!-- Fields -->
     <text x="14" y="52" font-size="11" fill="#334155">- ways_: vector&lt;CacheLine&gt;</text>
-    <text x="14" y="68" font-size="11" fill="#334155">- policy_: unique_ptr&lt;ReplacementPolicy&gt;</text>
+    <text x="14" y="68" font-size="11" fill="#334155">- policy_: ReplPolicy</text>
+    <text x="14" y="84" font-size="11" fill="#334155">- clock_ (last stamp), rng_ (xorshift): uint64_t</text>
     <!-- Methods -->
-    <text x="14" y="98" font-size="11" fill="#0f172a">+ find(tag: uint64_t): int</text>
-    <text x="14" y="114" font-size="11" fill="#0f172a">+ touch(way: int): void</text>
-    <text x="14" y="130" font-size="11" fill="#0f172a">+ insert(line: CacheLine): optional&lt;CacheLine&gt;</text>
+    <text x="14" y="114" font-size="11" fill="#0f172a">+ peek(addr) / find(addr): CacheLine*</text>
+    <text x="14" y="130" font-size="11" fill="#0f172a">+ try_insert(line: CacheLine): bool</text>
+    <text x="14" y="146" font-size="11" fill="#0f172a">+ insert(line: CacheLine): CacheLine (victim)</text>
   </g>
 
   <!-- COLUMN 3: Infrastructure, ReplacementPolicy, CacheLine -->
@@ -124,37 +125,27 @@
     <text x="125" y="23" text-anchor="middle" font-weight="bold" font-size="12.5" fill="#475569">Simulation Infrastructure</text>
     <line x1="12" y1="32" x2="238" y2="32" stroke="#cbd5e1"/>
     <text x="16" y="52" font-weight="bold" font-size="11" fill="#1e293b">Clock (Singleton)</text>
-    <text x="24" y="68" font-size="10.5" fill="#475569">+ tick(cycles: uint64_t)</text>
-    <text x="24" y="82" font-size="10.5" fill="#475569">+ get_cycles(): uint64_t</text>
+    <text x="24" y="68" font-size="10.5" fill="#475569">+ tick(cycles: size_t), reset()</text>
+    <text x="24" y="82" font-size="10.5" fill="#475569">+ cur_cycles(): size_t</text>
     <line x1="16" y1="92" x2="234" y2="92" stroke="#e2e8f0"/>
     <text x="16" y="109" font-weight="bold" font-size="11" fill="#1e293b">Registry (Singleton)</text>
-    <text x="24" y="125" font-size="10.5" fill="#475569">+ reg_stat&lt;T&gt;(name, getter)</text>
+    <text x="24" y="125" font-size="10.5" fill="#475569">+ reg_stat&lt;T&gt;(name, getter), dump()</text>
   </g>
 
-  <!-- REPLACEMENT POLICY (Interface) -->
+  <!-- REPLACEMENT POLICY (Enumeration) -->
   <g transform="translate(770, 220)" filter="url(#shadow)">
-    <rect width="250" height="135" rx="6" fill="#f8fafc" stroke="#d97706" stroke-width="1.8"/>
+    <rect width="250" height="110" rx="6" fill="#f8fafc" stroke="#d97706" stroke-width="1.8"/>
     <path d="M 0 38 L 250 38" stroke="#d97706" stroke-width="1.2"/>
     <rect width="250" height="38" rx="6" fill="#fffbeb"/>
     <rect y="26" width="250" height="12" fill="#fffbeb"/>
-    <text x="125" y="17" text-anchor="middle" font-size="10" fill="#b45309">&lt;&lt;interface&gt;&gt;</text>
-    <text x="125" y="32" text-anchor="middle" font-weight="bold" font-size="13" fill="#92400e">ReplacementPolicy</text>
-    <text x="14" y="58" font-size="11" fill="#0f172a">+ touch(way: int)*: void</text>
-    <text x="14" y="76" font-size="11" fill="#0f172a">+ insert(way: int)*: void</text>
-    <text x="14" y="94" font-size="11" fill="#0f172a">+ invalidate(way: int)*: void</text>
-    <text x="14" y="112" font-size="11" fill="#0f172a">+ find_victim()*: int</text>
+    <text x="125" y="17" text-anchor="middle" font-size="10" fill="#b45309">&lt;&lt;enumeration&gt;&gt;</text>
+    <text x="125" y="32" text-anchor="middle" font-weight="bold" font-size="13" fill="#92400e">ReplPolicy</text>
+    <text x="14" y="58" font-size="11" fill="#0f172a">lru</text>
+    <text x="14" y="74" font-size="11" fill="#0f172a">fifo</text>
+    <text x="14" y="90" font-size="11" fill="#0f172a">mru</text>
+    <text x="14" y="106" font-size="11" fill="#0f172a">random</text>
   </g>
 
-  <!-- LRU POLICY -->
-  <g transform="translate(770, 385)" filter="url(#shadow)">
-    <rect width="250" height="85" rx="6" fill="#f8fafc" stroke="#d97706" stroke-width="1.6"/>
-    <path d="M 0 32 L 250 32" stroke="#d97706" stroke-width="1"/>
-    <rect width="250" height="32" rx="6" fill="#fffbeb"/>
-    <rect y="22" width="250" height="10" fill="#fffbeb"/>
-    <text x="125" y="21" text-anchor="middle" font-weight="bold" font-size="13" fill="#92400e">LruPolicy</text>
-    <text x="14" y="50" font-size="10.5" fill="#334155">- lru_order_: vector&lt;int&gt;</text>
-    <text x="14" y="68" font-size="10.5" fill="#0f172a">+ touch, insert, find_victim...</text>
-  </g>
 
   <!-- CACHELINE STRUCT -->
   <g transform="translate(770, 490)" filter="url(#shadow)">
@@ -166,38 +157,37 @@
     <text x="14" y="52" font-size="11" fill="#334155">+ addr: RawAddr</text>
     <text x="14" y="68" font-size="11" fill="#334155">+ tag: uint64_t</text>
     <text x="14" y="84" font-size="11" fill="#334155">+ valid, dirty: bool</text>
+    <text x="14" y="100" font-size="11" fill="#334155">+ stamp: uint64_t</text>
   </g>
 
   <!-- CONNECTOR LINES & RELATIONSHIPS -->
   <!-- MultiUnit contains CacheUnit -->
-  <line x1="300" y1="100" x2="390" y2="100" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
+  <line x1="316" y1="100" x2="390" y2="100" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
   <text x="330" y="91" font-size="10.5" fill="#475569">1</text>
   <text x="370" y="91" font-size="10.5" fill="#475569">1</text>
 
   <!-- MultiUnit contains PrngFifo -->
-  <line x1="165" y1="240" x2="165" y2="335" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
-  <text x="175" y="260" font-size="10.5" fill="#475569">1</text>
-  <text x="175" y="325" font-size="10.5" fill="#475569">0..1</text>
+  <line x1="165" y1="256" x2="165" y2="335" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
+  <text x="175" y="266" font-size="10.5" fill="#475569">1</text>
+  <text x="175" y="325" font-size="10.5" fill="#475569">1</text>
 
   <!-- CacheUnit contains CacheLevel (1..N) -->
-  <line x1="535" y1="190" x2="535" y2="235" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
+  <line x1="535" y1="206" x2="535" y2="235" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
   <text x="545" y="208" font-size="10.5" fill="#475569">1</text>
   <text x="545" y="226" font-size="10.5" fill="#475569">1..N</text>
 
   <!-- CacheLevel contains Set -->
-  <line x1="535" y1="410" x2="535" y2="455" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
+  <line x1="535" y1="426" x2="535" y2="455" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
   <text x="545" y="428" font-size="10.5" fill="#475569">1</text>
   <text x="545" y="446" font-size="10.5" fill="#475569">num_sets</text>
 
-  <!-- Set contains ReplacementPolicy -->
-  <path d="M 680 500 L 725 500 L 725 285 L 770 285" fill="none" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
-  <text x="735" y="278" font-size="10.5" fill="#475569">1</text>
+  <!-- Set has a ReplPolicy -->
+  <path d="M 696 500 L 725 500 L 725 275 L 770 275" fill="none" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
+  <text x="735" y="268" font-size="10.5" fill="#475569">1</text>
 
   <!-- Set contains CacheLine -->
-  <line x1="680" y1="545" x2="770" y2="545" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
+  <line x1="696" y1="545" x2="770" y2="545" stroke="#2c3e50" stroke-width="1.8" marker-start="url(#composition)"/>
   <text x="720" y="538" font-size="10.5" fill="#475569">assoc</text>
 
-  <!-- LruPolicy inherits ReplacementPolicy -->
-  <line x1="895" y1="385" x2="895" y2="355" stroke="#2c3e50" stroke-width="1.8" marker-end="url(#inheritance)"/>
 
 </svg>
