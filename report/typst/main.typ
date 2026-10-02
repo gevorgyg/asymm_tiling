@@ -275,7 +275,7 @@ Unless stated otherwise, every experiment uses the configuration in @tab-params,
 
 == $B$-Stationary Against $C$-Stationary <sec-dataflow>
 
-The two dataflows differ in how often they generate $B$. The weight-stationary ($B$-stationary) dataflow generates $B$ once per row of tiles, so each element is reused by $T_M$ rows of $A$. The output-stationary ($C$-stationary) dataflow keeps a register block of $C$ while $B$ streams past it, so $B$ is generated again for every register block of $R_M = 4$ rows. @fig-dataflow compares them on the tile $T_M = 64$, $T_N = 32$, for $g_c$ from 0 to 100. The dashed lines are the model of each dataflow: $max(alpha_B, g_c slash 64)$ and $max(alpha_C, g_c slash 4)$, with $alpha_B$ and $alpha_C$ measured at $g_c = 0$.
+The two dataflows differ in how often they generate $B$. The weight-stationary ($B$-stationary) dataflow generates $B$ once per row of tiles, so each element is reused by $T_M$ rows of $A$. The output-stationary ($C$-stationary) dataflow keeps a register block of $C$ while $B$ streams past it, so $B$ is generated again for every register block of $R_M = 4$ rows. @fig-dataflow compares them on the tile $T_M = 64$, $T_N = 32$, for every integer $g_c$ from 0 to 100, with the default configuration otherwise (@tab-params). The dashed lines are the model of each dataflow: $max(alpha_B, g_c slash 64)$ and $max(alpha_C, g_c slash 4)$, with $alpha_B$ and $alpha_C$ measured at $g_c = 0$.
 
 #figure(
   image("./figures/fig_dataflow.svg", width: 100%),
@@ -296,13 +296,13 @@ where the last terms are the FIFO pops: $C$-stationary pops 16 times as often, s
   caption: [Runtime of $C$-stationary divided by the runtime of $B$-stationary against $g_c$, for $T_N = 32$ and six tile heights.],
 ) <fig-dataflow-ratio>
 
-*Other tiles.* @fig-dataflow-ratio repeats the comparison for six tile heights at $T_N = 32$. Every line follows the same pattern:
+*Other tiles.* @fig-dataflow-ratio repeats the comparison for six tile heights ($T_M = 4, 8, 16, 32, 64, 128$) at $T_N = 32$, for every integer $g_c$ from 0 to 100. Every line follows the same pattern:
 + At $g_c = 0$, $C$-stationary is faster: the ratio is $0.43$--$0.6$, and $0.23$ for $T_M = 128$, whose $B$-stationary tile no longer fits in $L_1$ ($alpha_B = 2.99$).
 + The ratio crosses 1 at $g_c^* = R_M dot alpha_B$, as for the $64 times 32$ tile: at $g_c = 4$ for $T_M = 8$, at 5 for $T_M = 16$ to 64, and at 12 for $T_M = 128$.
 + Once both dataflows are limited by generation, the ratio settles at the ratio of their generation costs, $T_M slash R_M$: exactly 2, 4, 8 and 16 for $T_M = 8, 16, 32, 64$. For $T_M = 128$, whose $B$-stationary tile is still limited by memory at $g_c = 100$, the ratio is 8 and still rising.
 + For $T_M = 4 = R_M$ the ratio is 1 from $g_c = 5$ on: $B$-stationary then reuses each generated element over only 4 rows, exactly like $C$-stationary, and has no advantage left. This confirms that the whole advantage of $B$-stationary is the reuse of $B$ over $T_M$ rows instead of $R_M$.
 
-*Each dataflow at its own best tile.* Comparing the best tile of each dataflow (over $T_M$ up to 128 and $T_N$ up to 64) gives the same picture. $C$-stationary is faster only for $g_c <= 3$ ($2.26 times$ at $g_c <= 1$, where both prefer the tile $8 times 64$ and $C$-stationary costs $0.377$ cycles per MAC). From $g_c = 4$ on, $B$-stationary is faster: $1.17 times$ at $g_c = 4$, $2.57 times$ at $g_c = 10$ and $7.7 times$ at $g_c = 30$. The crossover again follows $R_M dot alpha_B = 4 dot 0.854 = 3.4$, with $alpha_B$ of $B$-stationary's best tile. Since $C$-stationary wins only when generating an element costs less than about 4 cycles, the rest of this report uses the $B$-stationary dataflow.
+*Each dataflow at its own best tile.* Comparing the best tile of each dataflow (over $T_M in {4, 8, 16, dots, 128}$ in steps of 8, $T_N in {4, 8, 16, 32, 64}$ and $g_c in {0, 1, dots, 6, 8, 10, 15, 20, 30}$) gives the same picture. $C$-stationary is faster only for $g_c <= 3$ ($2.26 times$ at $g_c <= 1$, where both prefer the tile $8 times 64$ and $C$-stationary costs $0.377$ cycles per MAC). From $g_c = 4$ on, $B$-stationary is faster: $1.17 times$ at $g_c = 4$, $2.57 times$ at $g_c = 10$ and $7.7 times$ at $g_c = 30$. The crossover again follows $R_M dot alpha_B = 4 dot 0.854 = 3.4$, with $alpha_B$ of $B$-stationary's best tile. Since $C$-stationary wins only when generating an element costs less than about 4 cycles, the rest of this report uses the $B$-stationary dataflow.
 
 == The Memory Cost $alpha$ <sec-alpha>
 
@@ -344,7 +344,7 @@ With $g_c = 0$, generating $B$ is free, and the runtime per MAC is the memory co
 
 == Memory Cost Against Generation Cost <sec-mem-vs-gen>
 
-Once generating $B$ costs time, the model predicts the runtime as the larger of two costs: the memory cost $alpha$ and the generation cost $g_c dot ceil(M slash T_M) slash M$. @fig-model shows both for $T_N = 32$ and $T_M$ from 4 to 128, together with the runtime measured at $g_c = 30$ and $g_c = 200$.
+Once generating $B$ costs time, the model predicts the runtime as the larger of two costs: the memory cost $alpha$ and the generation cost $g_c dot ceil(M slash T_M) slash M$. @fig-model shows both for $T_N = 32$ and $T_M$ from 4 to 128 in steps of 4, together with the runtime measured at $g_c = 30$ and $g_c = 200$, with the default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/fig_model.svg", width: 100%),
@@ -373,7 +373,7 @@ The figure shows the trade-off behind every tile choice in this report. Taller t
 
 == Choosing The Tile <sec-tile>
 
-To find the best tile at each generation cost, we simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 42 values of $g_c$ from 0 to 600. @fig-best-tile shows the measured best tile $(T_M^*, T_N^*)$ and the tile the model picks, using $alpha$ from the $g_c = 0$ runs.
+To find the best tile at each generation cost, we simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 42 values of $g_c$ from 0 to 600 (every integer up to 10, then increasingly coarser steps), with the default configuration otherwise (@tab-params): 64,512 runs in all. @fig-best-tile shows the measured best tile $(T_M^*, T_N^*)$ and the tile the model picks, using $alpha$ from the $g_c = 0$ runs.
 
 #figure(
   image("./figures/fig_best_tile.svg", width: 100%),

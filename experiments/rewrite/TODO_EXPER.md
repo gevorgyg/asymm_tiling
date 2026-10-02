@@ -168,14 +168,422 @@ The user approved all of them; start with small samples.
   - [ ] S5: register block R;
   - [ ] S6: element size.
 - Hardware engineer:
-  - [ ] H1: PRNG speed budget (gc within 5/10 % of free);
-  - [ ] H2: bigger L1 vs faster PRNG;
-  - [ ] H3: FIFO size and the SRAM split;
-  - [ ] H4: is full associativity worth it;
-  - [ ] H5: L2 and memory latency;
-  - [ ] H6: register count.
+  - **Comparison method for all H experiments (the user asked, state it
+    in the text):** "best" = the lowest SIMULATED runtime over the tile
+    grid at that gc, re-chosen per configuration (best vs best, empirical,
+    the model isn't used). Caveats:
+    - best within the grid run (coarse in the small samples);
+    - the "transfer" comparison (FA's best tile run unchanged on 8-way,
+      from Sep 30: +175..616 % on power-of-two shapes) is the software
+      warning, not the hardware question.
+  - **Full grids for H1–H6 run at the END (the user's choice, 2026-10-02):
+    each takes a while.** Until then, small samples only.
+  - [~] H1: PRNG speed budget (gc within 5/10 % of free).
+    `hw_prng_budget.py`, figures/hardware/h1_prng_speed/. Small sample done
+    (2026-10-02): 77 tiles × 19 gc × L1 8/16/32/64 KB, 3 min.
+    Config: see the "Experiment configurations" table, row H1.
+    - Budget (slowdown ≤ 5 %): gc 10 / 20 / 40 / 40 for 8/16/32/64 KB, and
+      80 at 64 KB with 10 %. **It doubles with L1.**
+    - Mechanism (checked): the free-generation tiles are full-width,
+      T_N = N = 256. A row of tiles is one tile, so A is read once whatever
+      T_M is, and alpha ≈ 0.85 as long as the C tile plus one A line per
+      row fits: T_M ≤ L1_lines/(⌈N/16⌉ + 1) = 7.5 / 15 / 30 / 60.
+      Measured alpha(T_M, 256) jumps to 3.6 exactly past it (8 KB: T_M 4 ok,
+      8 not; 16 KB: 12 ok, 16 not; 32 KB: 24 ok, 32 not; 64 KB: 48 ok,
+      64 not).
+    - Generation stays hidden while gc·⌈M/T_M⌉/M ≤ alpha, so
+      budget ≈ alpha_min·M/⌈M/T_M,max⌉ = 0.85·12 ≈ 10 (16 KB), 20 (32 KB),
+      40 (64 KB). The plateaus jump right there (16 KB: 1.000 at gc 10,
+      1.046 at 12).
+    - Rule of thumb for the HW engineer: a fully hidden generator needs
+      gc ≲ 0.85 × L1_lines/(⌈N/16⌉ + 1), i.e. ≈ L1 bytes / 1300 for N = 256.
+      Doubling L1 doubles the allowed generation time (halves the
+      generators needed).
+    - **Y-axis (the user asked what it is):** T*(gc)/T*(0) for the same
+      cache. T* = the runtime of the BEST tile at that gc, so it's the
+      slowdown caused by generation cost even with optimal tiling. With
+      free generation all four caches give ~0.84–0.87 cycles/MAC: a
+      bigger L1 barely helps when the PRNG is free and only pays off once
+      generation costs something. Consider relabeling the y-axis "best
+      runtime / best runtime at gc = 0".
+    - **Why bigger L1 → lower slowdown (explained to the user, use in the
+      text):**
+      - Height is what saves generation (B once per row of tiles), and L1
+        is what caps the height (the C tile + an A line per row must fit,
+        or alpha 0.85 → 3.6).
+      - So the best tile is as tall as the cache allows, and a bigger cache
+        allows a taller one: 4 / 12 / 24 / 48 rows at full width →
+        generation gc/4, gc/12, gc/24, gc/48 per MAC, hidden while gc ≲
+        3.5 / 10 / 20 / 40.
+      - The cache doesn't make tall tiles better by itself; it enables the
+        height that the generator cost pushes for.
+      - Past the budget the tile must grow taller than fits, and then T_N
+        shrinks to keep fitting (F5's "taller and narrower" path).
+      - The 8 KB line already rises at gc = 4 (+2.7 %), consistent with its
+        3.5 budget.
+    - The coarse grid OVERESTIMATES the slowdown between plateaus. 16 KB
+      at gc 25: coarse 1.149×, dense F5 grid 1.098× (32×88). The 10 %
+      budget at 16 KB is gc 26 (dense), not 20. The plateau budgets
+      (≤ 5 %) are the same. The full run needs the dense T_M/T_N.
+  - [~] H2: bigger L1 vs faster PRNG. `hw_l1_vs_prng.py`,
+    figures/hardware/. No new runs: it reuses hw_prng_budget's runs.
+    Config: row H2 (= H1's grid). Small sample done 2026-10-02.
+    - **Finding: doubling L1 and halving gc are interchangeable.**
+      T*(2·L1, gc) = T*(L1, gc/2) within 0.6 % for every point from 16 KB
+      up. Halving gc means a PRNG twice as fast, or a second generator.
+      Upgrade speedups match pairwise (e.g. 16 KB at gc 40: ×2 L1 1.30, gc/2
+      1.29).
+    - **Mechanism (checked on the best tiles):** the best tile at
+      (2·L1, gc) is the best tile at (L1, gc/2) with TWICE the height and
+      the same width: (24,128) vs (12,128), (64,32) vs (32,32),
+      (96,128) vs (48,128).
+      - Doubling L1 lets twice the rows fit at the same width with the same
+        alpha: 3/16 L1 accesses per MAC, A read N/T_N times, C still fits.
+      - Twice the rows halves the rows of tiles, so it halves the
+        generation per MAC: gc·⌈M/T_M⌉/M.
+      - So (L1, gc) → (2·L1, 2·gc) with T_M → 2·T_M keeps the runtime: T*
+        depends only on gc/L1.
+      - On a log gc axis each L1 doubling shifts the curve right by
+        exactly ×2 (the figure shows it).
+    - **Where it breaks:**
+      - 8 KB → 16 KB at low gc (−2.4 % to −4.9 %): the 8 KB fit tile is
+        T_M = 4 = R_M, and small tiles have a slightly higher alpha
+        (0.869).
+      - 32 → 64 KB at gc 100 (+7.1 %): the doubled tile 128 can't halve the
+        rows of tiles of M = 192 (⌈192/128⌉ = 2, not 1.5). The finite M
+        caps it, and a bigger M would extend the range.
+    - **Answer for the HW engineer:** both upgrades buy the same speed, so
+      pick the cheaper one in area/power. Doubling L1 costs SRAM
+      (16 → 32 KB is +16 KB); doubling generator throughput costs one more
+      PRNG. (No area numbers are cited yet; find a reference before
+      claiming which is cheaper.) A bigger L1 also helps workloads without
+      a PRNG; a second generator helps only this one. Neither helps if gc
+      is already below the H1 budget.
+    - Coarse-grid caveat as in H1 (the grid is closed under doubling T_M:
+      12/24/48/96, 4/8/16/32/64/128). The full grid will confirm.
+    - **Figure: NONE (the user's choice).** The H2 figure (absolute
+      runtime, log x) was nearly the same plot as H1's and was removed.
+      **H1's figure (slowdown, linear gc) answers both questions:**
+      - H1: where each line crosses the 5 % line;
+      - H2: each L1 doubling STRETCHES the curve to twice the width
+        (plateau ends 10 → 20 → 40 → 80; 8 KB jumps to 1.33× at gc ≈ 20,
+        16 KB to 1.35× at gc ≈ 40).
+
+      Caveat for the text: the y-axis is normalized by each cache's own
+      T*(0) (0.869 / 0.848 / 0.843 / 0.841), so the stretched lines match
+      within ~3 %. The exact equivalence (≤ 0.6 %) is in
+      out/hw_l1_vs_prng/README_small.md, and the script now only writes
+      that table.
+    - Report: H1 + H2 = ONE section ("the PRNG and the L1 together") with
+      the H1 figure + the budget table + the equivalence numbers.
+  - [~] H3: FIFO size. `hw_fifo_size.py`, figures/hardware/h3_fifo_size/.
+    Config: row H3. Small sample done 2026-10-02 (2 min). Figure dirs are
+    now one per question: hardware/h1_prng_speed/, h3_fifo_size/ (the user
+    asked).
+    - **FIFO model (src/prngfifo.cpp):** at a pop the generator has made
+      elapsed/gc elements, capped at capacity. While the FIFO is full the
+      generator PAUSES and that time is lost. If a pop needs more than is
+      stored, the core stalls. load_seed() empties it at every tile.
+    - **Result (best runtime over tiles, vs a 16384 FIFO):**
+      - no FIFO needed at gc 5 and 40;
+      - 128 elements (512 B) within 1 % at gc 60/100 (1.2 % at 200);
+      - 256 (1 KB) at gc 20/30/200;
+      - gc 10 needs 2048 (8 KB) for 1 %, and 256 still loses 3.2 %.
+      - A 16-element FIFO (one register block) loses up to 32 % (gc 200).
+    - **Mechanism (verified exactly):**
+      - Between two pops the core does T_M/4 register blocks; with all
+        hits that's 12 accesses × 4 cycles each = 12·T_M cycles (+2 for
+        the pop). Generating the next 16 elements takes 16·gc.
+      - If gc ≤ 0.75·T_M the generator keeps up even through runs of hits:
+        no buffer needed.
+      - Otherwise it falls behind during the runs of hits and can only
+        catch up by banking elements during the runs of misses, and that
+        needs capacity.
+      - Test on 64×32, capacity 16 vs 16384: no loss up to gc 48
+        (= 0.75·64), +1.1 % at 49, +2.5 % at 50, +5 % at 52. The stall rate
+        jumps from 0.2 % (tile starts only) to 27 % at 49 and 97 % at 52.
+      - The table matches: (12,256) threshold 9, so gc 5 needs no buffer
+        but 10 does; (64,32) threshold 48, so 40 doesn't but 60 does.
+    - **So the FIFO is what makes max() hold.** Perfect overlap within a
+      tile needs a buffer that covers the generator's surplus during miss
+      bursts. Even generation-bound tiles (gc 200, 96×16) lose 32 % without
+      one, because the generator pauses whenever it is full.
+    - **gc 10 anomaly (needs 2048–4096). HYPOTHESIS, NOT VERIFIED (needs a
+      per-pop FIFO-level trace = C++ change); explained to the user:**
+      - The best tile 12×256 is at near-balance (B = 10/12 = 0.833 vs alpha
+        0.849), so the generator must run almost all the time, and any
+        pause on a full FIFO is lost.
+      - 24×128 at gc 20: every 4 k-blocks the 24 A-line misses (~4.4k
+        cycles) bank ~220 elements, and the next 4 k-blocks (128 pops,
+        deficit ~1.6 elements/pop) need ~205. Periodic banking covers it,
+        so ~256 is enough. ✓
+      - 12×256 at gc 10: the A burst is 12 lines (~2.2k cycles, ~220
+        elements), but 4 k-blocks = 256 pops (T_N = 256 → 64 pops/k-block)
+        with deficit ~1.4/pop ≈ 360. The rest must come from the tile's
+        initial C-tile load (192 lines ≈ 35k cycles → ~3.5k elements
+        bankable), which needs capacity of that size. ✓ roughly (2048 →
+        0.6 %, 4096 → 0, slow decline from 3.2 % at 256).
+      - General rule (if true): the capacity needed is about one periodic
+        miss burst's worth if those bursts cover the deficit in between
+        (hundreds of elements); otherwise about the initial C-load burst
+        (thousands).
+    - **Bigger register blocks (the user asked).** Prediction from the
+      code: the hit time per pop is 12·T_M, independent of R, while
+      generation per pop is R²·gc. So no buffer is needed only if
+      gc ≤ 12·T_M/R² (R 2: 3·T_M; 4: 0.75·T_M, verified; 8: 0.19·T_M), and
+      the minimum capacity is R². The user's reading: "the lines shift
+      right" (more capacity needed). **CONFIRMED** by the check run (R
+      2/4/8 × capacities × gc 5,10,20,60,200 × the coarse tiles,
+      out/hw_fifo_size/results_regdim_small.json; 11550 runs, best tile
+      per capacity):
+      - R = 2: capacity irrelevant (16 enough; 32 at gc 200). alpha = 3.13
+        everywhere (3/R² = 0.75 accesses/MAC), so it's always memory-bound
+        and generation is always hidden.
+      - R = 4: as before (128–256; 2048 at gc 10).
+      - R = 8: needs 256–512 at EVERY gc, even gc 5. 16 elements cost
+        1.32–1.55× (and 16/32 < R² = 64 can't even hold one block). Best
+        runtimes are much lower: 0.32 at gc 5, 0.59 at gc 20 (alpha falls
+        as 3/R² accesses/MAC). Relevant to S5/H6.
+      - (Curiosity: R 8 at gc 200 has exactly the same slowdowns as R 4,
+        1.32/1.26/1.13/1.01. Not checked.)
+      - For the HW engineer: size the FIFO with the register block, at
+        roughly ≥ 4–8 register blocks (R = 8: 256–512 elements = 1–2 KB).
+    - **For the HW engineer:** ~256 elements (1 KB of 4-byte B) is enough
+      within 1 % almost everywhere, and 1024 (4 KB) within 2.1 %. The
+      default 16384 elements = 64 KB is far more than needed, so in a fixed
+      SRAM budget almost everything should go to L1. That makes the SRAM
+      split (planned H3 part 2) nearly trivial; maybe a short check later.
+    - **Y-axis (the user asked "best with 16k vs best with what?"):**
+      (best runtime over all tiles with the x-axis FIFO size) / (best
+      runtime over all tiles with 16384, which never fills = unlimited),
+      same gc, tile re-chosen per size. Relabeled "slowdown vs an
+      unlimited FIFO".
+      - Example gc 200: 96×16 at 2.087 with the unlimited FIFO; with 16
+        it's 2.75 (1.32×), with 128 it's 2.11 (1.012×).
+      - The caption must spell this out.
+    - Figure: 8 gc lines is crowded, and gc 5 is hidden under gc 40 (both
+      1×). For the final version consider fewer lines (10, 20, 30, 60,
+      100, 200).
+  - [~] H4: is full associativity worth it. `hw_assoc.py`,
+    figures/hardware/h4_associativity/. Config: rows H4. Done 2026-10-02.
+    - **Part 1 (no new runs, model_sweep + assoc_sweep, best tile per
+      cache):** set-associativity is nearly free on non-power-of-two shapes
+      (100³, 200×300×250, 150×222×190: median 0.1–3.9 %, max 23–60 %), but
+      3–7× slower on power-of-two shapes (192×256×256, 384×256×512,
+      256×512×128: median +176 to +255 %, max +739 %). 8-way and 4-way are
+      IDENTICAL on those shapes.
+    - **Mechanism (verified):**
+      - The row stride is 256 × 4 B = 1 KB = 16 lines. At 16 KB the 8-way
+        cache has 32 sets, so row i → set 16i mod 32: only 2 sets. 2 sets ×
+        8 ways = 16 lines; 4-way: 64 sets → 4 sets × 4 ways = 16 lines too
+        (hence identical).
+      - Only ~16 rows of one tile column fit, whatever the associativity.
+      - alpha on 8-way (T_N 32): 0.855 at T_M 8, 2.33 at 12, 2.47 at 16,
+        21.9 at 20, 23.3 from 24 (fully assoc: 0.85–1.15).
+      - Tall tiles are unusable, so generation can't be amortized: at gc 100
+        the best 8-way tile is 16×256 at 6.27 vs 96×16 at 1.50 fully
+        associative.
+      - At gc ≤ 5 there's no penalty (+1 %): small tiles suffice there.
+    - **Padding fixes it** (emulated by K = N = 272, since the simulator
+      has no leading-dimension stride; this also adds ~6 % work):
+      - 272 = 17 lines (odd): the 8-way equals fully associative at every
+        gc with the same tiles, except +5 % at gc 15 and +9 % at gc 20
+        (unexplained). 4-way within 1 % except +7 % at gc 10 and +5–9 % at
+        gc 15–20.
+      - 260 = 16.25 lines (a poor pad): still +13–40 %. The pad must make
+        the row an ODD number of lines, so consecutive rows walk through all
+        sets.
+    - **Answer for the HW engineer:** a fully associative cache or a
+      scratchpad buys almost nothing IF the software pads the rows (odd
+      number of lines). Without padding, power-of-two matrices make 8- and
+      4-way caches 3–7× slower whenever generation costs ≥ 10 cycles/element,
+      and more ways don't help (8-way = 4-way). So the scratchpad protects
+      against unpadded software; padding is the cheap fix.
+    - **Software counterpart (for S3/S-list):** pad leading dimensions to an
+      odd number of cache lines.
+    - **Padding explained to the user (use in the text):** store each row
+      with extra unused elements, so the row STRIDE changes but the matrix
+      (256 used columns) doesn't.
+      - Unpadded: row i starts at line 16i, set = 16i mod 32 → sets
+        0, 16, 0, 16, …: 2 of 32 sets, 30 idle.
+      - Padded to 272 (17 lines): row starts 0, 17, 34, 51, 68 → sets
+        0, 17, 2, 19, 4, …: all 32 sets before repeating, because 17 is
+        odd (coprime with the power-of-two number of sets). An even number
+        of lines visits only some sets (16 → 2 of 32, 24 → 4).
+      - Cost: ~6 % more memory, no extra compute (the pad is never
+        touched). It's the BLAS "leading dimension".
+      - Our emulation (K = N = 272) also adds 6 % work; a true pad needs a
+        row-stride parameter in the C++ (ask first).
+    - Possible follow-up: a real leading-dimension parameter in the C++
+      (ask first) to test true padding without the extra work.
+  - [~] H5: L2 and memory latency. **SPLIT into two experiments (the user
+    asked, 2026-10-02):**
+    - H5a "does an L2 help?" → `hw_l2.py`, figures/hardware/h5a_l2/;
+    - H5b "does memory latency matter?" → `hw_memory.py`,
+      figures/hardware/h5b_memory/.
+
+    The combined `hw_l2_memory.py` and its out/figures were removed; its
+    runs were copied into out/hw_l2 and out/hw_memory (no re-run). H5a
+    then got more L2 sizes (the user asked): 32/64/128/256/512 KB fully
+    associative + 64 KB 8-way. Config: rows H5a, H5b. First sample
+    2026-10-02 (2 min). Exactly what was run (explained to the user):
+    - fixed: 192×256×256, B-stationary, R 4, FIFO 16384, 16 KB FA L1;
+    - 77 coarse tiles × gc 0,5,10,20,30,50,100,200;
+    - best = lowest simulated runtime over the 77 tiles per configuration
+      and gc;
+    - the memory mechanism was checked by hand with alpha = 0.75 +
+      latency·misses/MAC + FIFO, using misses/MAC from the 180-cycle runs.
+    - **Memory latency (100/180/300/400, no L2).** MY PREDICTION WAS
+      WRONG: I expected "slower memory hides generation better". It's the
+      opposite in the middle range. The slowdown vs its own gc 0 at gc 50 is
+      1.20 / 1.35 / 1.56 / 1.64×, at gc 30 1.16 / 1.15 / 1.24 / 1.30×.
+      - **Mechanism (verified with alpha = 0.75 + latency·misses/MAC +
+        FIFO):**
+        - Small tile 12×32: 0.00049 misses/MAC → predicted 0.955 at 400,
+          measured 0.956.
+        - Tall tile 64×32: 0.0022 misses/MAC (4.5×; A re-read N/T_N = 8
+          times) → predicted 0.972 / 1.632 at 100 / 400, measured 0.973 /
+          1.635.
+        - Generation forces taller tiles, taller tiles miss more, and slower
+          memory makes each miss costlier. So a slow memory makes the PRNG
+          matter MORE.
+      - At gc 0 latency matters little: 0.81 → 0.96 (+18 % for 4× the
+        latency), because small tiles barely miss.
+      - Generation-bound (gc 200): 2.087 for 100–300 (= gc/96, memory
+        irrelevant); 400 → 2.42 (that tile's alpha exceeds B).
+    - **L2 (16 KB L1, 14-cycle L2, memory 180):**
+      - It helps only in the middle range, where tall tiles are needed. At
+        gc 30 / 50 / 100: no L2 0.975 / 1.149 / 1.503; 64 KB FA 0.873 /
+        1.042 / 1.109; 256 KB FA 0.872 / 0.872 / 1.062 (−10 / −24 / −29 %).
+      - The L2 catches the A re-reads and C reloads of tall tiles, so tall
+        tiles get cheap and generation is amortized. 256 KB holds a 64-row
+        A tile (64 KB) plus C; 64 KB doesn't (gc 50: 1.042 vs 0.872).
+      - gc ≤ 10: the L2 is slightly WORSE (0.848 → 0.853): compulsory
+        misses pay 14 extra cycles and there's nothing to reuse.
+      - gc 200 (generation-bound): no help (2.084–2.087).
+      - **64 KB 8-way L2: the H4 conflict again.** 128 sets, row stride 16
+        lines → 8 sets × 8 ways = 64 lines per column. gc 30–50 helps less
+        than FA (0.951 vs 0.873); gc 100 is WORSE than no L2 (1.561 vs
+        1.503): +14 cycles per miss and no hits. Padding should fix it
+        (untested).
+    - **More L2 sizes (32–512 KB FA, the user asked; 1848 runs):** the
+      benefit SATURATES at 128 KB. 128/256/512 are identical at every gc
+      (−11 / −24 / −29 % at gc 30 / 50 / 100).
+      - 32 KB: +2 / −9 / −20 %; 64 KB: −10 / −9 / −26 %.
+      - The gain grows until the L2 holds the A tile of the tall tile that
+        generation needs, ≈ T_M·K·4 B = 64–96 KB for T_M 64–96 (gc 100
+        best (96,256) → 96 KB A tile < 128 KB). Beyond that there's
+        nothing to catch.
+      - All L2s cost +1 % at gc 0–10 and 0 % at gc 200.
+      - Rule: size the L2 for the A tile of the tallest tile you need
+        (T_M·K·elem). Hypothesis from the sizes, not separately verified
+        with miss counts.
+    - **Answer for the HW engineer:**
+      - An L2 is worth it only for mid-range generation costs (gc ~30–100
+        here), and only if it's big enough for a tall A tile (≥ T_M·K·4 B)
+        and conflict-free (padded rows, or high associativity).
+      - Memory latency barely matters when the PRNG is fast; with a slow
+        PRNG, a slower memory hurts more than proportionally, because the
+        tiles must be taller.
+    - Figures: hw_memory is readable. hw_l2: the 8-way line crossing is
+      readable; the coarse gc steps (50 → 100 → 200) make straight
+      segments. The full run has denser gc.
+  - [~] H7 (added by the user 2026-10-02): does the MAC cost change the
+    conclusions? `hw_mac_cost.py`, figures/hardware/h7_mac_cost/. Config:
+    row H7.
+    - Semantics (src/multi_unit.cpp:83): mulacc() ticks c cycles once per
+      register-block multiply = R³ MACs, so c/64 per MAC at R 4. It's in
+      series with the loads/stores, while the PRNG generates in the
+      background, so compute hides generation like memory does.
+    - Predictions (stated before the run):
+      1. +c/64 per MAC on every tile, so the best tile at gc 0 doesn't
+         change;
+      2. a bigger alpha hides generation longer → bigger PRNG budget,
+         taller tiles later (so c = 0 is the worst case for the PRNG's
+         importance);
+      3. generation-bound runtime is unaffected until alpha + c/64 > B.
+    - Note: src/config.h defaults mulacc_cost to 4, but config.toml and the
+      harness use 0. Offered to align them (C++, ask first).
+    - **Small sample done 2026-10-02 (1 min). All three predictions hold
+      exactly:**
+      1. gc 0: 0.848 → 0.911 / 1.098 / 1.848 (+0.0625 / +0.25 / +1.000),
+         the best tile always 12×32. ✓
+      2. c = 64 (1 cycle/MAC) is flat to gc 20 (c = 0: 10). The slowdown at
+         gc 50 is 1.35 / 1.33 / 1.27 / 1.07× for c 0 / 4 / 16 / 64, and at
+         gc 100 1.77 / 1.72 / 1.42 / 1.16×. The tiles go taller later
+         (c = 64 is still 12×256 at gc 20). ✓
+      3. gc 200: c 0/4/16 all 2.087 (generation-bound, = gc/96). c = 64:
+         2.507 = alpha(96×16) 1.499 + 1 + FIFO > B 2.083, now compute-bound.
+         gc 100: c 4 and 16 both 1.565 = B of 64×32 (100·3/192 = 1.5625). ✓
+    - **Message for the text:** c = 0 (our default) is the WORST case for
+      how much the PRNG matters. With real compute, part of the generation
+      hides behind arithmetic: with 1 cycle/MAC (scalar), even gc 50 costs
+      only 7 %.
+      - The budget scales with the total per-MAC work (memory + compute):
+        gc ≲ (alpha + c/R³)·T_M,max.
+      - The best tiles, the cliffs and the mechanisms are unchanged, so the
+        qualitative conclusions of every experiment hold; only the gc
+        thresholds move up.
+      - Caution for H6: the simulator charges c per register block, so the
+        compute per MAC is c/R³ and would ALSO shrink with bigger R. On a
+        real machine the compute per MAC is fixed by the MAC unit. If H6
+        is rerun with c > 0, scale c with R³ (c = cycles/MAC · R³) to keep
+        the compute per MAC fixed; otherwise bigger R gets an unrealistic
+        compute discount. H6 ran with c = 0, so it's unaffected.
+  - [~] H6: register count. `hw_registers.py`,
+    figures/hardware/h6_registers/. Config: row H6. Small sample done
+    2026-10-02 (2.5 min). R × R register block ≈ 3R² registers (12 / 48 /
+    192 / 768). Unlimited FIFO (solid) vs 1 KB (dashed). Predictions
+    (stated to the user before the run) vs results:
+    1. **Bigger R → much cheaper memory side. ✓**
+       - gc 0: 3.130 / 0.848 / 0.278 / 0.135 cycles/MAC for R 2/4/8/16.
+       - Formula: hits 12/R² + misses 180·0.00049 (12×32) + FIFO
+         2/(R²·T_M) = 3.13, 0.84, 0.28, 0.135 ✓.
+    2. **Generation stops being hidden at smaller gc. ✓**
+       - R 4 is flat to gc 10; R 8 is +15 % at gc 5; R 16 is +55 % at gc 5.
+       - Bigger R shrinks alpha but not generation, so the PRNG budget
+         gets tighter.
+    3. **"At high gc R doesn't matter": WRONG.** gc 200: R 16 1.457 vs
+       2.084–2.087 for R 4/8. Mechanism (verified with miss counts):
+       - A tile that overflows L1 completely misses on every load:
+         misses/MAC = 2/R² (192×256: 0.5 / 0.125 / 0.031 / 0.0078 for R
+         2/4/8/16).
+       - So the thrash cost falls as 1/R². R 16: 192×256 costs 1.45 vs 23.3
+         at R 4.
+       - That makes ONE row of tiles (T_M = M, B generated once,
+         gc/192) affordable.
+       - The registers act like an extra cache level and soften the
+         L1-fit limit. With R 16, 96×256 has the same misses/MAC as
+         96×16 (0.00415): the second cliff is gone.
+    4. **A small FIFO eats big-R gains at low gc. ✓**
+       - With 1 KB, R 16 ≈ R 8 at gc 5–30 (0.312 vs 0.321 at gc 5, was
+         0.209 with unlimited). 256 elements = one R = 16 block, so no
+         banking is possible.
+       - R ≤ 8 barely affected.
+    - R = 2 is memory-bound everywhere (3.13–3.41): generation never
+      matters, everything is slow.
+    - **Answer for the HW engineer:**
+      - More registers are the biggest single lever (R 4 → 8 is 3× faster
+        at gc 0, and still 1.5× at gc 50–100).
+      - But (a) the PRNG must keep up, since bigger R tightens its budget,
+        and (b) the FIFO must grow with R (≥ several R² blocks; R 16 with
+        1 KB loses most of the gain at low gc).
+      - At high gc, R = 16 helps by making whole-column tiles affordable.
+    - Caveat: MAC cost = 0, so the runtime is data movement only. Bigger
+      blocks don't reduce real arithmetic, so the gains are an upper
+      bound.
 
 Details are in the memory note project_next_customer_config.
+
+Report TODO (the user asked, 2026-10-02): **describe the cache-line access
+grain in the Architecture section.**
+- `MultiUnit::calculate_addr` (src/multi_unit.cpp:136) issues ONE cache
+  request per cache line touched per register-block row: a 4×4 block =
+  4 requests, not 16.
+- A 4-element row is 16 B, columns start at multiples of 16 B and the base
+  is line-aligned, so a row never straddles a line: always exactly 1
+  line.
+- This is what makes the "3·R_M accesses per R_M³ MACs" count in §3.3.
 
 Also open:
 - write report §3.5 (Refining The Model), §3.7 (Set-Associative), §4
@@ -204,6 +612,49 @@ explanations later" hard to read.
 - 5 Conclusion (TODO)
 
 The TODO sections have `//` outlines in main.typ.
+
+### Experiment configurations (the user asked, 2026-10-02)
+
+Every experiment entry must record its configuration: the base setup, what
+differs from it, the sweep values and the run count. Every report
+experiment section states it too. Values below were read from the scripts
+and `harness.py`.
+
+**Base setup**, used unless a row says otherwise (`harness.Params`
+defaults, and every script passes `l1_assoc=-1`):
+- B-stationary (`orientation=weight`), B from the FIFO;
+- M×K×N = 192×256×256, 4-byte A, B and C;
+- register block 4×4, MAC cost 0;
+- 64-byte lines;
+- L1: 16 KB (`l1_size=14`), fully associative, LRU, write-back,
+  write-allocate, 4 cycles;
+- no L2 (`l2_size=0`); memory 180 cycles;
+- FIFO: 16384 elements, 2 cycles per pop, 8-byte seeds.
+
+(`Params.l1_assoc` defaults to 8, i.e. 256 ways, which is also fully
+associative at 16 KB.)
+
+| Exp | Script (out/ dir) | Differs from base | T_M | T_N | g_c | Runs |
+|---|---|---|---|---|---|---|
+| F2 alpha | fig_alpha | – | 4..128 step 4 | 4, 8, 16, 32, 64 | 0 | 160 |
+| F3 mem vs gen | fig_model | – | 4..128 step 4 | 32 | 0, 30, 200 | 96 |
+| F4 dataflow | fig_dataflow | both dataflows | 64 | 32 | 0..100 step 1 | 202 |
+| F4 best vs best | fig_dataflow (results_best) | both dataflows | 4, 8..128 step 8 | 4, 8, 16, 32, 64 | 0,1,2,3,4,5,6,8,10,15,20,30 | 2040 |
+| F4b ratio | fig_dataflow_ratio | both dataflows | 4, 8, 16, 32, 64, 128 | 32 | 0..100 step 1 | 1212 |
+| F5 best tile | fig_best_tile | – | 4..192 step 4 | 4..128 step 4 | 0–10, 12–20 step 2, 23, 26, 30, 35–50 step 5, 60–100 step 10, 120–200 step 20, 230, 260, 300, 350–600 step 50 (42 values) | 64512 |
+| F6 vs square | fig_vs_square | reuses the F5 runs | 4..192 step 4 | 8, 16, 32, 64, vs T_M = T_N | as F5 | 0 new |
+| F7 model accuracy | model_sweep, assoc_sweep, + F5 | L1 8/16/32 KB; 6 matrices (192×256×256, 100×100×100, 200×300×250, 384×256×512, 256×512×128, 150×222×190); FIFO 2·K·64 elements; L1 fully assoc / 8-way / 4-way | 4,8,12,16,20,24,32,40,48,64,80,96,128 | 4,8,12,16,24,32,48,64 | 0 (calibration) + 2,5,10,15,20,30,50,75,100,200,400 | 3 × 22176 |
+| H1 PRNG budget (small) | hw_prng_budget (results_small) | L1 8/16/32/64 KB | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,1,2,3,4,5,6,8,10,12,15,20,25,30,40,50,60,80,100 | 5852 |
+| H2 L1 vs PRNG (small) | hw_l1_vs_prng (reads hw_prng_budget's results_small; table only, no figure) | as H1 | as H1 | as H1 | as H1 | 0 new |
+| H3 FIFO size (small) | hw_fifo_size (results_small) | FIFO capacity 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 16384 elements | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 5,10,20,30,40,60,100,200 | 6160 |
+| H3 threshold check | (scratch run, not kept) | 64×32 tile; FIFO 16 vs 16384 | 64 | 32 | 40,44,46,47,48,49,50,52,56,60 | 20 |
+| H3 register blocks (small) | hw_fifo_size (results_regdim_small), run by the user in the background | R = 2/4/8 × FIFO capacities as H3 | as H3 | as H3 | 5,10,20,60,200 | 11550 |
+| H5a L2 (small) | hw_l2 (results_small) | L2 none / 32 / 64 / 128 / 256 / 512 KB fully assoc / 64 KB 8-way, 14 cycles; memory 180 | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 4312 |
+| H5b memory (small) | hw_memory (results_small) | memory 100 / 180 / 300 / 400 cycles, no L2 | as H5a | as H5a | as H5a | 2464 |
+| H6 registers (small) | hw_registers (results_small) | register block R = 2/4/8/16 (≈ 3R² registers); FIFO 16384 (unlimited) and 256 (1 KB) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 4928 |
+| H7 MAC cost (small) | hw_mac_cost (results_small) | mulacc_cost c = 0/4/16/64 cycles per 4×4×4 block (= 0, 1/16, 1/4, 1 cycle/MAC) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 2464 |
+| H4 part 1 | hw_assoc (reads model_sweep + assoc_sweep) | as F7: 3 L1 × 6 matrices × fully assoc / 8-way / 4-way | as F7 | as F7 | as F7 | 0 new |
+| H4 part 2 (padding) | hw_assoc | M = 192, K = N ∈ {256, 260, 272}; L1 16 KB fully assoc / 8-way / 4-way | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,K | 0,2,5,10,15,20,30,50,75,100,200 | 7623 |
 
 ### Figures and insights (Experiments / Findings)
 
