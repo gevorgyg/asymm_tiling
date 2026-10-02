@@ -16,6 +16,7 @@ struct MyOptions : public CLI::App {
     uint32_t n;
     uint32_t small_percision;
     uint32_t ratio;
+    bool aligned;
 
     // prnf fifo options
     size_t capacity;

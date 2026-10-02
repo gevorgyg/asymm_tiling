@@ -87,6 +87,7 @@ k = 100               # Inner dimension
 n = 100               # Matrix B width / Matrix C width
 small_percision = 1   # Low-precision element size in bytes (e.g. 1 for INT8)
 ratio = 4             # Precision ratio between high and low precision (high / low)
+aligned = false       # Pad rows and matrix bases to whole cache lines
 
 [fifo]
 capacity = 16384      # PRNG-FIFO depth in elements
@@ -133,6 +134,7 @@ policy = "lru"        # Replacement policy: "lru", "fifo", "mru" or "random"
 | `-n`, `--matrix-width` | `UINT` | Matrix $N$ dimension (width of $B$ and $C$) |
 | `-p`, `--small-percision` | `1, 2, 4, 8` | Element precision in bytes for low-precision matrix |
 | `-r`, `--ratio` | `UINT` | Ratio of high precision to low precision |
+| `--aligned` | Flag | Pad every matrix row and base to whole cache lines (default: rows packed, B / C 4-byte aligned after the previous matrix) |
 | `-B`, `--BSource` | `memory` \| `fifo` | Operand $B$ source (DRAM memory or PRNG FIFO) |
 | `--th`, `--tile-height` | `UINT` | Tile height dimension |
 | `--tw`, `--tile-width` | `UINT` | Tile width dimension |

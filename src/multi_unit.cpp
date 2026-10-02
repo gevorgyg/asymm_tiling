@@ -15,8 +15,10 @@ MultiUnit::MultiUnit(const MyOptions& options)
       tile_w_(options_.tile_w), tile_h_(options_.tile_h)
 {
     // create matrices
-    MatrixFactory mat_factory{options.m, options.k, options.n,
-                              options.small_percision, options.ratio};
+    MatrixFactory mat_factory{options.m,     options.k,
+                              options.n,     options.small_percision,
+                              options.ratio, cache_line_size_,
+                              options.aligned};
 
     auto mats = mat_factory.create_mats();
 
@@ -111,13 +113,12 @@ void MultiUnit::tile_mul(MultiplyMode mult_func)
     const size_t seed_size = prng_fifo_.seed_size();
 
     for (int row = 0; row < ceil(a_.height, tile_h_); ++row) {
-        ta.base = a_.base + (row * a_.width * tile_h_) * a_.elem_size;
+        ta.base = a_.addr(row * tile_h_, 0);
         // the last tile row / column only covers what is left of the matrix
         ta.height = tc.height = std::min(tile_h_, a_.height - row * tile_h_);
         for (int col = 0; col < ceil(b_.width, tile_w_); ++col) {
-            tb.base = b_.base + (col * tile_w_) * b_.elem_size;
-            tc.base = c_.base +
-                      (col * tile_w_ + row * c_.width * tile_h_) * c_.elem_size;
+            tb.base = b_.addr(0, col * tile_w_);
+            tc.base = c_.addr(row * tile_h_, col * tile_w_);
             tb.width = tc.width = std::min(tile_w_, b_.width - col * tile_w_);
 
             if (b_source_ == BSource::fifo) {

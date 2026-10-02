@@ -54,6 +54,7 @@ class Params:
     n: int = 256
     small_precision: int = 4      # B element bytes
     ratio: int = 1                # A and C element bytes = small_precision * ratio
+    aligned: bool = False         # pad rows / bases to whole cache lines
 
     tile_h: int = 16              # TM
     tile_w: int = 32              # TN
@@ -83,6 +84,7 @@ class Params:
             "-o", self.orientation, "-B", self.b_source,
             "-m", str(self.m), "-k", str(self.k), "-n", str(self.n),
             "-p", str(self.small_precision), "-r", str(self.ratio),
+            *(["--aligned"] if self.aligned else []),
             "--th", str(self.tile_h), "--tw", str(self.tile_w),
             "--rd", str(self.reg_dim), "--mc", str(self.mulacc_cost),
             "-c", *map(str, (self.block_size, self.mem_cycles,
@@ -95,7 +97,12 @@ class Params:
         ]
 
     def key(self) -> str:
-        return json.dumps(asdict(self), sort_keys=True)
+        # aligned is left out while False so the keys of runs cached before
+        # the option existed still match
+        d = asdict(self)
+        if not d["aligned"]:
+            del d["aligned"]
+        return json.dumps(d, sort_keys=True)
 
     def fully_assoc(self) -> Params:
         """Same L1 size, one set."""

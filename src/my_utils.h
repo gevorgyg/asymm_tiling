@@ -64,6 +64,15 @@ struct Matrix {
 
     size_t height{};
     size_t width{};
+
+    // bytes between the starts of two consecutive rows; width * elem_size
+    // unless the rows are padded to whole cache lines (--aligned)
+    size_t stride{};
+
+    RawAddr addr(const size_t row, const size_t col) const
+    {
+        return base + row * stride + col * elem_size;
+    }
 };
 
 using Mat3Tuple = std::tuple<Matrix, Matrix, Matrix>;
@@ -77,7 +86,7 @@ struct Tile {
 
     RawAddr get_addr(const size_t row, const size_t col) const
     {
-        return base + (col + row * parent_mat.width) * parent_mat.elem_size;
+        return base + row * parent_mat.stride + col * parent_mat.elem_size;
     }
 };
 

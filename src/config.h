@@ -14,6 +14,7 @@ class Config
     uint32_t n               = 250;
     uint32_t small_percision = 1;
     uint32_t ratio           = 4;
+    bool aligned             = false; // pad rows / bases to cache lines
 
     // prnf fifo options
     size_t capacity        = 16384; // elements

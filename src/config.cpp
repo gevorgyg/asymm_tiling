@@ -37,6 +37,7 @@ Config::Config()
         small_percision =
             tbl["matrix"]["small_percision"].value_or<uint32_t>(1);
         ratio = tbl["matrix"]["ratio"].value_or<uint32_t>(4);
+        aligned = tbl["matrix"]["aligned"].value_or<bool>(false);
 
         capacity        = tbl["fifo"]["capacity"].value_or<size_t>(16384);
         generation_cost = tbl["fifo"]["generation_cost"].value_or<size_t>(10);

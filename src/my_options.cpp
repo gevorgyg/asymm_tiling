@@ -42,6 +42,9 @@ MyOptions::MyOptions(std::string app_description, std::string app_name)
             return ret;
         });
 
+    add_flag("--aligned, --no-aligned{false}", aligned,
+             "pad matrix rows and bases to whole cache lines");
+
     add_option("--fc, --fifo-capacity", capacity,
                "choose fifo capacity in elements");
 
@@ -107,6 +110,7 @@ void MyOptions::apply_config(const Config& config)
     n               = config.n;
     small_percision = config.small_percision;
     ratio           = config.ratio;
+    aligned         = config.aligned;
 
     block_size  = config.block_size;
     mem_cycles  = config.mem_cycles;
