@@ -24,13 +24,23 @@ NAME = "fig_model"
 SMALL = False
 TM = [4] + list(range(8, 129, 8)) if SMALL else list(range(4, 129, 4))
 TN = 32
-GC = [30, 200]
+GC = [30, 100, 200]
 M, K, N = 192, 256, 256
 MNK = M * K * N
 
 
 def b_term(gc: int, tm: int) -> float:
     return gc * -(-M // tm) / M
+
+
+def b_simple(gc: int, tm: float) -> float:
+    return gc / tm
+
+
+# fig_model_simple: the simple model's B term gc / TM (report 3.3.3; the
+# markers break away from it where TM does not divide M); fig_model: the
+# refined staircase gc * ceil(M/TM) / M (report 3.3.4)
+VARIANTS = {"fig_model_simple": b_simple, "fig_model": b_term}
 
 
 def main() -> None:
@@ -40,21 +50,25 @@ def main() -> None:
     t = {(p.gen_cost, p.tile_h): s["Simulation: Total cycles"] / MNK
          for p, s in zip(params, stats)}
 
-    fig, ax = plt.subplots(figsize=(7.0, 4.0))
-    ax.plot(TM, [t[(0, tm)] for tm in TM], label=r"$\alpha$ ($g_c = 0$)", **series(0))
-    for i, gc in enumerate(GC, start=1):
-        dense = list(range(TM[0], TM[-1] + 1))
-        ax.plot(dense, [b_term(gc, tm) for tm in dense], color=SERIES[i],
-                linestyle="--", linewidth=1.4, label=f"B term, $g_c = {gc}$")
-        ax.plot(TM, [t[(gc, tm)] for tm in TM], linestyle="none",
-                label=f"measured, $g_c = {gc}$", **series(i))
+    for name, b in VARIANTS.items():
+        fig, ax = plt.subplots(figsize=(7.0, 4.0))
+        ax.plot(TM, [t[(0, tm)] for tm in TM], label=r"$\alpha$ ($g_c = 0$)", **series(0))
+        # blank legend entry, so that each legend column holds one gc (model above measured)
+        ax.plot([], [], linestyle="none", label=" ")
+        for i, gc in enumerate(GC, start=1):
+            dense = [x / 4 for x in range(4 * TM[0], 4 * TM[-1] + 1)]
+            ax.plot(dense, [b(gc, x) if b is b_simple else b(gc, int(x)) for x in dense],
+                    color=SERIES[i], linestyle="--", linewidth=1.4,
+                    label=f"B term, $g_c = {gc}$")
+            ax.plot(TM, [t[(gc, tm)] for tm in TM], linestyle="none",
+                    label=f"measured, $g_c = {gc}$", **series(i))
 
-    ax.set_xlabel("$T_M$")
-    ax.set_ylabel("cycles / MAC")
-    ax.set_xlim(0, max(TM) + 4)
-    ax.set_ylim(0, 6)
-    legend_above(ax, ncols=3)
-    print(save(fig, "model", NAME + ("_small" if SMALL else "")))
+        ax.set_xlabel("$T_M$")
+        ax.set_ylabel("cycles / MAC")
+        ax.set_xlim(0, max(TM) + 4)
+        ax.set_ylim(0, 6)
+        legend_above(ax, ncols=1 + len(GC))
+        print(save(fig, "model", name + ("_small" if SMALL else "")))
 
 
 if __name__ == "__main__":

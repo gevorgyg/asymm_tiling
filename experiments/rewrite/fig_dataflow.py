@@ -35,7 +35,7 @@ FLOWS = {"B-stationary": "weight", "C-stationary": "output"}
 # best tile over this grid
 BEST_TM = [4] + list(range(8, 129, 8))
 BEST_TN = [4, 8, 16, 32, 64]
-BEST_GC = [0, 1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30]
+BEST_GC = list(range(0, 31)) + list(range(35, 101, 5))
 
 
 def main() -> None:
@@ -90,6 +90,18 @@ def best_vs_best() -> None:
         cyc = s["Simulation: Total cycles"] / MNK
         if key not in best or cyc < best[key][0]:
             best[key] = (cyc, (p.tile_h, p.tile_w))
+
+    # fig_dataflow_best: each dataflow at its own best tile, same axes as fig_dataflow
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    for i, (name, o) in enumerate(FLOWS.items()):
+        ax.plot(BEST_GC, [best[(o, gc)][0] for gc in BEST_GC], label=name + ", best tile",
+                markevery=[j for j, gc in enumerate(BEST_GC) if gc % 10 == 0], **series(i))
+    ax.set_xlabel("$g_c$ (cycles / element)")
+    ax.set_ylabel("cycles / MAC")
+    ax.set_xlim(0, BEST_GC[-1])
+    ax.set_ylim(0, Y_MAX)
+    legend_above(ax, ncols=2)
+    print(save(fig, "dataflow", NAME + "_best"))
 
     lines = ["| gc | B-stationary best tile | C-stationary best tile | faster |",
              "|---|---|---|---|"]

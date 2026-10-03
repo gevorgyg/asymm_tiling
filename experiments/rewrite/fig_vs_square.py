@@ -18,7 +18,7 @@ from dataclasses import replace
 
 import fig_best_tile as fbt
 from harness import Params, out_dir, run_many
-from plot_style import legend_above, plt, save, series
+from plot_style import INK, legend_above, plt, save, series
 
 NAME = "fig_vs_square"
 TN = [8, 16, 32, 64]
@@ -47,14 +47,21 @@ def main() -> None:
     square = {(gc, tn): t[(gc, tn, tn)] for gc in GC for tn in TN}
     gain = {k: 100 * (square[k] - best[k][0]) / square[k] for k in best}
 
+    # the overall best tile against the best square tile of any size
+    squares = [s for s in fbt.TN if s in TM]
+    overall = {gc: min(t[(gc, *tl)] for tl in tiles) for gc in GC}
+    best_square = {gc: min(t[(gc, s, s)] for s in squares) for gc in GC}
+
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, tn in enumerate(TN):
         ax.plot(GC, [gain[(gc, tn)] for gc in GC], label=f"$T_N = {tn}$", **series(i))
+    ax.plot(GC, [100 * (best_square[gc] - overall[gc]) / best_square[gc] for gc in GC],
+            color=INK, linestyle="--", linewidth=2.0, zorder=5, label="best of any size")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g} %"))
     ax.set_ylim(0, 100)
     ax.set_ylabel("time saved vs square tile")
     symlog_gc(ax)
-    legend_above(ax, ncols=len(TN))
+    legend_above(ax, ncols=len(TN) + 1)
     print(save(fig, "tile_choice", NAME))
 
     fig, ax = plt.subplots(figsize=(7.0, 4.0))

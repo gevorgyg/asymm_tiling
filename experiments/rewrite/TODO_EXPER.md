@@ -159,6 +159,23 @@ re-run on the rewrite. Evidence for each item: `SUMMARY.md` and
 ### Next: customer experiments (approved 2026-10-01, start 2026-10-02)
 
 The user approved all of them; start with small samples.
+- **Does the model need re-autotuning per matrix shape? (the user asked
+  2026-10-03; first evidence, feeds S3):**
+  - The generation term has M explicitly. alpha depends on the shape only
+    through K (whether the A tile, T_M·K·4 B, fits: the first cliff),
+    small 1/(16N) and 1/(16K) terms, and the row stride on set-associative
+    caches. Not on M (except the edge row, handled by per-row).
+  - Test (model_sweep cache, FA L1, the 72 tiles with heights dividing
+    both M): alpha of 384×256×512 vs 192×256×256 (same K = 256):
+    - 8 KB median 0.0 % / max 4.1 %; 16 KB 0.3 % / 4.1 %; 32 KB 2.5 % /
+      2.6 %;
+    - the 32 KB 2.5 % = the 1/(16N) A term halving, as predicted;
+    - tiles picked for 384×256×512 with the BORROWED alpha: 0 % loss at
+      all 11 gc, all 3 caches (same as its own alpha).
+  - Conclusion so far: same K + same cache → reuse alpha. Different K →
+    the A-fit cliff moves, so recalibrate (or count, S1). Set-assoc → the
+    padding must match.
+  - Only one pair of shapes so far; S3 should test it properly.
 - Software engineer:
   - [ ] S1: tile without autotuning (counting alpha + per-row formula);
   - [ ] S2: how much autotuning is needed (full / dividing / coarse /
@@ -178,6 +195,16 @@ The user approved all of them; start with small samples.
       warning, not the hardware question.
   - **Full grids for H1–H6 run at the END (the user's choice, 2026-10-02):
     each takes a while.** Until then, small samples only.
+  - **END-OF-PROJECT LONG RUNS (one list):**
+    - [ ] full tile grids for H1, H3, H5a, H5b, H6, H7 (H2 reuses H1, H4
+      is already the full sweep);
+    - [ ] report §3.3.5 "Testing The Refined Model" (added 2026-10-03):
+      - redo fig_model_accuracy with the PER-ROW max;
+      - needs alpha for every short-row height on the 6 matrices × 3 L1
+        grid (fully assoc, 8-way, 4-way): ~20k runs per cache, 1–1.5 h
+        total;
+      - then put the bars (and maybe the balance scatter) into §3.3.5, to
+        show the model holds beyond the default setup.
   - [~] H1: PRNG speed budget (gc within 5/10 % of free).
     `hw_prng_budget.py`, figures/hardware/h1_prng_speed/. Small sample done
     (2026-10-02): 77 tiles × 19 gc × L1 8/16/32/64 KB, 3 min.
@@ -637,12 +664,12 @@ associative at 16 KB.)
 | Exp | Script (out/ dir) | Differs from base | T_M | T_N | g_c | Runs |
 |---|---|---|---|---|---|---|
 | F2 alpha | fig_alpha | – | 4..128 step 4 | 4, 8, 16, 32, 64 | 0 | 160 |
-| F3 mem vs gen | fig_model | – | 4..128 step 4 | 32 | 0, 30, 200 | 96 |
+| F3 mem vs gen | fig_model (two figures: fig_model_simple = gc/T_M for report 3.3.3, fig_model = staircase for 3.3.4) | – | 4..128 step 4 | 32 | 0, 30, 100, 200 (100 added 2026-10-03, the user asked) | 128 |
 | F4 dataflow | fig_dataflow | both dataflows | 64 | 32 | 0..100 step 1 | 202 |
-| F4 best vs best | fig_dataflow (results_best) | both dataflows | 4, 8..128 step 8 | 4, 8, 16, 32, 64 | 0,1,2,3,4,5,6,8,10,15,20,30 | 2040 |
+| F4 best vs best | fig_dataflow (results_best) → figure fig_dataflow_best (added 2026-10-03, the user asked; in report §3.2.1) | both dataflows | 4, 8..128 step 8 | 4, 8, 16, 32, 64 | 0..30 step 1, 35..100 step 5 | 7650 |
 | F4b ratio | fig_dataflow_ratio | both dataflows | 4, 8, 16, 32, 64, 128 | 32 | 0..100 step 1 | 1212 |
 | F5 best tile | fig_best_tile | – | 4..192 step 4 | 4..128 step 4 | 0–10, 12–20 step 2, 23, 26, 30, 35–50 step 5, 60–100 step 10, 120–200 step 20, 230, 260, 300, 350–600 step 50 (42 values) | 64512 |
-| F6 vs square | fig_vs_square | reuses the F5 runs | 4..192 step 4 | 8, 16, 32, 64, vs T_M = T_N | as F5 | 0 new |
+| F6 vs square | fig_vs_square (+ dashed line "best of any size" = overall best vs best square, added 2026-10-03, the user asked) | reuses the F5 runs | 4..192 step 4 | 8, 16, 32, 64, vs T_M = T_N | as F5 | 0 new |
 | F7 model accuracy | model_sweep, assoc_sweep, + F5 | L1 8/16/32 KB; 6 matrices (192×256×256, 100×100×100, 200×300×250, 384×256×512, 256×512×128, 150×222×190); FIFO 2·K·64 elements; L1 fully assoc / 8-way / 4-way | 4,8,12,16,20,24,32,40,48,64,80,96,128 | 4,8,12,16,24,32,48,64 | 0 (calibration) + 2,5,10,15,20,30,50,75,100,200,400 | 3 × 22176 |
 | H1 PRNG budget (small) | hw_prng_budget (results_small) | L1 8/16/32/64 KB | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,1,2,3,4,5,6,8,10,12,15,20,25,30,40,50,60,80,100 | 5852 |
 | H2 L1 vs PRNG (small) | hw_l1_vs_prng (reads hw_prng_budget's results_small; table only, no figure) | as H1 | as H1 | as H1 | as H1 | 0 new |
@@ -702,8 +729,54 @@ F6 optimal vs square, F7 roofline / model accuracy. B/A balance dropped
       3.616 … 0.974 / 0.974; T_M = 100 (T_N 32, 64) 3.915 / 3.916, 3.740 /
       3.740. Within 0.3 % everywhere.
     - The second cliff starts before the limit (T_N 32: rises from
-      T_M 68, the limit is 85). Not explained yet; the report says only
-      "starts a little earlier".
+      T_M 68, the limit is 85). **EXPLAINED AND VERIFIED 2026-10-03 (the
+      user asked why wider tiles have "bigger curves"):** an LRU-order
+      ramp.
+      - Within a k-block the core sweeps col blocks c = 0..T_N/4−1. A C row
+        spans ⌈T_N/16⌉ lines, and line j is last touched at col block
+        4j+3, while the A lines are touched until the last col block. So
+        C's first lines are OLDER than the old A lines.
+      - Every 4 k-blocks the core moves to new A lines. LRU then evicts
+        C's first lines before the dead old A lines, so for those k-blocks
+        the working set is old A + new A + C = (⌈T_N/16⌉ + 2) lines/row.
+      - Ramp from T_M > 256/(⌈T_N/16⌉ + 2) (partial C evictions only in the
+        A-switch k-blocks, growing with T_M). Jump at
+        T_M > 256/(⌈T_N/16⌉ + 1) (the steady state doesn't fit).
+      - With one C line per row (T_N ≤ 16) C is touched as late as A, so
+        there's no ramp.
+      - Verified on the F5 grid (gc 0, step 4), every width matching:
+        - T_N 16: no ramp, jump 128→132;
+        - 32: ramp 64→68, jump 84→88;
+        - 48: 48→52, 64→68;
+        - 64: 40→44, 48→52;
+        - 80: 36→40, 40→44;
+        - 96: 32→36, 36→40;
+        - 128: 24→28, 28→32.
+      - The report §3.3 still says "starts a little earlier"; offered to
+        replace it with this.
+    - **Non-monotone dips (the user asked):** edge tiles. The section text
+      already covers them. The wide-tile dips are big because they swing
+      between the plateau and the ~3.7 cliff.
+    - **The SAWTOOTH after the second cliff on wide tiles (the user
+      asked, 2026-10-03; verified):**
+      α = (full rows · α_thrash + e · α(e)) / 192, with e = 192 − (n−1)·T_M.
+      - Within a band of equal tile-row count n, a taller T_M shrinks the
+        cheap edge tile, so α rises linearly.
+      - At divisors of 192 (64, 96) there's no edge, so α = the full thrash
+        value.
+      - Just past them n drops by one, the leftover is large, and if it
+        fits or is on the ramp α drops.
+      - Once the leftover itself thrashes it's flat.
+      - T_N 64 is reproduced EXACTLY from T_M 48 to 128: 3.22 / 3.40 /
+        3.57 / 3.74 / 3.18 / 3.16 / 3.28 / 3.39 / 3.51 / 3.62 / 3.74, then
+        flat 3.74.
+      - T_N 32: 108–128 ≈ 2.97 (full 3.92 + ramp-regime edge 64–84 rows),
+        e.g. 112: (112·3.92 + 80·1.57)/192 = 2.94 vs 2.97.
+      - Only wide tiles swing, because the gap between thrash (3.7–3.9) and
+        fit (~1) only exists past the second cliff, and narrow tiles
+        (T_N ≤ 16) don't reach it below T_M 128.
+      - Use the table of T_N 64 rows (T_M / rows / full / edge / α) in the
+        report.
     - Edge-tile mix check: T_M 72, T_N 64 → (144·3.74 + 48·1.51)/192 =
       3.18 = measured.
 - [!] **MAJOR (2026-10-01): the max must be taken PER ROW OF TILES, not
@@ -746,6 +819,22 @@ F6 optimal vs square, F7 roofline / model accuracy. B/A balance dropped
           picks T_M 60 (predicted 1.130, measures 1.234); per row picks 64
           (1.148, measured best 1.149). alpha for 60 rows =
           (192·1.129 − 12·0.848)/180 = 1.148.
+      - **How hard is per-row for a user? (the user asked, 2026-10-03;
+        F5 grid, 41 gc):**
+
+        | variant | within 1 % | pick worst | pick median |
+        |---|---|---|---|
+        | max of averages | 76.7 % | 29.0 % | 0 % |
+        | per-row, alpha straight from table (mixed) | 38.7 % | 1.5 % | 0 % |
+        | per-row, un-mixed alpha | 96.1 % | 1.5 % | 0 % |
+        | simple, divisor heights only | 95.1 % | 6.8 % | 0 % |
+
+        - To PICK a tile, the table's mixed alpha is enough: neighboring
+          tiles have the same bias, so the ranking survives. To PREDICT the
+          runtime, un-mix once, α_pure(T_M) = (M·α − e·α_pure(e))/(M − e),
+          smallest heights first. Either way it's a few lines of
+          arithmetic after the calibration.
+        - Offered a sentence for §3.3.5 "Using the model".
       - TODO: redo F7 with per-row max (needs alpha for every edge height:
         the coarse model_sweep grid can't be inverted, the F5 grid can).
 - **F3 in the report (§3.3 "Memory Cost Against Generation Cost",
