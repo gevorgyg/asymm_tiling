@@ -74,6 +74,42 @@ def main() -> None:
               f"runtime / best at {REF}, and the best tile.\n\n" + "\n".join(lines) + "\n")
     (out_dir(NAME) / f"README{'_small' if SMALL else ''}.md").write_text(report)
     print(report)
+    register_blocks(tiles)
+
+
+# larger register blocks need a larger FIFO: the same slowdown, one line per
+# register block size R (each pop takes R^2 elements, the work between two
+# pops does not grow with R)
+# powers of two only (the user's choice): 6 and 12 were also run (cached) but
+# don't divide the tiles, so their blocks are clipped and the trend is irregular
+REG = [2, 4, 8, 16]
+REG_GC = [5, 10, 20, 60, 200]     # what the R sweep ran
+REG_PLOT_GC = [20, 60]            # gc 10 has an unexplained anomaly, at gc 200 R 4 = R 8
+
+
+def register_blocks(tiles: list) -> None:
+    params = [replace(Params(l1_assoc=-1), reg_dim=r, fifo_capacity=cap, tile_h=tm,
+                      tile_w=tn, gen_cost=gc)
+              for r in REG for cap in CAP for gc in REG_GC for tm, tn in tiles]
+    stats = run_many(params, out_dir(NAME) / "results_regdim_small.json")
+    t = {(p.reg_dim, p.fifo_capacity, p.gen_cost, p.tile_h, p.tile_w):
+         s["Simulation: Total cycles"] / MNK for p, s in zip(params, stats)}
+    best = {(r, cap, gc): min(t[(r, cap, gc, *tl)] for tl in tiles)
+            for r in REG for cap in CAP for gc in REG_PLOT_GC}
+
+    fig, axes = plt.subplots(1, len(REG_PLOT_GC), figsize=(7.0, 3.6), sharey=True)
+    for ax, gc in zip(axes, REG_PLOT_GC):
+        ax.axhline(1 + LIMIT, color=INK_2, linewidth=0.8, linestyle=":", zorder=1)
+        for i, r in enumerate(REG):
+            ax.plot(CAP, [best[(r, cap, gc)] / best[(r, REF, gc)] for cap in CAP],
+                    label=rf"${r} \times {r}$", **series(i))
+        ax.set_xscale("log", base=2)
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
+        ax.set_xlabel(f"FIFO capacity (elements), $g_c = {gc}$")
+    axes[0].yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}×"))
+    axes[0].set_ylabel("slowdown vs an unlimited FIFO")
+    legend_above(axes[0], ncols=len(REG))
+    print(save(fig, "hardware/h3_fifo_size", NAME + "_registers_small"))
 
 
 if __name__ == "__main__":

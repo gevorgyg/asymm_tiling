@@ -28,10 +28,11 @@ from dataclasses import replace
 
 import model_sweep as ms
 from harness import Params, out_dir, run_many
-from plot_style import INK_2, SERIES, legend_above, plt, save
+from plot_style import INK_2, SERIES, legend_above, plt, save, series
 
 NAME = "hw_assoc"
-ASSOC = {"fully assoc": -1, "8-way": 3, "4-way": 2}
+ASSOC = {"fully assoc": -1, "4-way": 2, "8-way": 3, "16-way": 4, "32-way": 5}
+SWEEP_ASSOC = {"8-way": 3, "4-way": 2}    # what the 6-matrix sweep (part 1) has
 TM = [4, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192]
 GC = [0, 2, 5, 10, 15, 20, 30, 50, 75, 100, 200]
 PAD = {256: "unpadded (256)", 260: "padded to 260 (16.25 lines)", 272: "padded to 272 (17 lines)"}
@@ -53,7 +54,7 @@ def sweep_part() -> list[str]:
              "Extra time of the best tile on the set-associative cache over the best "
              "tile on the fully associative one.", "",
              "| cache | matrix | median | max |", "|---|---|---|---|"]
-    for name, a in list(ASSOC.items())[1:]:
+    for name, a in SWEEP_ASSOC.items():
         for shape in ms.MATRICES:
             r = [t[(a, *c)] / t[(-1, *c)] - 1 for c in cases if c[1] == shape]
             lines.append(f"| {name} | {shape} | {statistics.median(r):.1%} | {max(r):.1%} |")
@@ -75,28 +76,41 @@ def main() -> None:
             if key not in best or v < best[key][0]:
                 best[key] = (v, (p.tile_h, p.tile_w))
 
+    def extra(k: int, a: int) -> list:
+        return [best[(k, a, gc)][0] / best[(k, -1, gc)][0] - 1 for gc in GC]
+
+    def finish(ax, name: str, ncols: int) -> None:
+        ax.axhline(0, color=INK_2, linewidth=0.8, zorder=1)
+        ax.set_yscale("symlog", linthresh=0.1, linscale=0.5)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{100 * v:g} %"))
+        ax.set_ylim(-0.02, 8)
+        ax.set_xlabel("$g_c$ (cycles / element)")
+        ax.set_ylabel("extra time vs fully associative")
+        legend_above(ax, ncols=ncols)
+        print(save(fig, "hardware/h4_associativity", name))
+
+    # how bad it is: our (unpadded) matrix on 4- to 32-way caches. 4-, 8- and
+    # 16-way coincide (16 rows fit in all three), so they are drawn with
+    # decreasing width, dashed on top of each other; 32-way fits 32 rows
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
-    ax.axhline(0, color=INK_2, linewidth=0.8, zorder=1)
-    # color = padding, line style = associativity; on the unpadded matrix the
-    # 8-way and 4-way lines coincide, so the 4-way line is thin and on top
-    for i, k in enumerate((256, 272)):
-        for name, a, style, width, z in (("8-way", 3, "-", 2.0, 3), ("4-way", 2, "--", 1.2, 4)):
-            ax.plot(GC, [best[(k, a, gc)][0] / best[(k, -1, gc)][0] - 1 for gc in GC],
-                    color=SERIES[i], linestyle=style, linewidth=width, zorder=z,
-                    marker="o" if a == 3 else None, markeredgecolor="white",
-                    markeredgewidth=0.8,
-                    label=f"{name}, {'unpadded (256)' if k == 256 else 'padded (272)'}")
-    ax.set_yscale("symlog", linthresh=0.1, linscale=0.5)
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{100 * v:g} %"))
-    ax.set_ylim(bottom=-0.02)
-    ax.set_xlabel("$g_c$ (cycles / element)")
-    ax.set_ylabel("extra time vs fully associative")
-    legend_above(ax, ncols=2)
-    print(save(fig, "hardware/h4_associativity", NAME))
+    ax.plot(GC, extra(256, 2), label="4-way", **series(0))
+    ax.plot(GC, extra(256, 3), color=SERIES[1], linestyle="--", linewidth=1.6, zorder=4,
+            label="8-way")
+    ax.plot(GC, extra(256, 4), color=SERIES[2], linestyle=":", linewidth=1.6, zorder=5,
+            label="16-way")
+    ax.plot(GC, extra(256, 5), label="32-way", **series(3))
+    finish(ax, NAME + "_unpadded", 4)
+
+    # what padding does: 8-way, rows of 256 (16 lines), 260 (16.25) and 272 (17)
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    for i, (k, label) in enumerate(((256, "256 (16 lines)"), (260, "260 (16.25 lines)"),
+                                    (272, "272 (17 lines)"))):
+        ax.plot(GC, extra(k, 3), label=f"rows of {label}", **series(i))
+    finish(ax, NAME + "_padded", 3)
 
     lines += ["", "## Part 2: padding, 192 x K x N, K = N, 16 KB",
               "", "Best runtime (tile) per cache; extra time over fully associative.", "",
-              "| K = N | gc | fully assoc | 8-way | 4-way |", "|---|---|---|---|---|"]
+              "| K = N | gc | " + " | ".join(ASSOC) + " |", "|---" * (2 + len(ASSOC)) + "|"]
     for k, label in PAD.items():
         for gc in GC:
             fa = best[(k, -1, gc)]

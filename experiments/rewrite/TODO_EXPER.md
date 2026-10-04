@@ -388,6 +388,28 @@ The user approved all of them; start with small samples.
       - Example gc 200: 96×16 at 2.087 with the unlimited FIFO; with 16
         it's 2.75 (1.32×), with 128 it's 2.11 (1.012×).
       - The caption must spell this out.
+    - **H3b, bigger cache or bigger FIFO? (the user asked 2026-10-04;
+      hw_sram_split, small sample, 3 min):** a fixed budget of 16 or 32 KB,
+      FIFO 64 B..8 KB, L1 = the rest.
+      - Result: U-shaped at 16 KB. Too small a FIFO costs up to 1.32×
+        (gc 200: 2.75 vs 2.09). Too big (8 KB, leaving an 8 KB L1) costs
+        up to 1.5× (gc 200: 3.13).
+      - 1–4 KB is flat within a few %; the best split is 1–2 KB FIFO, the
+        rest L1.
+      - At 32 KB only the too-small side hurts (a 24 KB L1 is still big
+        enough).
+      - Recommendation: a FIFO of a few register blocks (≈ 1 KB at R 4),
+        everything else to L1.
+      - Oddity: 32 KB, gc 30, a 4 KB FIFO (28 KB L1) gives 0.956 vs 0.885.
+        Probably coarse-grid noise (L1 sizes that aren't a power of two vs
+        the tile heights on offer); not checked.
+      - In the report (§3.5 H3 section) with figure hw_sram_split.
+      - **Extended to almost the whole budget (the user asked):** as the
+        L1 shrinks to 0.5 KB, everything misses (alpha → 23.25) and the
+        runtime climbs to 23 cycles/MAC. The full U on both sides; at
+        32 KB the right side rises once the FIFO takes > ~50 %.
+        Figure axes: x = FIFO share on a LOGIT scale (stretches both
+        ends), y log.
     - Figure: 8 gc lines is crowded, and gc 5 is hidden under gc 40 (both
       1×). For the final version consider fewer lines (10, 20, 30, 60,
       100, 200).
@@ -414,8 +436,18 @@ The user approved all of them; start with small samples.
     - **Padding fixes it** (emulated by K = N = 272, since the simulator
       has no leading-dimension stride; this also adds ~6 % work):
       - 272 = 17 lines (odd): the 8-way equals fully associative at every
-        gc with the same tiles, except +5 % at gc 15 and +9 % at gc 20
-        (unexplained). 4-way within 1 % except +7 % at gc 10 and +5–9 % at
+        gc with the same tiles, except +5 % at gc 15 and +9 % at gc 20.
+        **EXPLAINED 2026-10-04 (the user asked):**
+        - The FA best tile there is 24×128, whose working set is 216/256
+          lines, and with 17-line rows its fullest set needs 9 lines (by
+          our count of the set mapping) > 8 ways, so it thrashes on 8-way
+          (alpha 0.921 → 1.349, +46 %). Other tiles (fullest set ≤ 8) get
+          an identical alpha on both caches.
+        - Coarse-grid artifact: 32×96 (not in this grid) has 224 lines,
+          fullest set 7, alpha 0.920 on both, as good as FA's best. So the
+          full grid should remove the bump.
+        - Padding spreads rows well but not perfectly evenly; a near-full
+          tile can overflow one set. 4-way within 1 % except +7 % at gc 10 and +5–9 % at
         gc 15–20.
       - 260 = 16.25 lines (a poor pad): still +13–40 %. The pad must make
         the row an ODD number of lines, so consecutive rows walk through all
@@ -428,6 +460,36 @@ The user approved all of them; start with small samples.
       against unpadded software; padding is the cheap fix.
     - **Software counterpart (for S3/S-list):** pad leading dimensions to an
       odd number of cache lines.
+    - **Does the matrix size matter? (the user asked 2026-10-04; verified
+      on the model_sweep / assoc_sweep caches):** no, the ROW LENGTH in
+      cache lines does (K for A, N for C).
+      - Rows that fit per tile column = cache lines / gcd(s, sets), s =
+        row length in lines (whole number). Odd or non-integer s spreads
+        over (nearly) all sets.
+      - 16 KB 8-way alpha (T_N 32) vs FA:
+        - 256×512×128 (s = 32): T_M 8 2.89 vs 1.14, ≥ 12 → 12.2 (predicted
+          8 rows);
+        - 192×256×256 (s = 16): 12 → 2.33, 20 → 21.95 (predicted 16);
+        - 100³ (s = 6.25): equals FA up to 48, 64 → 2.19 vs 1.34;
+        - 150×222×190 (s = 13.9): equals FA.
+      - The cliffs come a bit earlier than the formula because C's rows
+        compete for the same sets.
+      - Offered a report sentence (power-of-two row lengths collide, longer
+        is worse, other lengths spread by themselves).
+    - **Does it hold for other numbers of sets? (the user asked; verified,
+      scratch run, 78 runs, 192×256×256, 16 KB, T_N 32, gc 0):**
+      - General rule: rows that fit = L / min(s, S) = max(L/s, ways), with
+        L = cache lines, S = sets, s = row length in lines (powers of two).
+        A column gets 1/s of the cache or one full set, whichever is
+        bigger.
+      - Measured:
+        - 4-, 8- and 16-way IDENTICAL (16 rows: 12 → 2.33, 20 → 21.95);
+        - 32-way: 32 rows (12–16 fine ~1.0, partial from 20, full at 40);
+        - 64-way: 64 rows (fine to 32, partial 40–64, full at 72);
+        - FA: fine to 64.
+      - The breakdown starts a bit early because C's rows share the sets.
+      - For the HW engineer: associativity helps only beyond L/s ways (16
+        here), so it's an expensive fix; padding is nearly free.
     - **Padding explained to the user (use in the text):** store each row
       with extra unused elements, so the row STRIDE changes but the matrix
       (256 used columns) doesn't.
@@ -669,19 +731,22 @@ associative at 16 KB.)
 | F4 best vs best | fig_dataflow (results_best) → figure fig_dataflow_best (added 2026-10-03, the user asked; in report §3.2.1) | both dataflows | 4, 8..128 step 8 | 4, 8, 16, 32, 64 | 0..30 step 1, 35..100 step 5 | 7650 |
 | F4b ratio | fig_dataflow_ratio | both dataflows | 4, 8, 16, 32, 64, 128 | 32 | 0..100 step 1 | 1212 |
 | F5 best tile | fig_best_tile | – | 4..192 step 4 | 4..128 step 4 | 0–10, 12–20 step 2, 23, 26, 30, 35–50 step 5, 60–100 step 10, 120–200 step 20, 230, 260, 300, 350–600 step 50 (42 values) | 64512 |
+| Model validation (report 3.3.5) | fig_model_validation (reads F5 runs): measured vs predicted, simple max(α, gc/T_M) vs refined per-row + S (un-mixed α); within 1 %: simple 66.6 %, refined 96.1 % of 62976 runs | reuses F5 | as F5 | as F5 | F5's gc > 0 | 0 new |
 | F6 vs square | fig_vs_square (+ dashed line "best of any size" = overall best vs best square, added 2026-10-03, the user asked) | reuses the F5 runs | 4..192 step 4 | 8, 16, 32, 64, vs T_M = T_N | as F5 | 0 new |
 | F7 model accuracy | model_sweep, assoc_sweep, + F5 | L1 8/16/32 KB; 6 matrices (192×256×256, 100×100×100, 200×300×250, 384×256×512, 256×512×128, 150×222×190); FIFO 2·K·64 elements; L1 fully assoc / 8-way / 4-way | 4,8,12,16,20,24,32,40,48,64,80,96,128 | 4,8,12,16,24,32,48,64 | 0 (calibration) + 2,5,10,15,20,30,50,75,100,200,400 | 3 × 22176 |
 | H1 PRNG budget (small) | hw_prng_budget (results_small) | L1 8/16/32/64 KB | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,1,2,3,4,5,6,8,10,12,15,20,25,30,40,50,60,80,100 | 5852 |
 | H2 L1 vs PRNG (small) | hw_l1_vs_prng (reads hw_prng_budget's results_small; table only, no figure) | as H1 | as H1 | as H1 | as H1 | 0 new |
 | H3 FIFO size (small) | hw_fifo_size (results_small) | FIFO capacity 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 16384 elements | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 5,10,20,30,40,60,100,200 | 6160 |
+| H3b L1 vs FIFO split (small) | hw_sram_split (results_small); the user asked 2026-10-04 "a bigger cache or a bigger FIFO?", then "up to taking all of the space" | budget 16 KB: FIFO 64 B / 256 B / 1/2/4/8/12/14/15/15.5 KB; 32 KB: 64 B / 256 B / 1/2/4/8/16/24/28/30/31/31.5 KB (4-byte elements); L1 (FA) = budget − FIFO, at least 0.5 KB | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 5,10,20,30,60,100,200 | 11858 |
 | H3 threshold check | (scratch run, not kept) | 64×32 tile; FIFO 16 vs 16384 | 64 | 32 | 40,44,46,47,48,49,50,52,56,60 | 20 |
-| H3 register blocks (small) | hw_fifo_size (results_regdim_small), run by the user in the background | R = 2/4/8 × FIFO capacities as H3 | as H3 | as H3 | 5,10,20,60,200 | 11550 |
+| H3 register blocks (small) | hw_fifo_size (results_regdim_small), run by the user in the background; R 6, 12, 16 added 2026-10-04 (11550 more runs); the figure shows only the powers of two 2/4/8/16 (the user's choice: 6 and 12 don't divide the tiles, so the trend is irregular, e.g. 6×6 needs a bigger FIFO than 8×8 at gc 20); figure hw_fifo_size_registers (gc 20 and 60 panels, added 2026-10-04, the user asked; gc 10 skipped: anomaly; gc 200 skipped: R 4 = R 8) | R = 2/4/8 × FIFO capacities as H3 | as H3 | as H3 | 5,10,20,60,200 | 11550 |
 | H5a L2 (small) | hw_l2 (results_small) | L2 none / 32 / 64 / 128 / 256 / 512 KB fully assoc / 64 KB 8-way, 14 cycles; memory 180 | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 4312 |
 | H5b memory (small) | hw_memory (results_small) | memory 100 / 180 / 300 / 400 cycles, no L2 | as H5a | as H5a | as H5a | 2464 |
 | H6 registers (small) | hw_registers (results_small) | register block R = 2/4/8/16 (≈ 3R² registers); FIFO 16384 (unlimited) and 256 (1 KB) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 4928 |
 | H7 MAC cost (small) | hw_mac_cost (results_small) | mulacc_cost c = 0/4/16/64 cycles per 4×4×4 block (= 0, 1/16, 1/4, 1 cycle/MAC) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 2464 |
 | H4 part 1 | hw_assoc (reads model_sweep + assoc_sweep) | as F7: 3 L1 × 6 matrices × fully assoc / 8-way / 4-way | as F7 | as F7 | as F7 | 0 new |
-| H4 part 2 (padding) | hw_assoc | M = 192, K = N ∈ {256, 260, 272}; L1 16 KB fully assoc / 8-way / 4-way | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,K | 0,2,5,10,15,20,30,50,75,100,200 | 7623 |
+| H4 ways check | (scratch run, not kept) | 192×256×256, 16 KB L1 4/8/16/32/64-way and FA | 8,12,16,20,24,28,32,40,48,56,64,72,80 | 32 | 0 | 78 |
+| H4 part 2 (padding) | hw_assoc → two figures since 2026-10-04 (the user asked): hw_assoc_unpadded (4/8/16/32-way, K = 256; 16- and 32-way added 2026-10-04: 4/8/16 IDENTICAL at every gc, 32-way +5 % at gc 10 … +201 % at 200 vs +47 … +500 %) and hw_assoc_padded (8-way, rows 256 / 260 / 272) | M = 192, K = N ∈ {256, 260, 272}; L1 16 KB fully assoc / 8-way / 4-way | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,K | 0,2,5,10,15,20,30,50,75,100,200 | 7623 |
 
 ### Figures and insights (Experiments / Findings)
 
