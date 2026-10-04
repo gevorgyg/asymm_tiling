@@ -13,7 +13,7 @@ run: `.venv/bin/python experiments/rewrite/fifo_feasibility.py`
 | gamma | gc * (64 / B_P) / mem_cycles | time to generate one cache line of B divided by the time to fetch it from DRAM. 1: generator as slow as DRAM; 1/4: four times faster. gc = round(gamma * mem * B_P / 64) |
 | lambda | mem_cycles / l1_cycles | DRAM latency counted in L1 hits; only the ratio matters. 45 is mem 180, 100 is mem 400 |
 | f | TM * A_P * (K + 2 TN) / L1 | L1 fill: what LRU sees between two uses of a line of the A row band. The band itself (TM*K*A_P, reused across tile columns), the C tile of the tile being finished and the C tile of the tile being started (TM*TN*A_P each; every k step walks the whole C tile, so the new one is fully touched before the band line comes round). The FIFO's A band survives iff f <= 1 |
-| memory cliff | 1 - K * max(TN*B_P, 64) / L1 | with B from memory the B column block also passes through L1 between two uses of an A line (K rows, each at least one line under `--aligned`), so the band survives only up to this smaller f |
+| memory cliff | 1 - K * max(TN*B_P, 64) / L1 | with B from memory the B column block also passes through L1 between two uses of an A line (K rows, each at least one cache line), so the band survives only up to this smaller f |
 
 Why gamma: in B-stationary both sides bring every B element in once per tile row, memory at mem/(64/B_P) cycles per element, the FIFO at gc. gamma is the ratio of the two. If the costs simply added up, break-even would sit at gamma = 1; the distance from 1 is what the FIFO's overlap with A loads and its zero L1 footprint buy.
 
@@ -51,22 +51,22 @@ Why gamma: in B-stationary both sides bring every B element in once per tile row
 
 ![speedup](speedup_vs_gamma.png)
 
-![breakeven](breakeven.png)
-
 Speedup = best memory-B cycles / best FIFO cycles, each side at its own best (TM, TN). gamma* is where it crosses 1 (log-interpolated between the gammas run; `inf` means the FIFO still wins at gamma = 8).
 
-gc* is the same break-even as a generation cost in cycles per element, gc* = gamma* * mem * B_P / 64.
+![breakeven](breakeven.png)
 
-| rho | lambda | g=0 | g=0.25 | g=0.5 | g=1 | g=2 | g=4 | g=8 | gamma* | gc* |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 45 | 1.48 | 1.47 | 1.47 | 1.47 | 1.46 | 1.17 | 0.80 | 5.34 | 120 |
-| 1 | 100 | 1.79 | 1.79 | 1.78 | 1.78 | 1.24 | 1.15 | 0.58 | 4.60 | 230 |
-| 0.5 | 45 | 1.25 | 1.24 | 1.24 | 1.24 | 1.24 | 1.23 | 0.99 | 7.74 | 87 |
-| 0.5 | 100 | 1.40 | 1.40 | 1.40 | 1.40 | 1.39 | 0.97 | 0.90 | 3.80 | 95 |
-| 0.25 | 45 | 1.13 | 1.13 | 1.13 | 1.13 | 1.13 | 1.13 | 1.12 | inf | inf |
-| 0.25 | 100 | 1.21 | 1.20 | 1.20 | 1.20 | 1.20 | 1.20 | 0.84 | 5.69 | 71 |
-| 0.125 | 45 | 1.07 | 1.07 | 1.07 | 1.07 | 1.07 | 1.07 | 1.07 | inf | inf |
-| 0.125 | 100 | 1.11 | 1.11 | 1.11 | 1.11 | 1.11 | 1.11 | 1.10 | inf | inf |
+The same break-even as a generation cost per B element, in L1-hit times: h* = gamma* * lambda * B_P / 64 (gc* = h* * l1_cycles in cycles). One bar per device; a generator slower than the bar loses to loading B. Hatched bars are lower bounds: the FIFO still won at the slowest generator run. The figure does not use gamma, whose unit is one cache line: that holds 8 B elements at 8 bytes and 64 at 1 byte, so the same generator is 8x larger in gamma at rho = 1/8 than at rho = 1.
+
+| rho | lambda | g=0 | g=0.25 | g=0.5 | g=1 | g=2 | g=4 | g=8 | gamma* | gc* (cycles) | h* (L1 hits) | h* tested between |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 45 | 1.48 | 1.47 | 1.47 | 1.47 | 1.46 | 1.17 | 0.80 | 5.34 | 120 | 30.1 | 22.5 and 45 |
+| 1 | 100 | 1.79 | 1.79 | 1.78 | 1.78 | 1.24 | 1.15 | 0.58 | 4.60 | 230 | 57.5 | 50 and 100 |
+| 0.5 | 45 | 1.25 | 1.24 | 1.24 | 1.24 | 1.24 | 1.23 | 0.99 | 7.74 | 87 | 21.8 | 11.25 and 22.5 |
+| 0.5 | 100 | 1.40 | 1.40 | 1.40 | 1.40 | 1.39 | 0.97 | 0.90 | 3.80 | 95 | 23.8 | 12.5 and 25 |
+| 0.25 | 45 | 1.13 | 1.13 | 1.13 | 1.13 | 1.13 | 1.13 | 1.12 | inf | inf | inf | > 11.25 |
+| 0.25 | 100 | 1.21 | 1.20 | 1.20 | 1.20 | 1.20 | 1.20 | 0.84 | 5.69 | 71 | 17.8 | 12.5 and 25 |
+| 0.125 | 45 | 1.07 | 1.07 | 1.07 | 1.07 | 1.07 | 1.07 | 1.07 | inf | inf | inf | > 5.5 |
+| 0.125 | 100 | 1.11 | 1.11 | 1.11 | 1.11 | 1.11 | 1.11 | 1.10 | inf | inf | inf | > 12.5 |
 
 ### Tiles each side picked (TM x TN, cycles/MAC)
 
@@ -133,12 +133,13 @@ fast generator in absolute terms: gamma = 8 at rho = 1/8, lambda = 45 is only
 gc = 22 cycles per element, which at TM = 48 is still below the A cost. So as
 rho shrinks the FIFO's gain gets smaller but its tolerance for a slow
 generator, measured against DRAM, gets larger. In cycles per element the
-break-even moves the other way (gc* column).
+break-even moves the other way (`breakeven.png`, h* and gc* columns).
 
 **Where the win comes from (fixed tile, TN = 16).** Memory-B steps up at its
-cliff and the FIFO at f = 1; between the two the FIFO wins at every gamma run,
-because memory is already reloading the A band from DRAM once per tile column
-and the FIFO is not. That band is 0.75 <= f < 1 at rho = 1 (B tile 16 KB of
+cliff and the FIFO at f = 1; between the two memory is already reloading the
+A band from DRAM once per tile column and the FIFO is not, so the FIFO wins
+unless its generator is very slow: at rho <= 1/2 it wins at every gamma run,
+at rho = 1 it loses at gamma = 8 (and at gamma = 4 for TM = 40, lambda = 100). That band is 0.75 <= f < 1 at rho = 1 (B tile 16 KB of
 the 64 KB L1) and 0.875 <= f < 1 at rho <= 1/2. Below the memory cliff the FIFO
 still wins while it is A-bound; at gamma = 4 and 8 it is generation-bound
 there (stall fraction 0.5 to 0.95) and slower than memory. Above f = 1 both
@@ -152,8 +153,11 @@ plus one C tile) put the FIFO cliff at TM = 60; it is at 52, because between
 two uses of an A-band line the whole C tile of the next tile has already been
 walked. In lines: TM * (16 + 2 + 2) <= 1024 gives TM <= 51.2. Memory-B adds
 the B block, 256 lines at rho = 1, 128 at rho = 1/2, and still 128 at rho <=
-1/4 because 16 elements of 2 or 1 bytes are padded to a full line under
-`--aligned`; hence the same memory cliff (TM = 48) for rho = 1/2, 1/4 and 1/8.
+1/4: each of the K rows of the B block takes at least one cache line, even
+when its 16 elements of 2 or 1 bytes fill only part of it. That is line
+granularity, not `--aligned`: with these dimensions every matrix row is
+already a whole number of lines and `--aligned` changes nothing. Hence the
+same memory cliff (TM = 48) for rho = 1/2, 1/4 and 1/8.
 
 **The paper's T_N / T_M = 1/rho does not appear here.** Memory-B's best tile is
 48x8 at every rho: the largest TM whose band survives, with the narrowest TN

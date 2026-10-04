@@ -73,7 +73,7 @@ def fill(tm: int, tn: int) -> float:
 
 
 def b_tile_bytes(tn: int, rho: float) -> int:
-    """B column block as it occupies L1: K rows, each padded to a line."""
+    """B column block as it occupies L1: K rows, each at least one line."""
     return K * max(tn * b_bytes(rho), LINE)
 
 
@@ -130,6 +130,27 @@ def measured_cliff(series: dict[int, float]) -> int | None:
 def gc_star(gamma: float, mem: int, rho: float) -> str:
     """Break-even generation cost in cycles per element."""
     return "inf" if math.isinf(gamma) else f"{gamma * mem * b_bytes(rho) / LINE:.0f}"
+
+
+def l1_hits(gamma: float, lam: int, rho: float) -> float:
+    """Generation cost per B element in L1-hit times: gamma * lambda * B_P / 64."""
+    return gamma * lam * b_bytes(rho) / LINE
+
+
+def l1_hits_tested(gamma: float, lam: int, rho: float) -> float:
+    """Same, for a gamma that was run (gc rounded to whole cycles)."""
+    return gc_of(gamma, lam * L1_CYC, rho) / L1_CYC
+
+
+def bracket(sp: dict[float, float]) -> tuple[float, float | None]:
+    """(largest gamma run where the FIFO still won, smallest where it lost).
+    The second is None if it never lost."""
+    won = 0
+    for g in (g for g in GAMMAS if g > 0):
+        if sp[g] < 1:
+            return won, g
+        won = g
+    return won, None
 
 
 def main() -> None:
@@ -194,23 +215,35 @@ def main() -> None:
     fig.savefig(out / "speedup_vs_gamma.png", dpi=130)
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(5, 4))
-    top = 2 * max(g for g in GAMMAS)
-    for lam in LAMBDAS:
-        ys = [gstar[(rho, lam)] for rho in RHOS]
-        ax.plot(RHOS, [min(y, top) for y in ys], marker="o", label=f"lambda = {lam}")
-        for rho, y in zip(RHOS, ys):
-            if math.isinf(y):
-                ax.annotate("> 8", (rho, top), textcoords="offset points",
-                            xytext=(0, 4), ha="center", fontsize=8)
-    ax.set_xscale("log", base=2)
-    ax.set_yscale("log", base=2)
-    ax.set_xticks(RHOS, [f"{r:g}" for r in RHOS])
-    ax.set_xlabel("rho = B_P / A_P")
-    ax.set_ylabel("break-even gamma*")
-    ax.set_title("FIFO worth it below the line")
-    ax.grid(alpha=0.3, which="both")
-    ax.legend()
+    # break-even generation cost per B element, in L1-hit times. Bars, one
+    # per device; hatched = lower bound (the FIFO still won at the slowest
+    # generator run). Not gamma: its unit (one line) holds 8x more elements
+    # at 1-byte B than at 8-byte B, which hides the trend over rho.
+    fig, ax = plt.subplots(figsize=(6.5, 4.2))
+    width = 0.38
+    lam_col = dict(zip(LAMBDAS, ("tab:blue", "tab:orange")))
+    for i, lam in enumerate(LAMBDAS):
+        xs = [j + (i - 0.5) * width for j in range(len(RHOS))]
+        for x, rho in zip(xs, RHOS):
+            won, lost = bracket(speedup[(rho, lam)])
+            if lost is None:
+                h = l1_hits_tested(won, lam, rho)
+                ax.bar(x, h, width, color="white", edgecolor=lam_col[lam],
+                       hatch="///", lw=1.2)
+                ax.text(x, h + 1.2, f"> {h:.0f}", ha="center", va="bottom", fontsize=9)
+            else:
+                h = l1_hits(gstar[(rho, lam)], lam, rho)
+                ax.bar(x, h, width, color=lam_col[lam],
+                       label=f"DRAM latency = {lam} L1 hits" if rho == RHOS[0] else None)
+                ax.text(x, h + 1.2, f"{h:.0f}", ha="center", va="bottom", fontsize=9)
+    ax.set_xticks(range(len(RHOS)), [f"{b_bytes(r)}-byte B\n(rho = {r:g})" for r in RHOS])
+    ax.set_ylabel("slowest generator that still beats\nloading B  (L1-hit times per element)")
+    ax.set_ylim(0, 80)
+    ax.set_title("A FIFO pays off if generating one B element takes less than this")
+    ax.legend(loc="upper left", frameon=False, bbox_to_anchor=(0, 1.02))
+    ax.text(0.99, 0.97, "hatched: FIFO still won at the slowest\ngenerator tested, true value is higher",
+            transform=ax.transAxes, ha="right", va="top", fontsize=8, color="dimgray")
+    ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     fig.savefig(out / "breakeven.png", dpi=130)
     plt.close(fig)
@@ -280,7 +313,7 @@ def main() -> None:
           "round). The FIFO's A band survives iff f <= 1 |",
           "| memory cliff | 1 - K * max(TN*B_P, 64) / L1 | with B from memory the B "
           "column block also passes through L1 between two uses of an A line (K "
-          "rows, each at least one line under `--aligned`), so the band survives "
+          "rows, each at least one cache line), so the band survives "
           "only up to this smaller f |", "",
           "Why gamma: in B-stationary both sides bring every B element in once per "
           "tile row, memory at mem/(64/B_P) cycles per element, the FIFO at gc. "
@@ -316,19 +349,33 @@ def main() -> None:
           f"{len(keys)} runs, {sum(1 for k in keys if k[2] == 'memory')} of them memory-B.", ""]
 
     L += ["## Results: best vs best", "",
-          "![speedup](speedup_vs_gamma.png)", "", "![breakeven](breakeven.png)", "",
+          "![speedup](speedup_vs_gamma.png)", "",
           "Speedup = best memory-B cycles / best FIFO cycles, each side at its own "
           "best (TM, TN). gamma* is where it crosses 1 (log-interpolated between "
           "the gammas run; `inf` means the FIFO still wins at gamma = 8).", "",
-          "gc* is the same break-even as a generation cost in cycles per element, "
-          "gc* = gamma* * mem * B_P / 64.", "",
-          "| rho | lambda | " + " | ".join(f"g={g:g}" for g in GAMMAS) + " | gamma* | gc* |",
-          "|---|---|" + "---|" * len(GAMMAS) + "---|---|"]
+          "![breakeven](breakeven.png)", "",
+          "The same break-even as a generation cost per B element, in L1-hit "
+          "times: h* = gamma* * lambda * B_P / 64 (gc* = h* * l1_cycles in "
+          "cycles). One bar per device; a generator slower than the bar loses to "
+          "loading B. Hatched bars are lower bounds: the FIFO still won at the "
+          "slowest generator run. The figure does not use gamma, whose unit is one "
+          "cache line: that holds 8 B elements at 8 bytes and 64 at 1 byte, so the "
+          "same generator is 8x larger in gamma at rho = 1/8 than at rho = 1.", "",
+          "| rho | lambda | " + " | ".join(f"g={g:g}" for g in GAMMAS)
+          + " | gamma* | gc* (cycles) | h* (L1 hits) | h* tested between |",
+          "|---|---|" + "---|" * len(GAMMAS) + "---|---|---|---|"]
     for rho, lam in product(RHOS, LAMBDAS):
         sp = speedup[(rho, lam)]
+        won, lost = bracket(sp)
+        h_lo = l1_hits_tested(won, lam, rho)
+        between = (f"> {h_lo:g}" if lost is None
+                   else f"{h_lo:g} and {l1_hits_tested(lost, lam, rho):g}")
+        h = gstar[(rho, lam)]
         L.append(f"| {rho:g} | {lam} | " + " | ".join(f"{sp[g]:.2f}" for g in GAMMAS)
-                 + f" | {fmt_gamma(gstar[(rho, lam)])} "
-                 f"| {gc_star(gstar[(rho, lam)], lam * L1_CYC, rho)} |")
+                 + f" | {fmt_gamma(h)} "
+                 f"| {gc_star(h, lam * L1_CYC, rho)} "
+                 f"| {'inf' if math.isinf(h) else f'{l1_hits(h, lam, rho):.1f}'} "
+                 f"| {between} |")
     L += ["", "### Tiles each side picked (TM x TN, cycles/MAC)", "",
           "| rho | lambda | memory | " + " | ".join(f"FIFO g={g:g}" for g in GAMMAS) + " |",
           "|---|---|---|" + "---|" * len(GAMMAS)]
@@ -392,12 +439,13 @@ fast generator in absolute terms: gamma = 8 at rho = 1/8, lambda = 45 is only
 gc = 22 cycles per element, which at TM = 48 is still below the A cost. So as
 rho shrinks the FIFO's gain gets smaller but its tolerance for a slow
 generator, measured against DRAM, gets larger. In cycles per element the
-break-even moves the other way (gc* column).
+break-even moves the other way (`breakeven.png`, h* and gc* columns).
 
 **Where the win comes from (fixed tile, TN = 16).** Memory-B steps up at its
-cliff and the FIFO at f = 1; between the two the FIFO wins at every gamma run,
-because memory is already reloading the A band from DRAM once per tile column
-and the FIFO is not. That band is 0.75 <= f < 1 at rho = 1 (B tile 16 KB of
+cliff and the FIFO at f = 1; between the two memory is already reloading the
+A band from DRAM once per tile column and the FIFO is not, so the FIFO wins
+unless its generator is very slow: at rho <= 1/2 it wins at every gamma run,
+at rho = 1 it loses at gamma = 8 (and at gamma = 4 for TM = 40, lambda = 100). That band is 0.75 <= f < 1 at rho = 1 (B tile 16 KB of
 the 64 KB L1) and 0.875 <= f < 1 at rho <= 1/2. Below the memory cliff the FIFO
 still wins while it is A-bound; at gamma = 4 and 8 it is generation-bound
 there (stall fraction 0.5 to 0.95) and slower than memory. Above f = 1 both
@@ -411,8 +459,11 @@ plus one C tile) put the FIFO cliff at TM = 60; it is at 52, because between
 two uses of an A-band line the whole C tile of the next tile has already been
 walked. In lines: TM * (16 + 2 + 2) <= 1024 gives TM <= 51.2. Memory-B adds
 the B block, 256 lines at rho = 1, 128 at rho = 1/2, and still 128 at rho <=
-1/4 because 16 elements of 2 or 1 bytes are padded to a full line under
-`--aligned`; hence the same memory cliff (TM = 48) for rho = 1/2, 1/4 and 1/8.
+1/4: each of the K rows of the B block takes at least one cache line, even
+when its 16 elements of 2 or 1 bytes fill only part of it. That is line
+granularity, not `--aligned`: with these dimensions every matrix row is
+already a whole number of lines and `--aligned` changes nothing. Hence the
+same memory cliff (TM = 48) for rho = 1/2, 1/4 and 1/8.
 
 **The paper's T_N / T_M = 1/rho does not appear here.** Memory-B's best tile is
 48x8 at every rho: the largest TM whose band survives, with the narrowest TN
