@@ -325,7 +325,8 @@ This cost only changes when the number of rows of tiles changes. With $M = 192$,
 
 *3. The max is taken per row of tiles.* A few heights are still slower than both curves, for example $T_M = 88$ at $g_c = 200$. Here $192 = 88 + 88 + 16$: two full rows of tiles and a short last row of 16. Each row of tiles generates all of $B$, but the short row has very little memory work to hide it behind. The full rows wait for memory, the short row waits for generation, and since the rows run one after the other, these waits add up. Taking the max of the averages, as the simple model does, lets the full rows' spare memory time hide the short row's generation, which cannot happen. The fix is to take the max for each row of tiles and add them up:
 $ T / (M N K) = 1 / M sum_"rows" max(r dot alpha(r), g_c) + "startup", $
-where $r$ is the height of the row and $alpha(r)$ is measured for a tile of that height in the same $g_c = 0$ runs. When $T_M$ divides $M$, all the rows are the same, and the formula reduces to the simple model of @sec-simple-model plus the startup term.
+$ "startup" = (g_c dot R_M R_N dot ceil(M slash T_M) dot ceil(N slash T_N)) / (M N K) $
+where $r$ is the height of the row and $alpha(r)$ is measured for a tile of that height in the same $g_c = 0$ runs. The startup term is the wait from step 2, $g_c dot R_M R_N$ cycles at the start of every tile, multiplied by the number of tiles and spread over all the MACs. When $T_M$ divides $M$, all the rows are the same, and the formula reduces to the simple model of @sec-simple-model plus the startup term.
 
 *Do the units make sense?* Every term must be in cycles per MAC, like $alpha$. A row of tiles of height $r$ does $r K N$ MACs and generates all of $B$, $K N$ elements, once:
 - its memory time is $r K N$ MACs times $alpha(r)$ cycles per MAC, which is cycles;
@@ -342,10 +343,17 @@ We can use our model to pick the best tile for the job. A tile can be chosen in 
 
 This begs the question: *How good is the refined model?* Over all 1536 tiles and 41 values of $g_c$ of @sec-tile, the refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 1.5% slower than the best one.
 
+@fig-model-validation shows this for every run. A perfect model would put every point on the diagonal. The simple model underestimates many runs, mostly the tiles with a short last row of tiles; the refined model puts almost all of them on the line.
+
+#figure(
+  image("./figures/fig_model_validation.svg", width: 100%),
+  caption: [Measured against predicted runtime for every tile and $g_c > 0$ of @sec-tile, for the simple model of @sec-simple-model (left) and the refined model (right). Points on the dashed diagonal are predicted exactly.],
+) <fig-model-validation>
+
 // TODO (later): redo fig_model_accuracy with the per-row max and decide whether to add it here
 
-== What are the best tiles? <sec-tile>
-=== Finding the Imperically Best Tiles?
+== Looking at the Best Tile Sizes <sec-tile>
+=== Finding the Imperically Best Tiles
 To find the best tile at each generation cost, we simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 42 values of $g_c$ from 0 to 600 (every integer up to 10, then increasingly coarser steps), with the default configuration otherwise (@tab-params). @fig-best-tile shows the measured best tile $(T_M^*, T_N^*)$ and the tile the model picks, using $alpha$ from the $g_c = 0$ runs.
 
 #figure(
@@ -377,7 +385,87 @@ Square tiles are optimal when all matrices cost the same @hongkung1981. @fig-vs-
 
 In between on the other hand, the best tile saves up to half of the runtime, for the reason that a square tile cannot be tall, to generate $B$ a fewer amount of times, and narrow, to fit in $L_1$, at the same time.
 
-= Discussion
+== Hardware Focused Design Questions <sec-hw>
+
+So far the hardware was fixed. A hardware engineer designing such a system has to decide on the hardware itself: how fast the generator must be, how large the cache and the FIFO should be, and so on. We answer each question the same way: for every configuration and every $g_c$, we simulate all the tiles and keep the fastest one. Comparing configurations by their best tile is fair, because the software will choose its tile for the hardware it runs on.
+
+=== How Fast Must The PRNG Be? <sec-hw-prng>
+
+A faster PRNG costs area and power, so the engineer wants the slowest generator that does not slow the computation down. To find it, we take the best runtime at every $g_c$ and divide it by the best runtime with free generation ($g_c = 0$): this is the slowdown caused by the generator. We repeat this for four $L_1$ sizes, 8 to 64 KB, with the default configuration otherwise (@tab-params).
+
+#figure(
+  image("./figures/hw_prng_budget.svg", width: 100%),
+  caption: [Slowdown caused by the generator, the best runtime at $g_c$ divided by the best runtime at $g_c = 0$, for four $L_1$ sizes. The dotted lines mark 5% and 10%.],
+) <fig-hw-prng>
+
+@fig-hw-prng shows that every line starts flat: while the generator is fast enough, its work hides completely behind the memory accesses, and it costs nothing. At some $g_c$ the line starts climbing in steps. The bigger the cache, the longer it takes for generation to be the limiting factor. An interesting observation is that the $g_c$ *doubles* with every doubling of $L_1$, as can be seen in the graph.
+
+A bigger cache allows the use of bigger tiles, without treshing it. A taller tile (Bigger $T_M$) generates $B$ fewer times, allowing dead time between generations, which in turn delays the point at which the generation time becomes the limiting factor. The best tile is therefore the talles tile that the cache allows.
+
+*Should I use a bigger cache or a faster generator?* We see that doubling the cache gives the same runtime gains as halving the generation cost. This makes the two upgrades interchangeable. Halving $g_c$ can also be done with a second generator working in parallel, so the engineer can simply pick whichever upgrade is cheaper and convenient.
+
+// TODO: replace the figure with the full-grid run (hw_prng_budget, SMALL = False) at the end
+
+=== How Big Must The FIFO Be? <sec-hw-fifo>
+
+The FIFO takes on-chip memory that could otherwise go to the cache, so we would want the smallest FIFO that still gives the best performance possible. Our default FIFO is so large that it never fills. We now shrink it, from one register block (16 elements) up to the default, and compare the best runtime at each size with the best runtime of the "unlimited" FIFO, with the default configuration otherwise (@tab-params).
+
+#figure(
+  image("./figures/hw_fifo_size.svg", width: 100%),
+  caption: [Slowdown caused by a small FIFO: the best runtime with a FIFO of the given size divided by the best runtime with an unlimited FIFO, one line per $g_c$. The dotted line marks 1%.],
+) <fig-hw-fifo>
+
+@fig-hw-fifo shows that the FIFO size does matters. A FIFO that holds only one register block can make the computation up to a third slower. But on the other hand, even a relatively small FIFO is usually enough. Even a few hundred elements, about 1 KB, bring almost every line to within 1% of the "unlimited" FIFO. In addition, for a small enough $g_c$ even the smallest FIFO is already as good as an "unlimited" one.
+
+Looking at the graph, we can observe a unintuitive phanomanon. $g_c = 40$ needs a smaller capacity than $g_c = 20$. Intuitivaly we would expect the opposite, so what's going on? At $g_c = 40$ generation is expensive, so the best tile is tall ($64 times 32$), therefore the core spends long enough on each block of $B$ for the generator to keep up. At $g_c = 20$ on the other hand, the best tile is only $24$ rows tall, therefore the core finishes faster than the generator produces, meaning that a small FIFO affects it more. From this we can see that the size does not depend on $g_c$ alone, but on the tile size as well.
+
+All in all, we can derive a simple rule for sizing the FIFO. In our runs, a FIFO of a few hundred elements (about 1 KB) is within 1% of an "unlimited" FIFO at almost every $g_c$, so we suggest a FIFO of about this size, because a larger FIFO gains almost nothing, and as the next section shows, can reduce performance because it takes memory away from the cache.
+
+=== Should I use a bigger cache or a bigger FIFO? <sec-hw-fifo>
+When we have a certain SRAM budget, we need to decide how much should go to the FIFO queue vs how much goes to the cache.  To see how to split it, we fix a budget of 16 KB or 32 KB and give the FIFO anything from 64 bytes to almost all of it, and the cache the rest.
+
+#figure(
+  image("./figures/hw_sram_split.svg", width: 100%),
+  caption: [Best runtime when a fixed on-chip budget is split between the FIFO and the $L_1$ cache, one line per $g_c$. The horizontal axis is the FIFO's share of the budget, stretched at both ends; the cache gets the rest. Both axes are logarithmic.],
+) <fig-hw-split>
+
+@fig-hw-split With a FIFO that is too small, the generator cannot work ahead, and the computation slows down. But a clear minima is seen at around 10% FIFO budget share. While a FIFO share above 50% quickly turns catastrophic in terms of performance. Therefore we can suggest that once the FIFO holds a few register blocks (about 1 KB) every additional should go to the cache.
+
+// TODO: replace the figures with the full-grid runs (hw_fifo_size and hw_sram_split, SMALL = False) at the end
+
+=== Does The Cache Need To Be Fully Associative? <sec-hw-assoc>
+
+So far the cache was fully associative, which behaves like the software-managed scratchpad of an accelerator. Real caches are usually 8-way or 4-way set-associative, which carries with it the main advantage of being cheaper to build. Therefore we wanted to test how much performance we need to pay if we decide to go with the cheaper build. we repeat the search for the best tile on a 16 KB 8-way and 4-way $L_1$, and compare their best runtime with the fully associative one.
+
+#figure(
+  image("./figures/hw_assoc_unpadded.svg", width: 100%),
+  caption: [Extra time of the best tile on a 4-, 8-, 16- and 32-way $L_1$ over the best tile on a fully associative $L_1$ (16 KB, our $192 times 256 times 256$ matrix). The 4-, 8- and 16-way lines coincide.],
+) <fig-hw-assoc>
+
+@fig-hw-assoc shows that the price is very high. As long as generation is almost free, the set-associative caches lose almost nothing. But once generation costs rise even a little, the performance become two times worse. Even with their own best tile. Adding ways barely helps: the 4-, 8- and 16-way caches give exactly the same results, and only the 32-way cache does somewhat better.
+
+*Why is it so bad?* A set-associative cache decides where a line goes by its address: line number $l$ can only go to set $l mod S$, where $S$ is the number of sets (32 here), and each set holds only a few lines. Along a row, consecutive lines go to consecutive sets, $0, 1, 2, dots$. But a tile does not walk along a row: at every step of the inner loop, it needs the *same* column from every row of the tile. A row of our matrices is 256 elements of 4 bytes, exactly 16 cache lines, so going one row down adds 16 to the line number:
+
+#align(center, table(
+  columns: 6,
+  align: center,
+  table.header([row], [0], [1], [2], [3], [4]),
+  [first line], [0], [16], [32], [48], [64],
+  [set ($mod 32$)], [0], [16], [0], [16], [0],
+))
+
+Adding 16 twice is a full turn of 32, so all the rows of a tile column land on the same two sets, while the other 30 sets hold lines the tile does not need right now. Two sets of 8 ways hold only 16 rows, so any tile taller than that thrashes, even though the cache as a whole has plenty of room. The 4-way cache has twice the sets but half the ways, which again leaves exactly 16 rows, and so does the 16-way cache, where the whole column lands in a single set of 16 ways. Only beyond that point do more ways help: the 32-way cache also puts the whole column into one set, but that set holds 32 lines. Without tall tiles, every generated element of $B$ is shared by only a few rows, and the generation cost cannot be hidden.
+
+*The fix: padding.* The problem is not the cache, but that the length of a row is a power of two, like the number of sets. Storing every row with a few unused elements at its end changes how far apart the rows are, without changing the matrix. If a row takes an *odd* number of cache lines, the rows spread over all the sets: with rows of 272 elements, 17 lines, the rows start at sets $0, 17, 2, 19, 4, dots$, and only repeat after all 32 sets have been used. The padding is never read, so it only costs a little memory. (Our simulator has no separate row length, so we emulate the padding by enlarging the matrix to $192 times 272 times 272$.)
+
+#figure(
+  image("./figures/hw_assoc_padded.svg", width: 100%),
+  caption: [Extra time of the best tile on an 8-way $L_1$ over a fully associative one, for rows of 256 elements (unpadded), 260 and 272 (padded).],
+) <fig-hw-assoc-padded>
+
+@fig-hw-assoc-padded shows the effect. With rows of 17 lines, the 8-way cache is almost exactly as good as the fully associative one. The padding has to give an *odd* number of lines, though: a row of 260 elements is 16.25 lines, so the rows still alternate between two sets and only move on to the next pair every four rows. This spreads them slowly and unevenly, and the cache still loses a lot.
+
+*Our suggestion.* A fully associative cache or a scratchpad mostly protects against unpadded data, and making a set-associative cache more associative is an expensive fix: here it would need more ways than a row has lines before it helps at all. Padding is nearly free. We therefore suggest an ordinary 8-way or even 4-way cache, together with software that pads the rows of its matrices to an odd number of cache lines. Matrices whose rows are not a power of two long already suffer much less from this.
 
 // TODO: what spans several experiments:
 // - the three regimes: memory-bound (small tile that fits), balanced (T_M up, T_N down), generation-bound (fewest rows of tiles)
