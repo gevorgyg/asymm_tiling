@@ -159,6 +159,51 @@ re-run on the rewrite. Evidence for each item: `SUMMARY.md` and
 ### Next: customer experiments (approved 2026-10-01, start 2026-10-02)
 
 The user approved all of them; start with small samples.
+- **S3 shapes (sw_shapes, small sample, 2026-10-09, 5 min).** MY
+  EXPECTATION ("K matters most") WAS WRONG: the shape barely changes the
+  best tile.
+  - K 128…1024: the best tiles are identical from gc 20 on (24×128,
+    32×64, 64×32, 96×16). They differ only at gc ≤ 10, where many tiles
+    tie anyway (K 128: 24×16; others: 12×32/12×256).
+    - The runtime drops a little with K (the C term 1/(16K)): gc 30:
+      1.020 / 0.975 / 0.952 / 0.941.
+  - N 128…1024: identical from gc 20 on; small low-gc differences
+    (ties).
+  - M 96…768: identical up to gc 30. At high gc, larger M allows taller
+    tiles that DIVIDE M: M 384/768 pick 128×16 and at gc 200 reach 1.566
+    vs 2.087 for M = 192 (gc/128 vs gc/96). M 96 at gc 50 picks 48×32
+    (divides 96).
+  - Mechanism (checked against the alpha counting):
+    - For T_M ≥ 16 the A misses are 1/(16·T_N) per MAC, independent of K;
+    - the binding constraint at moderate gc is C tile + one A line per
+      row ≤ L1, independent of K, M and N;
+    - the A-fit cliff (T_M·K·4 ≤ L1) depends on K but only matters for
+      narrow tiles at low gc.
+    - So the best tile is set by the CACHE and gc; the shape enters
+      through M's divisors (generation staircase).
+  - For the software engineer:
+    - the best tile for one shape is (nearly) the best for others on the
+      same cache;
+    - prefer heights that divide M;
+    - recalibration per K is barely needed (refines the earlier "same K
+      → reuse alpha" finding).
+- **S2 autotune (sw_autotune, no new runs, F5 grid, 41 gc):** worst / median
+  extra time vs the true best:
+
+  | strategy | calibration runs | worst | median |
+  |---|---|---|---|
+  | full step-4 grid | 1536 | 1.5 % | 0 % |
+  | step 8 | 384 | 5.8 % | 0 % |
+  | step 16 | 96 | 6.8 % | 0 % |
+  | divisors of M | 320 | 6.8 % | 0 % |
+  | divisors × 2^k widths | 60 | 10.2 % | 0 % |
+  | powers of two | 36 | 15.1 % | 1.35 % |
+  | square | 32 | 110 % | 10 % |
+  | no tuning 16×32 | 0 | 500 % | 165 % |
+
+  Message: ~60–100 calibration runs give within ~7–10 %; the full grid
+  ~1.5 %; squares and no tuning are bad. Figure:
+  figures/software/s2_autotune.
 - **Does the model need re-autotuning per matrix shape? (the user asked
   2026-10-03; first evidence, feeds S3):**
   - The generation term has M explicitly. alpha depends on the shape only
@@ -745,6 +790,9 @@ associative at 16 KB.)
 | H6 registers (small) | hw_registers (results_small) | register block R = 2/4/8/16 (≈ 3R² registers); FIFO 16384 (unlimited) and 256 (1 KB) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 4928 |
 | H7 MAC cost (small) | hw_mac_cost (results_small) | mulacc_cost c = 0/4/16/64 cycles per 4×4×4 block (= 0, 1/16, 1/4, 1 cycle/MAC) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 2464 |
 | H4 part 1 | hw_assoc (reads model_sweep + assoc_sweep) | as F7: 3 L1 × 6 matrices × fully assoc / 8-way / 4-way | as F7 | as F7 | as F7 | 0 new |
+| F1 paper reproduction (report 4.1) | fig_paper (new standalone script, no old results), 2026-10-09 | 256×256×256, B FROM MEMORY, A/C 8 B, B 8/4/2/1 B (ρ 1, 1/2, 1/4, 1/8), 16 KB FA L1, no L2; reads = L1 misses × 64 B; C-tile areas 512 and 1024, aspect ratio T_N/T_M powers of two | 4..256 | 4..256 | – | 52 |
+| S2 autotune | sw_autotune (reads F5 runs) | strategies = candidate sets: full step 4, step 8, step 16, divisors of M, divisors × 2^k widths, powers of two, squares, default 16×32 | as F5 | as F5 | F5's gc > 0 | 0 new |
+| S3 shapes (small) | sw_shapes (results_small), done 2026-10-09 | one dimension varied around 192×256×256: K ∈ {128,256,512,1024}, M ∈ {96,192,384,768}, N ∈ {128,256,512,1024} (10 shapes); 16 KB FA L1 | 4,8,12,16,24,32,48,64,96,128,192,384 (≤ M) | 4,8,16,32,64,128,256,512 (≤ N) | 0,5,10,20,30,50,100,200 | ~6600 |
 | H4 ways check | (scratch run, not kept) | 192×256×256, 16 KB L1 4/8/16/32/64-way and FA | 8,12,16,20,24,28,32,40,48,56,64,72,80 | 32 | 0 | 78 |
 | H4 part 2 (padding) | hw_assoc → two figures since 2026-10-04 (the user asked): hw_assoc_unpadded (4/8/16/32-way, K = 256; 16- and 32-way added 2026-10-04: 4/8/16 IDENTICAL at every gc, 32-way +5 % at gc 10 … +201 % at 200 vs +47 … +500 %) and hw_assoc_padded (8-way, rows 256 / 260 / 272) | M = 192, K = N ∈ {256, 260, 272}; L1 16 KB fully assoc / 8-way / 4-way | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,K | 0,2,5,10,15,20,30,50,75,100,200 | 7623 |
 
@@ -1235,7 +1283,13 @@ F6 optimal vs square, F7 roofline / model accuracy. B/A balance dropped
     barely moves (91 / 91 / 90 %). Set conflicts make more near-ties.
   - Side note (not for the report): with S, the old roofline set is
     108/108. S breaks T_N ties toward fewer, wider tiles.
-- [ ] F1 paper traffic.
+- [x] F1 paper traffic: **done 2026-10-09** (fig_paper, report 4.1).
+  - Minimum moves right as ρ falls; at 1/ρ or one step away (near ties).
+  - Savings vs 32×32: 18.2 % / 36.4 % at ρ 1/4, 1/8 (theory 20 / 37 %).
+  - The wide side follows the theory 1/T_N + ρ/T_M closely. The tall side
+    is much worse: tall narrow tiles overflow L1 (a line of A + one of C
+    per row > 256 lines, e.g. 256×4), while the theory assumes the tile
+    fits.
 
 ## Charts in `gen_charts.py` not on the slides (report candidates)
 

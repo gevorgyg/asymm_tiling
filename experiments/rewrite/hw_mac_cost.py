@@ -51,7 +51,7 @@ def main() -> None:
     ax.axhline(1.05, color=INK_2, linewidth=0.8, linestyle=":", zorder=1)
     for i, c in enumerate(MAC):
         ax.plot(GC, [best[(c, gc)][0] / best[(c, 0)][0] for gc in GC],
-                label=f"{c / 64:g} cycles / MAC", **series(i))
+                label=f"{c / 64:g} cycle / MAC", **series(i))
     ax.set_xlabel("$g_c$ (cycles / element)")
     ax.set_ylabel("slowdown vs free generation")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}×"))
