@@ -27,6 +27,7 @@ NAME = "fig_dataflow"
 SMALL = False
 GC = list(range(0, 31, 2)) if SMALL else list(range(0, 101))
 Y_MAX = 4   # C-stationary leaves the plot early; B-stationary bends at gc ~ 73
+MODEL_LINES = False   # the user's choice: the report shows only the data here
 TM, TN, M, R = 64, 32, 192, 4
 MNK = 192 * 256 * 256
 FLOWS = {"B-stationary": "weight", "C-stationary": "output"}
@@ -55,9 +56,9 @@ def main() -> None:
     dense = [g / 4 for g in range(0, 4 * GC[-1] + 1)]
     for i, (name, o) in enumerate(FLOWS.items()):
         ax.plot(GC, [t[(o, gc)] for gc in GC], label=name, markevery=5, **series(i))
-    # the model coincides with the measurements, so draw it thin, dark and on
-    # top, with a single legend entry
-    for j, o in enumerate(FLOWS.values()):
+    # the model coincides with the measurements; drawn only if MODEL_LINES (the
+    # report's dataflow section comes before the model, so it shows data only)
+    for j, o in enumerate(FLOWS.values() if MODEL_LINES else []):
         ax.plot(dense, [model[o](g) for g in dense], color=INK_2, linestyle="--",
                 linewidth=1.0, zorder=5, label="model" if j == 0 else None)
 
@@ -65,7 +66,7 @@ def main() -> None:
     ax.set_ylabel("cycles / MAC")
     ax.set_xlim(0, GC[-1])
     ax.set_ylim(0, Y_MAX)
-    legend_above(ax, ncols=3)
+    legend_above(ax, ncols=3 if MODEL_LINES else 2)
     print(save(fig, "dataflow", NAME + ("_small" if SMALL else "")))
 
     cross = R * alpha_b
