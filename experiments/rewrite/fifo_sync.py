@@ -30,9 +30,43 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from fifo_feasibility import (A_P, CYC, GAMMAS, K, L1, L1_CYC, LAMBDAS, LINE,  # noqa: E402
-                              M, MNK, N, RHOS, TMS, TNS, b_bytes, base, gc_of)
-from harness import out_dir, run_many  # noqa: E402
+from harness import Params, out_dir, run_many  # noqa: E402
+
+# The device and grid below are the first version of fifo_feasibility, copied
+# here when fifo_feasibility was rewritten, so these runs and their cached
+# results stay as they were.
+M, N, K = 192, 256, 128
+A_P = 8                      # bytes per A and C element
+LINE = 64
+L1 = 64 * 1024
+L1_CYC = 4                   # the time unit
+MNK = M * N * K
+TMS = tuple(range(4, 97, 4))
+TNS = (8, 16, 32, 64)
+RHOS = (1, 0.5, 0.25, 0.125)             # B_P = 8, 4, 2, 1
+LAMBDAS = (45, 100)                      # mem = 180, 400
+GAMMAS = (0, 0.25, 0.5, 1, 2, 4, 8)
+CYC = "Simulation: Total cycles"
+
+
+def b_bytes(rho: float) -> int:
+    return int(round(rho * A_P))
+
+
+def gc_of(gamma: float, mem: int, rho: float) -> int:
+    """gamma = gc * (LINE / B_P) / mem, rounded to whole cycles."""
+    return round(gamma * mem * b_bytes(rho) / LINE)
+
+
+def base(rho: float, lam: int) -> Params:
+    bp = b_bytes(rho)
+    return Params(orientation="weight", m=M, k=K, n=N,
+                  small_precision=bp, ratio=A_P // bp, aligned=True,
+                  reg_dim=4, mulacc_cost=0,
+                  block_size=6, mem_cycles=lam * L1_CYC,
+                  l1_size=L1, l1_cycles=L1_CYC, l1_assoc=-1, l2_size=0,
+                  write_alloc=True, policy="lru",
+                  fifo_capacity=16384, fifo_access=L1_CYC, seed_size=8)
 
 NAME = "fifo_sync"
 HW, SW = "hardware FIFO", "software RNG"
