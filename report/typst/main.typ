@@ -300,6 +300,30 @@ We decided to also compare each dataflow at its own best tile at each $g_c$ for 
 
 Since $C$-stationary wins only when generating an element costs less than about 4 cycles, the rest of this report uses the $B$-stationary dataflow.
 
+== Looking at the Best Tile Sizes <sec-tile>
+We start by *finding the Empirically Best Tiles*. To find the best tile at each generation cost, we simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 42 values of $g_c$ from 0 to 600, with the default configuration otherwise (@tab-params). @fig-best-tile shows the measured best tile $(T_M^*, T_N^*)$.
+
+#figure(
+  image("./figures/fig_best_tile.svg", width: 100%),
+  caption: [The best tile against $g_c$: its height $T_M^*$ and width $T_N^*$.],
+) <fig-best-tile>
+
+The figure shows an interesting phenomenon. At first as $g_c$ grows, the best tile gets taller and wider, but after $g_c$ passes 20,
+the best tile still keeps growing taller, but it now prefers becoming narrower. This continues until a point in which a tall and wide tile is preferred again. The figure raises some interesting questions, and these are our attempts to answer them:
+
+- *Why does $T_M$ grow?* So that generation stays hidden. Each generated element of $B$ is shared by the $T_M$ rows of its tile
+  (@sec-dataflow), so a taller tile spreads the generation cost over more rows. As $g_c$ grows, we need a bigger $T_M$ to keep
+  generation hidden behind the memory accesses.
+- *Why does $T_N$ first grow and then suddenly start shrinking?* So that the tile still fits in $L_1$. At first, once the tile of
+  $A$ no longer fits in $L_1$ (at $T_M >= 16$), $T_N$ grows, because a wider tile allows for reloading $A$ tiles fewer times.
+  This is true up to a second cliff in the cost of memory, which we analyze in @sec-alpha. Passing that second cliff is
+  horrible for performance. We arrive at that cliff later when $T_N$ is smaller, therefore causing the best tile to start
+  lowering $T_N$ for the purpose of delaying that inevitable second cliff.
+- *Why does it turn wide again at very high $g_c$?* From $g_c = 400$ on, generation dominates *every* good tile, so the width no longer matters either. Up to 263 tiles are within 1% of the best performing shape.
+
+Finding these tiles took a simulation of every tile at every $g_c$. To explain them properly, and to find the best tile without
+such a sweep, we need a model of the runtime, which the next section develops.
+
 == Developing our Mathematical Model
 === Moving From The Paper's Model To Ours <sec-simple-model>
 
@@ -379,7 +403,7 @@ This cost only changes when the number of rows of tiles changes. With $M = 192$,
   caption: [As @fig-model-simple, with the generation cost of the refined model $g_c dot ceil(M slash T_M) slash M$ (dashed).],
 ) <fig-model>
 
-*2. The FIFO starts empty at every tile.* Each tile loads its own seed, so the FIFO starts empty, and the first register block of $B$ must be generated before the core can start. Nothing overlaps with this wait, so it is added on top of the max: $g_c dot R_M R_N$ cycles per tile. It is small for large tiles, but grows with the number of tiles.
+*2. The startup term: the FIFO starts empty at every tile.* Each tile loads its own seed, so the FIFO starts empty, and the first register block of $B$ must be generated before the core can start. Nothing overlaps with this wait, so it is added on top of the max: $g_c dot R_M R_N$ cycles per tile. It is small for large tiles, but grows with the number of tiles.
 
 *3. The max is taken per row of tiles.* A few heights are still slower than both curves, for example $T_M = 88$ at $g_c = 200$. Here $192 = 88 + 88 + 16$: two full rows of tiles and a short last row of 16. Each row of tiles generates all of $B$, but the short row has very little memory work to hide it behind. The full rows wait for memory, the short row waits for generation, and since the rows run one after the other, these waits add up. Taking the max of the averages, as the simple model does, lets the full rows' spare memory time hide the short row's generation, which cannot happen. The fix is to take the max for each row of tiles and add them up:
 $ T / (M N K) = 1 / M sum_"rows" max(r dot alpha(r), g_c) + "startup", $
@@ -391,74 +415,106 @@ where $r$ is the height of the row and $alpha(r)$ is measured for a tile of that
 - its generation time is $K N$ elements times $g_c$ cycles per element, which is also cycles.
 Both are cycles, so taking their max makes sense. Dividing the sum over all rows by the $M N K$ MACs cancels the common $K N$ and leaves the $1 slash M$ in front: cycles per MAC. The startup term works the same way: $g_c$ cycles per element, times $R_M R_N$ elements per tile, times the number of tiles, divided by $M N K$.
 
-=== Testing The Refined Model <sec-test-model>
+== Software Focused Design Questions <sec-sw>
 
-We can use our model to pick the best tile for the job. A tile can be chosen in three steps:
+A software engineer gets the hardware as it is, and has to decide how to use it. For example which tile to choose for a given
+generator and for the matrices at hand. here we aim to help that engineer, so he'll use the best configuration possible for the
+setup he has to work with.
 
-+ *Calibration:* Run every candidate tile once with $g_c = 0$ and record its $alpha(T_M, T_N)$. This gives you a table.
-+ *Prediction:* For a given $g_c$, go over every pair $(T_M, T_N)$ in the table. Compute its generation cost $g_c slash T_M$, take
+=== Can Our Model Be Trusted To Choose The Tile? <sec-test-model>
+
+Simulating every tile at every $g_c$ is expensive, so before anything else the engineer wants to know if our model can choose the
+tile instead. To choose a tile shape, we need to do three steps:
+
++ *Calibration:* The long part. Run every candidate tile once with $g_c = 0$ and record its $alpha(T_M, T_N)$. This gives you a table.
++ *Prediction:* This is the fast part. For a given $g_c$, go over every pair $(T_M, T_N)$ in the table. Compute its generation cost $g_c slash T_M$, take
   the max between it and $alpha(T_M, T_N)$, and add the small startup term. If $T_M$ does not divide $M$, use the per-row max of
   @sec-refine instead. The $alpha$ of the residual last row can be read from the same table.
 + *Choosing:* Pick the pair with the smallest result. If several pairs tie, pick the one with the smaller $alpha$, as it has more room before generation becomes the bottleneck.
 
-This begs the question: *How good is the refined model?* Over all 1536 tiles and 41 values of $g_c$ of @sec-tile, the refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 1.5% slower than the best one.
+With the table generated by the first step, the second and third steps can be done very fast with a simple script:
+
+```python
+from math import ceil
+
+def choose_tile(alpha, M, N, K, gc, R=4):
+    """Return the tile (T_M, T_N) with the smallest predicted runtime.
+
+    alpha: the calibration table {(T_M, T_N): cycles per MAC},
+           measured once for every candidate tile at g_c = 0.
+    M, N, K: the matrix sizes.  gc: the generation cost to choose for.
+    R: the register block size (R_M = R_N = R).
+    """
+    # The measured alpha of a height that does not divide M mixes two
+    # kinds of rows of tiles: the full rows of T_M, and one short last
+    # row of e = M mod T_M. The per-row max needs the alpha of each kind
+    # on its own, so we take the short row out of the mix:
+    #   M * alpha = (M - e) * pure(T_M) + e * pure(e)
+    # Going from the smallest height up, pure(e) is always known already.
+    pure = {}
+    for tm, tn in sorted(alpha):
+        e = M % tm
+        mixed = M * alpha[tm, tn] - (e * pure[e, tn] if e else 0)
+        pure[tm, tn] = mixed / (M - e)
+
+    def predict(tm, tn):
+        # The heights of the rows of tiles: the full rows, and the short
+        # last row if T_M does not divide M.
+        rows = [tm] * (M // tm) + ([M % tm] if M % tm else [])
+        # Every row of tiles takes the longer of its memory work,
+        # r * alpha(r), and generating all of B once, gc. The rows run one
+        # after the other, so their times add up. Dividing by M gives
+        # cycles per MAC (see the units check of the refined model).
+        work = sum(max(r * pure[r, tn], gc) for r in rows) / M
+        # The startup term: every tile waits for its first register block
+        # (R * R elements) to be generated, spread over all the MACs.
+        startup = gc * R * R * ceil(M / tm) * ceil(N / tn) / (M * N * K)
+        return work + startup
+
+    # Choosing: the tile with the smallest predicted runtime. On a tie,
+    # the one with the smaller alpha, which has more room before
+    # generation becomes the bottleneck.
+    return min(alpha, key=lambda tile: (predict(*tile), alpha[tile]))
+```
+
+The table must also hold the heights of the short last rows ($M mod T_M$). With heights in steps of 4 and $M$ divisible by 4, as in our grid, it always does.
+
+This begs the question: *How good is the refined model?* We simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 41 values of $g_c$ from 1 to 600. The refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 1.5% slower than the best one.
 
 @fig-model-validation shows this for every run. A perfect model would put every point on the diagonal. The simple model
 underestimates many runs, mostly the tiles with a short residual row of tiles; the refined model puts almost all of them on the line.
 
 #figure(
   image("./figures/fig_model_validation.svg", width: 100%),
-  caption: [Measured against predicted runtime for every tile and $g_c > 0$ of @sec-tile, for the simple model of @sec-simple-model (left) and the refined model (right). Points on the dashed diagonal are predicted exactly.],
+  caption: [Measured against predicted runtime for every tile and $g_c > 0$, for the simple model of @sec-simple-model (left) and the refined model (right). Points on the dashed diagonal are predicted exactly.],
 ) <fig-model-validation>
+
+The further the dots are from the digonal line, the worst the prediction is. From this, we can easily see a segnificant advantage
+to using the refined model. But even so, even the refined one misses at some points.
+
+The misses are almost always in the same *direction*. The measured runtime is *higher* than predicted.
+The reason for this most likely stems from the use of a max term in out model. It assumes that generation and memory overlap
+perfectly, which is only true in the best case. The misses we see in the figure gather where the memory and generation costs are
+about equal, on the other hand, when one of them clearly dominates, the other hides behind it completely and the model is almost
+always exact. 
+
+When they are equal, there is less room for error, so every short moment in which the core runs faster than the generator turns
+into a wait for the FIFO, and adds directly to the runtime. This extra runtime is what out model missed.
+
+*But these predictions don't effect the choise much*. The models biggest errors fall on tiles that cause cache thresing. Those
+tiles are never the ones chosen at the end because they are 2 to 4 times slower than the best, meaning errors fall mostly on tiles
+that would not have been chosen. At all but one value of $g_c$ the model picks the best tile, or one within 0.01% of its
+performence. 
+
+All in all, a software engineer can trust the model to choose the tile. The calibration runs are the only simulations needed, and
+the choice itself takes a short script instead of a sweep over every tile and every $g_c$.
 
 // TODO (later): redo fig_model_accuracy with the per-row max and decide whether to add it here
 
-== Software Focused Design Questions <sec-sw>
-
-A software engineer gets the hardware as it is, and has to decide how to use it. Which tile to choose for a given generator and for the matrices at hand.
-
-=== Looking at the Best Tile Sizes <sec-tile>
-We start by *finding the Empirically Best Tiles*. To find the best tile at each generation cost, we simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 42 values of $g_c$ from 0 to 600, with the default configuration otherwise (@tab-params). @fig-best-tile shows the measured best tile $(T_M^*, T_N^*)$ and the tile the model picks, using $alpha$ from the $g_c = 0$ runs.
-
-#figure(
-  image("./figures/fig_best_tile.svg", width: 100%),
-  caption: [The best tile against $g_c$: its height $T_M^*$ and width $T_N^*$, measured (solid) and picked by the model (dashed).],
-) <fig-best-tile>
-
-The figure shows an interesting phenomenon. At first as $g_c$ grows, the best tile gets taller and wider, but after $g_c$ passes 20,
-the best tile still keeps growing taller, but it now prefers becoming narrower. This continues until a point in which a tall and wide tile is preferred again. The figure raises some interesting questions, and these are our attempts to answer them:
-
-- *Why does $T_M$ grow?* So that generation stays hidden. We'll remind that the generation cost is $g_c dot ceil(M slash T_M)
-  slash M$, that value must stay below $alpha$, which is about 1 cycle per MAC for good tiles. Therefore we need a bigger $T_M$
-  as $g_c$ grows to keep it low.
-- *Why does $T_N$ first grow and then suddenly start shrinking?* So that the tile still fits in $L_1$. At first, once the tile of
-  $A$ no longer fits in $L_1$ (at $T_M >= 16$), $T_N$ grows, because a wider tile allows for reloading $A$ tiles fewer times
-  (@sec-alpha). This is true up to the second cliff that we saw in the analysis of $alpha$. Passing that second cliff is
-  horrible for performance. As we saw, we arrive at that cliff later as $T_N$ is smaller, therefore causing the best tile to start
-  lowering $T_N$ for the purpose of delaying that inevitable second cliff.
-- *Why does it turn wide again at very high $g_c$?* From $g_c = 400$ on, generation dominates *every* good tile, so the width no longer matters either. Up to 263 tiles are within 1% of the best performing shape.
-
-In addition we wanted to check *how much does the choice matter?* Is using the best tile shape actually better than just using the
-convenient square? We found out that it depends, and that sometimes it's significantly better. And the following figure shows it.
-
-#figure(
-  image("./figures/fig_vs_square.svg", width: 100%),
-  caption: [Time saved by the best tile height over the square tile $T_M = T_N$, for four fixed tile widths $T_N$ (solid), and by the overall best tile over the best square tile of any size (dashed).],
-) <fig-vs-square>
-
-Square tiles are optimal when all matrices cost the same @hongkung1981. @fig-vs-square fixes the width $T_N$, and compares the best height $T_M$ with the square tile $T_M = T_N$. The gain is the time saved, $(T_"square" - T_"best") slash T_"square"$. We can observe the following:
-
-- *Small $g_c$:* The generation cost is hardly a factor, so the limiting factor is the memory, therefore the gain is proportional to how *badly* the square tile fits in $L_1$. A $64 times 64$ tile thrashes the $L_1$ cache ($alpha = 3.74$), while the optimal $8 times 64$ costs $0.85$, achieving a gain of 77%. Similarly, but to the other extreme, an $8 times 8$ tile already fits, and the gain is about 1%.
-- *Large $g_c$:* At a large $g_c$, generation is by far the limiting factor for both tiles, so both runtimes grow in proportion to $g_c$. The gain tends to one minus the ratio of their generation costs, $1 - ceil(M slash T_"best") slash ceil(M slash T_N)$, which only depends on the tile ratios, and is why each line in @fig-vs-square flattens.
-- *In between,* the gain drops to zero where the square tile happens to cost as much as the best height, for example $32 times 32$ for $g_c$ from 14 to 35, where it sits on the same plateau of $alpha$ as the best height, 64.
-
-*Against the best square tile of any size* (dashed line), shows the gains of the best asymmetric tile against the best square tile. For those, the gains are smaller, but still large at some areas. A square tile is *at least* as good when generation is cheap, when the best tile happens to be square, and when generation dominates everything. 
-
-In between on the other hand, the best tile saves up to half of the runtime, for the reason that a square tile cannot be tall, to generate $B$ fewer times, and narrow, to fit in $L_1$, at the same time.
-
 === Does The Best Tile Depend On The Matrix Shape? <sec-sw-shapes>
 
-All the results so far are for one matrix, $192 times 256 times 256$. A software engineer will have other matrices, so does the best tile have to be found again for each of them? To check, we change one dimension at a time: $K$ from 128 to 1024, and $M$ and $N$ over a similar range, with the default configuration otherwise (@tab-params).
+All the results so far are for one matrix. A software engineer will probably have other matrices, and he would hope that he
+won't need to recalibrate again for every new matrix. To check, we change one dimension at a time: $K$ from 128 to 1024, and $M$ and $N$ over a similar range, with the default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/sw_shapes_K.svg", width: 100%),
@@ -483,6 +539,26 @@ Finding the best tile means calibrating the model, one run per candidate tile (@
 ) <fig-sw-autotune>
 
 @fig-sw-autotune shows that most of the gain comes cheaply. Not tuning at all can be six times slower than the best tile, and square tiles alone can be twice as slow. But a few dozen well-chosen candidates, such as heights that divide $M$ with power-of-two widths, already come within about 10% of the best tile, and usually find it exactly. The full grid only polishes the last few percent. The candidates should include tall and narrow tiles, which a set of square tiles misses entirely.
+
+=== Does The Choice Of Tile Matter? <sec-sw-choice>
+
+Finally, we wanted to check *how much does the choice matter?* Is using the best tile shape actually better than just using the
+convenient square? We found out that it depends, and that sometimes it's significantly better. And the following figure shows it.
+
+#figure(
+  image("./figures/fig_vs_square.svg", width: 100%),
+  caption: [Time saved by the best tile height over the square tile $T_M = T_N$, for four fixed tile widths $T_N$ (solid), and by the overall best tile over the best square tile of any size (dashed).],
+) <fig-vs-square>
+
+Square tiles are optimal when all matrices cost the same @hongkung1981. @fig-vs-square fixes the width $T_N$, and compares the best height $T_M$ with the square tile $T_M = T_N$. The gain is the time saved, $(T_"square" - T_"best") slash T_"square"$. We can observe the following:
+
+- *Small $g_c$:* The generation cost is hardly a factor, so the limiting factor is the memory, therefore the gain is proportional to how *badly* the square tile fits in $L_1$. A $64 times 64$ tile thrashes the $L_1$ cache ($alpha = 3.74$), while the optimal $8 times 64$ costs $0.85$, achieving a gain of 77%. Similarly, but to the other extreme, an $8 times 8$ tile already fits, and the gain is about 1%.
+- *Large $g_c$:* At a large $g_c$, generation is by far the limiting factor for both tiles, so both runtimes grow in proportion to $g_c$. The gain tends to one minus the ratio of their generation costs, $1 - ceil(M slash T_"best") slash ceil(M slash T_N)$, which only depends on the tile ratios, and is why each line in @fig-vs-square flattens.
+- *In between,* the gain drops to zero where the square tile happens to cost as much as the best height, for example $32 times 32$ for $g_c$ from 14 to 35, where it sits on the same plateau of $alpha$ as the best height, 64.
+
+*Against the best square tile of any size* (dashed line), shows the gains of the best asymmetric tile against the best square tile. For those, the gains are smaller, but still large at some areas. A square tile is *at least* as good when generation is cheap, when the best tile happens to be square, and when generation dominates everything.
+
+In between on the other hand, the best tile saves up to half of the runtime, for the reason that a square tile cannot be tall, to generate $B$ fewer times, and narrow, to fit in $L_1$, at the same time.
 
 == Hardware Focused Design Questions <sec-hw>
 

@@ -4,10 +4,12 @@
 Every tile of the grid is simulated at every gc; the measured best tile is
 the argmin of the total cycles. One plot: TM* blue, TN* red.
 
-  measured (solid + markers) and the model's pick (thin dashed, same color):
-    T / MNK = max(alpha(TM, TN), gc * ceil(M/TM) / M) + S,
+  measured (solid + markers) and the refined model's pick (thin dashed, same
+  color), the max taken per row of tiles (report: Refining The Model):
+    T / MNK = 1/M sum over rows of tiles max(r * alpha(r), gc) + S,
     S = tiles * R^2 * gc / MNK   (one FIFO startup per tile),
-  with alpha measured at gc = 0 on the same tile.
+  with alpha(r), the alpha of a row of exactly r rows, recovered from the
+  gc = 0 runs by taking the short last row out of the mix.
   Near ties (tiles within 1 % of the best) are listed in the README table,
   not drawn.
 
@@ -40,6 +42,7 @@ else:
                  35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200,
                  230, 260, 300, 350, 400, 450, 500, 550, 600})
 NEAR = 0.01   # "near tie": within 1 % of the best
+MODEL_LINES = False   # the report shows this before the model, so data only
 GC_TICKS = [0, 1, 3, 10, 30, 100, 300, 600]
 
 
@@ -47,9 +50,20 @@ def cdiv(a: int, b: int) -> int:
     return -(-a // b)
 
 
-def model(alpha: float, tm: int, tn: int, gc: int) -> float:
+def pure_alpha(alpha: dict) -> dict:
+    """alpha of a row of exactly TM rows: take the short last row out of the mix."""
+    pure = {}
+    for tm, tn in sorted(alpha):
+        e = M % tm
+        pure[(tm, tn)] = (M * alpha[(tm, tn)] - (e * pure[(e, tn)] if e else 0)) / (M - e)
+    return pure
+
+
+def model(pure: dict, tm: int, tn: int, gc: int) -> float:
+    full, e = divmod(M, tm)
+    rows = [tm] * full + ([e] if e else [])
     tiles = cdiv(M, tm) * cdiv(N, tn)
-    return max(alpha, gc * cdiv(M, tm) / M) + tiles * R * R * gc / MNK
+    return sum(max(r * pure[(r, tn)], gc) for r in rows) / M + tiles * R * R * gc / MNK
 
 
 def main() -> None:
@@ -61,11 +75,13 @@ def main() -> None:
     t = {(p.gen_cost, p.tile_h, p.tile_w): s["Simulation: Total cycles"] / MNK
          for p, s in zip(params, stats)}
 
+    alpha = {tile: t[(0, *tile)] for tile in tiles}
+    pure = pure_alpha(alpha)
     best, pick, lines = {}, {}, []
     for gc in GC:
         cost = {tile: t[(gc, *tile)] for tile in tiles}
         best[gc] = min(tiles, key=lambda tl: cost[tl])
-        pick[gc] = min(tiles, key=lambda tl: (model(t[(0, *tl)], *tl, gc), t[(0, *tl)]))
+        pick[gc] = min(tiles, key=lambda tl: (model(pure, *tl, gc), alpha[tl]))
         b = cost[best[gc]]
         near = sorted((tl for tl in tiles if cost[tl] <= b * (1 + NEAR)), key=lambda tl: cost[tl])
         lines.append(f"| {gc} | {best[gc]} | {b:.3f} | {len(near)}: "
@@ -86,9 +102,10 @@ def main() -> None:
         style = series(s) | {"marker": "os"[i]}
         ax.plot(xs, ys(lambda gc: best[gc][i]), drawstyle="steps-post", label=label,
                 markevery=len(GC) * [True] + [False], **style)
-        ax.plot(xs, ys(lambda gc: pick[gc][i]), drawstyle="steps-post", color=SERIES[s],
-                linestyle="--", linewidth=1.0, alpha=0.8,
-                label=f"{label} model")
+        if MODEL_LINES:
+            ax.plot(xs, ys(lambda gc: pick[gc][i]), drawstyle="steps-post", color=SERIES[s],
+                    linestyle="--", linewidth=1.0, alpha=0.8,
+                    label=f"{label} model")
     ax.set_yscale("log", base=2)
     ax.set_yticks([8, 12, 16, 24, 32, 48, 64, 96, 128])
     ax.set_ylim(7, 150)
@@ -99,7 +116,7 @@ def main() -> None:
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
     ax.set_xlim(0, GC[-1])
     ax.set_xlabel("$g_c$ (cycles / element)")
-    legend_above(ax, ncols=4)
+    legend_above(ax, ncols=4 if MODEL_LINES else 2)
     print(save(fig, "tile_choice", NAME + ("_small" if SMALL else "")))
 
     header = ["| gc | best (TM, TN) | cycles / MAC | tiles within 1 % (next 5) | "

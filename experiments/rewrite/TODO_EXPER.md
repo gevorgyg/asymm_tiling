@@ -1290,6 +1290,33 @@ F6 optimal vs square, F7 roofline / model accuracy. B/A balance dropped
     is much worse: tall narrow tiles overflow L1 (a line of A + one of C
     per row > 256 lines, e.g. 256×4), while the theory assumes the tile
     fits.
+- [x] Model validation analysis: **done 2026-10-11** (report 4.4.1, now the
+  first software question). F5 grid, 41 gc > 0, nothing re-run
+  (scratchpad val_analysis.py on fig_best_tile results).
+  - Refined: 96.1 % within 1 %, 99.4 % within 5 %, worst 34 % (TN = 12,
+    TM ~ 100, gc 450–550). Misses: 2179 under-predictions (measured >
+    predicted) vs 291 over.
+  - Miss rate by balance gc / (TM·α_pure): < 0.5 → 0.8 %, 0.5–0.8 → 23 %,
+    0.8–1.25 → 27 %, 1.25–2 → 8 %, > 2 → 2 %. 1998 of 2470 misses are on
+    thrashing tiles (α > 2); TN ≢ 0 mod 16 is overrepresented.
+  - Pick: refined = the best tile at 36/41 gc, ≤ 0.012 % at 4 more, 1.49 %
+    at gc 350 (picks 96×80). Simple max(α, gc/TM) picks up to 37.4 % slower
+    (gc 120: 92×16), always a non-divisor of M.
+  - **Calibration transfer (2026-10-11, sw_shapes small grid, nothing
+    re-run, scratchpad transfer_m.py):** the per-row α (pure α) is the
+    same for M = 96 / 192 / 384 / 768 (max diff 0.013 %). Calibrating at
+    M = 192 and predicting M = 96 / 384 / 768 picks the best tile at every
+    gc (94–95 % of tiles within 1 %). K changes α a lot (A tile is T_M×K:
+    p90 diff 7 / 34 / 73 % at K = 128 / 512 / 1024) → recalibrate per K.
+    N barely (≤ 5 %). Caveat: can't predict T_M > calibration M.
+  - **Fixed 2026-10-11:** fig_best_tile's dashed "model pick" used
+    max(α, gc·⌈M/TM⌉/M) + S (not per-row): 29 % off at gc 300, 7 % at 350.
+    It now uses the refined per-row model (pure_alpha + model in the
+    script). Worst pick 1.5 % (gc 350, 96×80); the dashed line now follows
+    the measured one everywhere else, except near ties in T_M at
+    gc 90 / 230–260 / 550. Later the same day the user moved "Looking at
+    the Best Tile Sizes" before the model section (motivation), so the
+    report figure is drawn with MODEL_LINES = False (data only).
 
 ## Charts in `gen_charts.py` not on the slides (report candidates)
 
