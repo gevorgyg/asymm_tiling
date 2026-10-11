@@ -12,21 +12,31 @@ parameters:
   f                      bytes that have to stay in L1 for a whole tile row,
                          over L1
 
-Six experiments. Each is one function that runs what it needs (cached in
-out/fifo_feasibility-v2/results.json), draws its figure and returns its
-README section:
+Eight experiments. Each is one function that runs what it needs (cached in
+out/fifo_feasibility-v2/results.json) and returns its README section.
+tiles_experiment and composites_experiment draw graphs, each by its own plot_
+function. tiles_experiment's show the data, the names of the two axes and a
+legend, nothing else. composites_experiment's put a composite parameter on the
+x axis with its formula in the label, and a point that comes from the fastest
+tile has that tile written in it:
 
-  calibration_experiment  FIFO at g_c = 0 and memory-B on all 72 tiles
-                          -> calibration.png
+  tiles_experiment        the FIFO against memory-B on the same tile, in
+                          cycles against g_c -> tile_cycles.png,
+                          tile_speedup.png, tile_breakeven.png,
+                          tile_speedup_gc.png, tile_breakeven_blocking.png,
+                          tile_depth.png
+  calibration_experiment  FIFO at g_c = 0 and memory-B on all tiles
   collapse_experiment     every run with a generator against gamma, with all
-                          model_sweep runs -> collapse.png
-  fill_experiment         alpha against f, here and in model_sweep -> fill.png
-  sweep_experiment        FIFO at 23 generator costs, 2 KB and capacity 0
-                          -> speedup.png
-  depth_experiment        FIFO capacity from 0 to 32 KB at 11 generator costs
-                          -> depth.png
+                          model_sweep runs
+  fill_experiment         alpha against f, here and in model_sweep
+  sweep_experiment        FIFO at every generator cost, 2 KB and capacity 0
+  depth_experiment        FIFO capacity from 0 to 64 KB at a dozen generator
+                          costs
   sensitivity_experiment  the calibration under other latencies and with an
                           L2, and memory-B with B packed in blocks (a table)
+  composites_experiment   the fastest tile's speedup against gamma_0, the
+                          tiles of tile_cycles.png against gamma and against
+                          memory-B, alpha against f -> composites/*.png
 
 run:  .venv/bin/python experiments/rewrite/fifo_feasibility-v2.py
 constraint_tile-v2.py reuses these runs.
@@ -41,7 +51,7 @@ import statistics
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import replace
-from itertools import product
+from itertools import groupby, product
 from pathlib import Path
 
 import matplotlib
@@ -49,6 +59,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from matplotlib.colors import LinearSegmentedColormap, LogNorm, Normalize  # noqa: E402
+from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter  # noqa: E402
 
 from harness import OUT, Params, out_dir, run_many, sim_sha  # noqa: E402
@@ -56,7 +68,7 @@ from harness import OUT, Params, out_dir, run_many, sim_sha  # noqa: E402
 NAME = "fifo_feasibility-v2"
 
 # ---- working point (sources in the README) ----------------------------------
-M, K, N = 192, 128, 256
+M, K, N = 192, 128, 512
 A_P, B_P = 4, 1           # bytes per element: fp32 A and C, int8 B
 R = 8                     # register block side; an A block row is R * A_P = 32 B
 LINE = 64                 # bytes per cache line
@@ -69,12 +81,20 @@ SEED = 8                  # bytes per seed
 MNK = M * N * K
 
 TMS = tuple(range(8, 97, 8))
-TNS = (8, 16, 32, 64, 128, 256)
+TNS = (8, 16, 32, 64, 128, 256, 512)
 TILES = tuple(product(TMS, TNS))
-DEPTHS = (0, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768)   # FIFO bytes
-UNLIMITED = 32768         # holds the B block of every tile, K x T_N elements
+UNLIMITED = K * max(TNS) * B_P   # bytes: holds the B block of every tile, K x T_N elements
+DEPTHS = (0, *(64 << i for i in range(11)))   # FIFO bytes: 0, then 64 B to 64 KB
+assert DEPTHS[-1] == UNLIMITED
 TIE = 0.005               # tiles within 0.5% of the best count as tied
 BURST_TILES = ((48, 16), (48, 128))
+# the two tiles of the cycles graph and the depth graphs, and the six tiles of
+# the speedup-against-g_c graph
+PAIR = ((32, 16), (48, 16))    # the two tiles section 1 walks through
+# the tiles of the cycles and depth figures: a panel per tile, a row per T_N
+FIGURE_TMS, FIGURE_TNS = (32, 48, 64, 80, 96), (16, 32, 64)
+LINE_TILES = ((16, 16), (32, 16), (48, 16), (48, 8), (96, 16), (32, 512))
+DEPTH_FRACTIONS = (0.25, 0.5, 0.75, 1.0, 1.25)   # g_c of the depth graphs, times the tile's limit
 BURST_FACTORS = (0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0)
 
 CYC = "Simulation: Total cycles"
@@ -92,29 +112,28 @@ WP = Params(orientation="weight", b_source="fifo", m=M, k=K, n=N,
             fifo_capacity=FIFO_BYTES // B_P, gen_cost=0,
             fifo_access=T1, seed_size=SEED)
 
-# Changes to the working point for the sensitivity table. L2 sizes and
-# associativity are log2, as the simulator's -c option takes them.
+# Changes to the working point for the sensitivity table.
 SCENARIOS = {
     "the working point": {},
     "L1 hit and pop in 1 cycle": dict(l1_cycles=1, fifo_access=1),
     "no DRAM latency (t_mem = 0)": dict(mem_cycles=0),
-    "L2 512 KB, 8-way, 6 cycles": dict(l2_size=19, l2_cycles=6, l2_assoc=3),
-    "L2 512 KB, 8-way, 15 cycles": dict(l2_size=19, l2_cycles=15, l2_assoc=3),
-    "L2 64 KB, 8-way, 15 cycles": dict(l2_size=16, l2_cycles=15, l2_assoc=3),
 }
 
 # ---- figure style -------------------------------------------------------------
 INK, INK2, MUTED, GRID, AXIS = "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
-RAMP = ("#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b")
-BAND = "#f1f0ea"
+# categorical slots in fixed order, for graphs with up to five series
+CATS = (BLUE, ORANGE, AQUA, "#eda100", "#e87ba4", "#008300")
+# one-hue ramp, light to dark, for heatmaps
+SEQ = ("#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b")
 
 
 def style() -> None:
     plt.rcParams.update({
         "font.size": 9, "axes.titlesize": 9.5, "axes.titlelocation": "left",
         "axes.spines.top": False, "axes.spines.right": False,
-        "axes.edgecolor": AXIS, "axes.labelcolor": INK2, "axes.titlecolor": INK,
+        "axes.edgecolor": AXIS, "axes.labelcolor": INK, "axes.labelsize": 11,
+        "legend.fontsize": 9, "axes.titlecolor": INK,
         "xtick.color": MUTED, "ytick.color": MUTED,
         "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.6,
         "axes.axisbelow": True, "legend.frameon": False, "savefig.dpi": 130,
@@ -194,6 +213,27 @@ def largest_tm(limit) -> dict[int, int | None]:
     """Largest T_M of the grid with limit(T_M, T_N) <= 1, per T_N."""
     return {tn: max((tm for tm in TMS if limit(tm, tn) <= 1), default=None)
             for tn in TNS}
+
+
+def and_list(items) -> str:
+    """'a', 'a and b', 'a, b and c'."""
+    items = [str(i) for i in items]
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def tile_limit_jumps(alpha: dict) -> dict[int, float]:
+    """For every T_N with several tile columns and its tile limit inside the
+    grid: the step in alpha past the tile limit, when it is the largest step
+    of the column."""
+    lim_t = largest_tm(fill_tile)
+    out = {}
+    for tn in TNS:
+        if N // tn < 2 or lim_t[tn] >= TMS[-1]:
+            continue
+        steps = {tm: alpha[(tm, tn)] / alpha[(tm - 8, tn)] for tm in TMS[1:]}
+        if max(steps, key=steps.get) == lim_t[tn] + 8:
+            out[tn] = steps[lim_t[tn] + 8]
+    return out
 
 
 def burst(tile: tuple[int, int], gc: int) -> float:
@@ -423,42 +463,258 @@ def model_sweep_fill(l1: int, k: int, n: int, tm: int, tn: int) -> float:
     return (tm * (k * 4 + 2 * c_lines * LINE) + LINE) / l1
 
 
+# ---- figures: one function per graph -------------------------------------------
+# A graph shows its data, the names of its two axes and a legend for its
+# colours; what it means is in the README.
+CAP_LABELS = tuple(f"{d // 1024}K" if d >= 1024 else str(d) for d in DEPTHS)
+
+
+def new_axes():
+    return plt.subplots(figsize=(6.4, 4.2))
+
+
+def save(fig, path: Path) -> None:
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def log_axis(axis, ticks) -> None:
+    axis.axes.set(**{f"{axis.axis_name}scale": "log"})
+    plain_ticks(axis, ticks)
+
+
+def plot_tile_map(values: dict[tuple[int, int], float], fmt, label: str, path: Path,
+                  log: bool = False, ticks=(2, 5, 10, 20, 50, 100, 200)) -> None:
+    """One value for every tile: T_N across, T_M up, the value printed in its
+    cell and coloured on a one-hue ramp. An infinite value, a FIFO that still
+    wins at the slowest generator of the sweep, is printed as "> g_c"."""
+    finite = [v for v in values.values() if math.isfinite(v)]
+    top = max(finite)
+    grid = np.array([[min(values[(tm, tn)], top) for tn in TNS] for tm in TMS])
+    norm = (LogNorm if log else Normalize)(grid.min(), grid.max())
+    fig, ax = plt.subplots(figsize=(7.4, 6.4))
+    im = ax.imshow(grid, cmap=LinearSegmentedColormap.from_list("seq", SEQ), norm=norm,
+                   origin="lower", aspect="auto")
+    for i, tm in enumerate(TMS):
+        for j, tn in enumerate(TNS):
+            v = values[(tm, tn)]
+            ax.text(j, i, fmt(v) if math.isfinite(v) else f"> {top:.0f}", ha="center",
+                    va="center", fontsize=8.5, color="white" if norm(grid[i, j]) > 0.55 else INK)
+    ax.set_xticks(range(len(TNS)), TNS)
+    ax.set_yticks(range(len(TMS)), TMS)
+    ax.grid(False)
+    ax.set_xlabel("$T_N$")
+    ax.set_ylabel("$T_M$")
+    cb = fig.colorbar(im, ax=ax)
+    cb.set_label(label, fontsize=11)
+    if log:
+        plain_ticks(cb.ax.yaxis, list(ticks))
+    save(fig, path)
+
+
+def plot_tile_speedup_lines(gcs: list[int], speedups: dict[tuple[int, int], list[float]],
+                            path: Path) -> None:
+    """Memory-B cycles over FIFO cycles on the same tile against g_c, one
+    colour per tile, and memory-B itself at 1."""
+    fig, ax = new_axes()
+    for (tile, ys), color in zip(speedups.items(), CATS):
+        ax.plot(gcs, ys, color=color, marker="o", ms=3, lw=1.4, label=f"tile {tile_str(tile)}")
+    ax.axhline(1, color=MUTED, lw=1.2, ls="--", label="memory-B")
+    log_axis(ax.xaxis, [1, 2, 5, 10, 20, 50, 100, 200])
+    log_axis(ax.yaxis, [0.1, 0.2, 0.5, 1, 2, 5])
+    ax.set_xlabel("$g_c$ [cycles]")
+    ax.set_ylabel("memory-B cycles / FIFO cycles")
+    ax.legend(loc="lower left")
+    save(fig, path)
+
+
+def f_label(tm: int, tn: int) -> str:
+    """f of a tile with B from the FIFO and with B from memory."""
+    return f"f = {fill(tm, tn, 'fifo'):.3f} FIFO, {fill(tm, tn, 'memory'):.3f} memory-B"
+
+
+def f_title(fig) -> None:
+    """The formula of f, as the title of a figure."""
+    fig.suptitle(
+        r"$f = (T_M\,(K\,A_P + 2\,\max(T_N A_P,\ \mathrm{line})) + X)\ /\ L_1$" + "\n"
+        + r"$X$ = one line for the FIFO (its seed), $K\,\max(T_N B_P,\ \mathrm{line})$"
+        + " for memory-B (its B block)\n"
+        + rf"$K$ = {K}, $A_P$ = {A_P} B, $B_P$ = {B_P} B, line = {LINE} B, $L_1$ = {L1 // 1024} KB",
+        fontsize=11, color=INK)
+
+
+def draw_tile_cycles(ax, tile: tuple[int, int], gcs: list[int], fifo_cpm: list[float],
+                     mem_cpm: float) -> None:
+    """One panel of the cycles figure: cycles per MAC against g_c on one
+    tile, B from the 2 KB FIFO solid and B from memory dashed. The legend's
+    title names the tile and its f."""
+    ax.plot(gcs, fifo_cpm, color=BLUE, marker="o", ms=2.5, lw=1.4, label="B from the FIFO, 2 KB")
+    ax.axhline(mem_cpm, color=ORANGE, lw=1.3, ls="--", label="B from memory")
+    ax.legend(title=f"{tile_str(tile)}: {f_label(*tile)}", loc="lower right", fontsize=7,
+              title_fontsize=7.5)
+
+
+def plot_tile_cycles(gcs: list[int], fifo_cpm: dict[tuple[int, int], list[float]],
+                     mem_cpm: dict[tuple[int, int], float], path: Path, xmax: int = 130) -> None:
+    """Cycles per MAC against g_c, one panel per tile of FIGURE_TMS x
+    FIGURE_TNS (a row per T_N, a column per T_M), in one figure with the
+    formula of f in the title. Linear axes, shared by all panels, so a FIFO
+    line is flat and then straight."""
+    fig, axes = plt.subplots(len(FIGURE_TNS), len(FIGURE_TMS),
+                             figsize=(3.9 * len(FIGURE_TMS), 3.3 * len(FIGURE_TNS)),
+                             sharex=True, sharey=True)
+    for i, tn in enumerate(FIGURE_TNS):
+        for j, tm in enumerate(FIGURE_TMS):
+            draw_tile_cycles(axes[i, j], (tm, tn), gcs, fifo_cpm[(tm, tn)], mem_cpm[(tm, tn)])
+    axes[0, 0].set_xlim(0, xmax)
+    axes[0, 0].set_ylim(0, 1.1 * max(mem_cpm.values()))
+    for ax in axes[:, 0]:
+        ax.set_ylabel("cycles per MAC")
+    for ax in axes[-1, :]:
+        ax.set_xlabel("$g_c$ [cycles]")
+    f_title(fig)
+    fig.tight_layout()
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def draw_tile_depth(ax, tile: tuple[int, int], curves: dict[int, list[float]],
+                    mem_cpm: float) -> None:
+    """One panel of the depth figure: cycles per MAC on one tile against FIFO
+    capacity, one line per g_c, and B from memory on the same tile. The
+    legend's title names the tile and its f."""
+    xs = range(len(DEPTHS))
+    for (gc, ys), color in zip(curves.items(), CATS):
+        ax.plot(xs, ys, color=color, marker="o", ms=2.5, lw=1.3, label=f"$g_c$ = {gc}")
+    ax.axhline(mem_cpm, color=MUTED, lw=1.1, ls="--", label="B from memory")
+    ax.set_xticks(xs, CAP_LABELS, rotation=90, fontsize=7.5)
+    ax.set_ylim(0, 1.5 * max(mem_cpm, *(max(ys) for ys in curves.values())))
+    ax.legend(title=f"{tile_str(tile)}: {f_label(*tile)}", loc="upper right", ncol=2,
+              fontsize=7, title_fontsize=7.5)
+
+
+def plot_tile_depth(curves: dict[tuple[int, int], dict[int, list[float]]],
+                    mem_cpm: dict[tuple[int, int], float], path: Path) -> None:
+    """Cycles per MAC against FIFO capacity, one panel per tile of FIGURE_TMS x
+    FIGURE_TNS (a row per T_N, a column per T_M), in one figure with the
+    formula of f in the title."""
+    fig, axes = plt.subplots(len(FIGURE_TNS), len(FIGURE_TMS),
+                             figsize=(3.9 * len(FIGURE_TMS), 3.4 * len(FIGURE_TNS)), sharex=True)
+    for i, tn in enumerate(FIGURE_TNS):
+        for j, tm in enumerate(FIGURE_TMS):
+            draw_tile_depth(axes[i, j], (tm, tn), curves[(tm, tn)], mem_cpm[(tm, tn)])
+    for ax in axes[:, 0]:
+        ax.set_ylabel("cycles per MAC")
+    for ax in axes[-1, :]:
+        ax.set_xlabel("FIFO capacity [bytes]")
+    f_title(fig)
+    fig.tight_layout()
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ---- composite graphs ----------------------------------------------------------
+# A composite parameter on the x axis, with its formula in the axis label. A
+# point that comes from the fastest tile has that tile written in it.
+VIOLET = "#6250d6"         # the seventh categorical slot
+
+
+def best_tile_ref(cal: dict) -> tuple[tuple[int, int], float]:
+    """best_tile_0, the FIFO's fastest tile with a free generator, and
+    g_0 = alpha M / ceil(M / T_M) on it, the slowest generator it hides."""
+    t = cal["t_star"]
+    return t, cal["alpha_f"][t] * M / tile_rows(t[0])
+
+
+def gamma0_label(cal: dict) -> str:
+    """gamma_0 and its formula, for an x axis."""
+    t, g0 = best_tile_ref(cal)
+    return (r"$\gamma_0 = g_c\,/\,g_0$, where $g_0 = \alpha_f\,M\,/\,\lceil M/T_M\rceil$ "
+            "is the slowest generator best_tile₀ hides\n"
+            f"best_tile₀ = {tile_str(t)}, the FIFO's fastest tile at $g_c$ = 0:  "
+            f"$g_0$ = {cal['alpha_f'][t]:.3f} · {M} / {tile_rows(t[0])} = {g0:.1f} cycles")
+
+
+def draw_tile_points(ax, xs, ys, tiles, color: str) -> None:
+    """A line through the points, each point a box with its tile written in it."""
+    ax.plot(xs, ys, color=color, lw=1.3, zorder=2)
+    for x, y, t in zip(xs, ys, tiles):
+        ax.annotate(tile_str(t), (x, y), ha="center", va="center", rotation=90, fontsize=7.5,
+                    color=INK, zorder=3,
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=color, lw=1))
+
+
+def pad_log(ax, ys, below: float = 1.7, above: float = 1.7) -> None:
+    """Room on a log y axis for the boxes of the lowest and highest points."""
+    ax.set_ylim(min(ys) / below, max(ys) * above)
+
+
+def plot_speedup_best(xs: list[float], ys: list[float], tiles: list, xlabel: str, ylabel: str,
+                      label: str, path: Path) -> None:
+    """Memory-B's cycles over the FIFO's on its fastest tile against gamma_0,
+    the tile written in every point, and memory-B itself at 1."""
+    fig, ax = plt.subplots(figsize=(10, 5.6))
+    draw_tile_points(ax, xs, ys, tiles, BLUE)
+    ax.axhline(1, color=MUTED, lw=1.2, ls="--", zorder=1)
+    log_axis(ax.xaxis, [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20])
+    log_axis(ax.yaxis, [0.1, 0.2, 0.3, 0.5, 0.7, 1, 1.5])
+    pad_log(ax, ys)
+    ax.set_xlabel(xlabel, fontsize=10)
+    ax.set_ylabel(ylabel, fontsize=10)
+    ax.legend(handles=[Line2D([], [], color=BLUE, lw=1.3, label=label),
+                       Line2D([], [], color=MUTED, lw=1.2, ls="--",
+                              label=f"memory-B on {tile_str(PAIR[0])}")], loc="lower left")
+    save(fig, path)
+
+
+def plot_collapse(curves: dict, ref: tuple, xlabel: str, ylabel: str, path: Path) -> None:
+    """One line per tile of FIGURE_TMS x FIGURE_TNS through its runs, colour
+    by T_M and marker by T_N, and a gray dashed reference (xs, ys, label)."""
+    marks = dict(zip(FIGURE_TNS, ("o", "s", "^")))
+    fig, ax = plt.subplots(figsize=(8.8, 5.8))
+    for (tm, tn), (xs, ys) in curves.items():
+        ax.plot(xs, ys, color=CATS[FIGURE_TMS.index(tm)], marker=marks[tn], ms=3.4, lw=0.9)
+    rx, ry, rlabel = ref
+    ax.plot(rx, ry, color=MUTED, lw=1.5, ls="--", zorder=1)
+    handles = [Line2D([], [], color=c, lw=1.4, label=f"$T_M$ = {tm}")
+               for tm, c in zip(FIGURE_TMS, CATS)]
+    handles += [Line2D([], [], color=INK2, marker=m, ls="none", label=f"$T_N$ = {tn}")
+                for tn, m in marks.items()]
+    handles.append(Line2D([], [], color=MUTED, lw=1.5, ls="--", label=rlabel))
+    ax.legend(handles=handles, loc="upper left", ncol=2)
+    log_axis(ax.xaxis, [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30])
+    log_axis(ax.yaxis, [0.3, 0.5, 1, 2, 5, 10, 20])
+    ax.set_xlabel(xlabel, fontsize=10)
+    ax.set_ylabel(ylabel, fontsize=10)
+    save(fig, path)
+
+
+def plot_alpha_fill(points: dict[int, list[tuple[float, float]]], xlabel: str, ylabel: str,
+                    path: Path) -> None:
+    """Cycles per MAC at g_c = 0 against f, one line per T_N through its
+    tiles, in order of T_M."""
+    fig, ax = plt.subplots(figsize=(8.8, 5.4))
+    for (tn, pts), color in zip(points.items(), CATS + (VIOLET,)):
+        fs, alphas = zip(*pts)
+        ax.plot(fs, alphas, color=color, marker="o", ms=3.4, lw=1.2, label=f"$T_N$ = {tn}")
+    log_axis(ax.xaxis, [0.2, 0.5, 1, 2, 5, 10])
+    log_axis(ax.yaxis, [0.4, 0.5, 0.7, 1, 1.5, 2, 3])
+    ax.set_xlabel(xlabel, fontsize=10)
+    ax.set_ylabel(ylabel)
+    ax.legend(loc="upper left")
+    save(fig, path)
+
+
 # ---- experiments ----------------------------------------------------------------
 def calibration_experiment(out: Path) -> tuple[dict, str]:
-    """alpha of all tiles, FIFO at g_c = 0 and memory-B. Figure:
-    calibration.png, the best T_N at every T_M for both."""
+    """alpha of all tiles, FIFO at g_c = 0 and memory-B, and what the max
+    model takes from it."""
     cal = calibrate()
     af, am, res = cal["alpha_f"], cal["alpha_m"], cal["res"]
     ts, td = cal["t_star"], cal["t_dag"]
 
     env_f = [min(af[(tm, tn)] for tn in TNS) for tm in TMS]
-    env_m = [min(am[(tm, tn)] for tn in TNS) for tm in TMS]
-    fig, ax = plt.subplots(figsize=(7.4, 4.0))
-    ax.plot(TMS, env_f, color=BLUE, marker="o", ms=4, lw=1.8)
-    ax.plot(TMS, env_m, color=INK2, marker="o", ms=4, lw=1.8)
-    ax.text(TMS[-1] + 2, env_f[-1], "B from the FIFO,\n$g_c$ = 0", color=INK2,
-            va="center", fontsize=8)
-    ax.text(TMS[-1] + 2, env_m[-1], "B from memory", color=INK2, va="center",
-            fontsize=8)
-    ax.axhline(cal["a_m0"], color=MUTED, lw=0.8)
-    ax.text(58, cal["a_m0"] - 0.006,
-            rf"$\alpha_m^*$ = {cal['a_m0']:.3f}, tied at "
-            + ", ".join(tile_str(t) for t in cal["ties_m"]),
-            color=INK2, va="top", fontsize=8)
-    ax.text(10, cal["a_f0"] + 0.02,
-            rf"$\alpha_{{f0}}$ = {cal['a_f0']:.3f} at {tile_str(ts)}",
-            color=INK2, va="bottom", fontsize=8)
-    ax.axvline(td[0], color=AXIS, lw=0.8)
-    ax.text(td[0] + 1, 0.98, rf"$T_M^\dagger$ = {td[0]}", color=MUTED, va="top",
-            fontsize=8, transform=ax.get_xaxis_transform())
-    ax.set_xticks(TMS)
-    ax.set_xlim(4, TMS[-1] + 24)
-    ax.set_xlabel("tile height $T_M$ (each point: the best $T_N$ for that $T_M$)")
-    ax.set_ylabel("cycles per MAC at $g_c$ = 0")
-    ax.set_title("Cycles per MAC with B free (FIFO) and with B loaded from memory")
-    fig.tight_layout()
-    fig.savefig(out / "calibration.png")
-    plt.close(fig)
 
     lim_f = largest_tm(lambda tm, tn: fill(tm, tn, "fifo"))
     lim_m = largest_tm(lambda tm, tn: fill(tm, tn, "memory"))
@@ -479,14 +735,29 @@ def calibration_experiment(out: Path) -> tuple[dict, str]:
         return rows
 
     # the first jump of more than 3% in each column with several tile columns
-    agree = {side: [tn for tn in TNS[:-1] if lim[tn] and first_jump(alpha, tn) == lim[tn] + 8]
+    several = [tn for tn in TNS if N // tn > 1]
+    agree = {side: [tn for tn in several if lim[tn] and first_jump(alpha, tn) == lim[tn] + 8]
              for side, alpha, lim in (("fifo", af, lim_f), ("memory", am, lim_m))}
-    assert agree["fifo"] == list(TNS[:-1]), agree
-    misfits = [tn for tn in TNS[:-1] if tn not in agree["memory"]]
-    assert misfits == [128], misfits
-    rise_128 = [af[(tm, 128)] / af[(lim_f[128], 128)] - 1 for tm in (24, 32, 40, 48)]
+    misfit = {side: [tn for tn in several if lim[tn] and tn not in agree[side]]
+              for side, lim in (("fifo", lim_f), ("memory", lim_m))}
+    no_fit = {side: [tn for tn in several if not lim[tn]]
+              for side, lim in (("fifo", lim_f), ("memory", lim_m))}
+    assert not misfit["fifo"] and not no_fit["fifo"], (misfit, no_fit)
+    memory_text = "For memory-B it is too."
+    if misfit["memory"]:
+        memory_text = (
+            f"For memory-B it is too, except at T_N = {and_list(misfit['memory'])}: with only "
+            f"{and_list(N // tn for tn in misfit['memory'])} tile columns, reading A again costs "
+            "less than taller tiles save by loading B fewer times, so α keeps falling past the "
+            "limit.")
+    if no_fit["memory"]:
+        memory_text += (f" At T_N = {and_list(no_fit['memory'])} memory-B has no such tile: its "
+                        "B block alone, K rows of T_N bytes, fills L1.")
+    tn_two = N // 2                    # the width with two tile columns
+    rise_two = [af[(tm, tn_two)] / af[(lim_f[tn_two], tn_two)] - 1
+                for tm in TMS if lim_f[tn_two] < tm <= lim_t[tn_two]]
     jump_8 = af[(lim_f[8] + 8, 8)] / af[(lim_f[8], 8)]
-    tile_jumps = {tn: af[(lim_t[tn] + 8, tn)] / af[(lim_t[tn], tn)] for tn in (64, 128, 256)}
+    tile_jumps = tile_limit_jumps(af)
     later = [env_f[i] for i, tm in enumerate(TMS) if tm > td[0]]
     near = cal["ties_f"]
 
@@ -511,19 +782,16 @@ and its B block takes K whole lines of L1, so its band stops fitting at a
 smaller T_M. The limit rows under the tables give the tallest T_M with f ≤ 1,
 where f counts the seed line for the FIFO and the B block for memory-B. For
 the FIFO the first jump of more than 3% in every column with several tile
-columns is at the next T_M past that limit. For memory-B it is too, except at
-T_N = {', '.join(map(str, misfits))}: with only two tile columns, reading A
-twice costs less than taller tiles save by loading B fewer times, so α keeps
-falling past the limit.
+columns is at the next T_M past that limit. {memory_text}
 
 How much the jump past f = 1 costs depends on how many tile columns read A
-again: with T_N = 8 there are 32, and α grows {jump_8:.2f} times; with
-T_N = 128 there are two, and α rises by only {min(rise_128):.0%} to
-{max(rise_128):.0%}. Within the T_N = 64, 128 and 256 columns the largest
+again: with T_N = 8 there are {N // 8}, and α grows {jump_8:.2f} times; with
+T_N = {tn_two} there are two, and α rises by only {min(rise_two):.0%} to
+{max(rise_two):.0%}. Within the T_N = {and_list(tile_jumps)} columns the largest
 jumps come from the tile limit ({', '.join(f'{lim_t[tn] + 8}×{tn}: {v:.2f} times' for tn, v in tile_jumps.items())}).
 Between two k steps the core walks the whole C tile and two k-columns of A,
 so T_M · (max(T_N·A_P, line) + 2·line) has to fit in L1, or C is read from
-DRAM again during the tile. At T_N = N = 256 there is a single tile column,
+DRAM again during the tile. At T_N = N = {N} there is a single tile column,
 the band is never reused, and the tile limit is the only one.
 
 T_M† is {td[0]}, the height of the FIFO's best tile. Taller tiles cost
@@ -533,7 +801,7 @@ the bottleneck the FIFO has no taller tile to move to, and the predicted
 break-even is only {cal['g_star'] / cal['knee']:.2f} times the knee.
 """
     kt = cal["knee_tile"]
-    L = ["## Calibration", "", "![calibration](calibration.png)", "",
+    L = ["## Calibration", "",
          "| quantity | value |", "|---|---|",
          f"| α_f0, the FIFO's best tile | {cal['a_f0']:.4f} at {tile_str(ts)} "
          f"(f = {fill(*ts):.2f}); {len(near) - 1} more tiles within 0.5%, the "
@@ -556,30 +824,9 @@ break-even is only {cal['g_star'] / cal['knee']:.2f} times the knee.
 def fill_experiment(cal: dict, out: Path) -> str:
     """alpha against f: this working point's tiles (FIFO and memory-B) and
     every model_sweep tile column (three L1 sizes, six matrix shapes, another
-    device). Figure: fill.png."""
+    device)."""
     af, am = cal["alpha_f"], cal["alpha_m"]
     ms = model_sweep_alpha()
-    fig, axes = plt.subplots(1, 3, figsize=(12.8, 4.1), sharey=True)
-    for ax, alpha, side, title in ((axes[0], af, "fifo", "This working point, B from the FIFO"),
-                                   (axes[1], am, "memory", "This working point, B from memory")):
-        for tn, color in zip(TNS[:-1], RAMP):
-            base = min((alpha[(tm, tn)] for tm in TMS if fill(tm, tn, side) <= 1), default=None)
-            if base is None:
-                continue
-            fs = [fill(tm, tn, side) for tm in TMS]
-            ys = [alpha[(tm, tn)] / base for tm in TMS]
-            inside = [fill_tile(tm, tn) <= 1 for tm in TMS]
-            ax.plot(fs, ys, color=color, lw=1.3, label=f"$T_N$ = {tn}")
-            ax.scatter([f for f, i in zip(fs, inside) if i], [y for y, i in zip(ys, inside) if i],
-                       s=14, color=color, zorder=3)
-            ax.scatter([f for f, i in zip(fs, inside) if not i],
-                       [y for y, i in zip(ys, inside) if not i],
-                       s=18, facecolors="white", edgecolors=color, lw=1.1, zorder=3)
-        ax.set_title(title)
-    axes[0].legend(loc="upper left", fontsize=7.5)
-    hollow = axes[1].scatter([], [], s=18, facecolors="white", edgecolors=INK2,
-                             label="past the tile limit")
-    axes[1].legend(handles=[hollow], loc="upper left", fontsize=7.5)
 
     ms_in, firsts, n_cols = [], [], 0
     for (l1, m, k, n, tn), col in ms.items():
@@ -591,35 +838,21 @@ def fill_experiment(cal: dict, out: Path) -> str:
         over = [model_sweep_fill(l1, k, n, tm, tn) for tm, a in col.items() if a > 1.05 * base]
         if over:
             firsts.append(min(over))
-    colors = {8192: BLUE, 16384: ORANGE, 32768: AQUA}
-    for l1, color in colors.items():
-        pts = [(model_sweep_fill(l1, k, n, tm, tn), a / min(
-                   b for t2, b in col.items() if model_sweep_fill(l1, k, n, t2, tn) <= 1))
-               for (s1, m, k, n, tn), col in ms.items() if s1 == l1 and n // tn >= 2
-               and any(model_sweep_fill(l1, k, n, t2, tn) <= 1 for t2 in col)
-               for tm, a in col.items()]
-        axes[2].scatter(*zip(*pts), s=6, color=color, alpha=0.55, lw=0,
-                        label=f"L1 = {l1 // 1024} KB", rasterized=True)
-    axes[2].set_title("model_sweep: 3 L1 sizes, 6 matrix shapes")
-    axes[2].legend(loc="upper left", fontsize=7.5, markerscale=2)
-    for ax, xt in zip(axes, ([0.25, 0.5, 1, 2, 4], [0.5, 1, 2, 4], [0.1, 0.3, 1, 3, 10, 30])):
-        ax.axvline(1, color=INK2, lw=0.9)
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        plain_ticks(ax.xaxis, xt)
-        ax.set_xlabel("f, what has to stay in L1 for a tile row / L1")
-    plain_ticks(axes[0].yaxis, [0.5, 1, 2, 4, 10, 20])
-    axes[0].set_ylabel("α / best α of the same $T_N$ column with f ≤ 1")
-    fig.tight_layout()
-    fig.savefig(out / "fill.png")
-    plt.close(fig)
 
     lim_f = largest_tm(lambda tm, tn: fill(tm, tn, "fifo"))
+    lim_m = largest_tm(lambda tm, tn: fill(tm, tn, "memory"))
+    tn_two = N // 2
+    cheaper = [tn for tn in TNS if lim_m[tn] and lim_m[tn] < TMS[-1]
+               and am[(lim_m[tn] + 8, tn)] < am[(lim_m[tn], tn)]]
+    cheaper_text = (f"Memory-B at T_N = {and_list(cheaper)} even gets cheaper past its limit, "
+                    "because taller tiles also load B fewer times. " if cheaper else "")
+    lim_t = largest_tm(fill_tile)
+    jumps = [f"{lim_t[tn] + 8}×{tn}" for tn in tile_limit_jumps(af) if tn in TNS[:-1]]
     reading = f"""
 f is the part of L1 that has to hold data for a whole tile row: the A band
 and two C tiles, plus the seed line for the FIFO or the B block for memory-B.
-In all three panels α stays at the best value of its column while f ≤ 1 and
-rises once f passes 1. model_sweep runs a different device (4-byte elements,
+With B from the FIFO, with B from memory and in model_sweep, α stays at the
+best value of its tile column while f ≤ 1 and rises once f passes 1. model_sweep runs a different device (4-byte elements,
 r = 4, L1 of 8, 16 and 32 KB, rows not padded to cache lines) on six matrix
 shapes. Its rows don't always start on a line, so a C tile row can straddle
 one line more than its width needs, and f counts that line. In the
@@ -629,25 +862,190 @@ first tile more than 5% above it sits at f = {min(firsts):.2f} to
 {max(firsts):.2f} (median {statistics.median(firsts):.2f}). How far past 1
 depends on how big a step the next T_M of the grid is.
 
-f says where α jumps, not how much. Past f = 1 the A band is read again for
-every tile column, so the jump grows with the number of tile columns, N/T_N:
+f tells where α jumps. How far it jumps depends on the number of tile
+columns, N/T_N, because past f = 1 the A band is read again for each of them:
 at this working point α grows {af[(lim_f[8] + 8, 8)] / af[(lim_f[8], 8)]:.2f}
-times at T_N = 8 (32 tile columns) and {af[(lim_f[128] + 8, 128)] / af[(lim_f[128], 128)]:.2f}
-times at T_N = 128 (two). Memory-B at T_N = 128 even gets cheaper past its
-limit, because taller tiles also load B fewer times. The hollow markers are
-tiles past the tile limit, T_M · (max(T_N·A_P, line) + 2·line) > L1, where C
-doesn't survive from one k step to the next. That limit causes the large
-jumps at 88×64 and 56×128 and is the only limit at T_N = 256 (one tile
-column, not drawn).
+times at T_N = 8 ({N // 8} tile columns) and {af[(lim_f[tn_two] + 8, tn_two)] / af[(lim_f[tn_two], tn_two)]:.2f}
+times at T_N = {tn_two} (two). {cheaper_text}Past the tile limit,
+T_M · (max(T_N·A_P, line) + 2·line) > L1, C doesn't survive from one k step
+to the next. That limit causes the large jumps at {and_list(jumps)} and is
+the only limit at T_N = {N} (one tile column, not drawn).
 """
-    return "\n".join(["### f: where the L1 limit falls", "", "![fill](fill.png)", "",
+    return "\n".join(["### f: where the L1 limit falls", "",
                       reading.strip()])
+
+
+def composites_experiment(cal: dict, res: dict, out: Path) -> str:
+    """Graphs with a composite parameter on the x axis, in composites/: the
+    speedup of the FIFO's fastest tile against gamma_0 (2 KB and capacity 0),
+    the tiles of tile_cycles.png against gamma and against memory-B on the
+    same tile, and alpha against f for both sources of B. Returns the README
+    of composites/."""
+    comp = out / "composites"
+    comp.mkdir(exist_ok=True)
+    af, am = cal["alpha_f"], cal["alpha_m"]
+    mem_t = PAIR[0]
+    mem = am[mem_t]
+    assert mem == cal["a_m0"], "PAIR[0] is not one of memory-B's fastest tiles"
+    t0, g0 = best_tile_ref(cal)
+    gcs, allg = sweep_gcs(cal), all_gcs(cal)
+
+    # the fastest tile against gamma_0 ------------------------------------------
+    xs = [gc / g0 for gc in gcs]
+    par, blk = [best(res, gc) for gc in gcs], [best(res, gc, 0) for gc in gcs]
+    xlabel = gamma0_label(cal)
+    ylabel = (f"memory-B cycles per MAC on {tile_str(mem_t)}\n/ FIFO cycles per MAC on best_tile\n"
+              "best_tile: the FIFO's fastest tile at this $g_c$")
+    plot_speedup_best(xs, [mem / v for v, _ in par], [ts[0] for _, ts in par], xlabel, ylabel,
+                      "FIFO of 2 KB", comp / "speedup_gamma0.png")
+    plot_speedup_best(xs, [mem / v for v, _ in blk], [ts[0] for _, ts in blk], xlabel, ylabel,
+                      "FIFO of capacity 0: the generator blocks the core",
+                      comp / "speedup_gamma0_blocking.png")
+    win = crossing(allg, [mem / best(res, gc)[0] for gc in allg])
+    win0 = crossing(allg, [mem / best(res, gc, 0)[0] for gc in allg])
+    order = [k for k, _ in groupby(tile_str(ts[0]) for _, ts in par)]
+
+    # the tiles of tile_cycles.png against gamma and against memory-B -----------
+    tiles = list(product(FIGURE_TMS, FIGURE_TNS))
+    cyc = {t: [cpm(res[fifo(t, gc)]) for gc in allg] for t in tiles}
+    gam = {t: [beta(gc, t[0]) / af[t] for gc in allg] for t in tiles}
+    grid = list(np.geomspace(min(min(v) for v in gam.values()), max(max(v) for v in gam.values()), 200))
+    plot_collapse({t: (gam[t], [c / af[t] for c in cyc[t]]) for t in tiles},
+                  (grid, [max(1.0, g) for g in grid], "max(1, γ)"),
+                  r"$\gamma = \beta\,/\,\alpha_f = g_c\,\lceil M/T_M\rceil\,/\,(M\,\alpha_f)$: "
+                  "generation cycles per MAC over the tile's\ncycles per MAC with a free generator "
+                  r"($\alpha_f$, the same tile at $g_c$ = 0)",
+                  r"FIFO cycles per MAC / $\alpha_f$ of the same tile", comp / "cycles_gamma.png")
+    over = {t: [m - 1 for m in (c / af[t] / max(1.0, g) for c, g in zip(cyc[t], gam[t]))]
+            for t in tiles}
+    short = [t for t in tiles if M % t[0]]
+    whole = [t for t in tiles if not M % t[0]]
+    near = [e for t in whole for e, g in zip(over[t], gam[t]) if 0.5 <= g <= 2]
+    away = [e for t in whole for e, g in zip(over[t], gam[t]) if not 0.5 <= g <= 2]
+
+    mx = {t: [beta(gc, t[0]) / am[t] for gc in allg] for t in tiles}
+    span = [min(min(v) for v in mx.values()), max(max(v) for v in mx.values())]
+    plot_collapse({t: (mx[t], [c / am[t] for c in cyc[t]]) for t in tiles},
+                  (span, [1, 1], "memory-B on the same tile"),
+                  r"$g_c\,\lceil M/T_M\rceil\,/\,(M\,\alpha_m)$: generation cycles per MAC over "
+                  r"memory-B cycles per MAC ($\alpha_m$) on the same tile",
+                  r"FIFO cycles per MAC / $\alpha_m$ of the same tile", comp / "cycles_memory.png")
+    cross = {t: crossing(mx[t], [am[t] / c for c in cyc[t]]) for t in tiles}
+
+    # alpha against f -------------------------------------------------------------
+    f_text = (r"$f = (T_M\,(K\,A_P + 2\,\max(T_N A_P,\ \mathrm{line})) + X)\ /\ L_1$: "
+              "what a tile row keeps in L1, over L1\n")
+    plot_alpha_fill({tn: [(fill(tm, tn, "fifo"), af[(tm, tn)]) for tm in TMS] for tn in TNS},
+                    f_text + "X = one line for the FIFO's seed",
+                    "FIFO cycles per MAC at $g_c$ = 0", comp / "alpha_fill.png")
+    plot_alpha_fill({tn: [(fill(tm, tn, "memory"), am[(tm, tn)]) for tm in TMS] for tn in TNS},
+                    f_text + r"X = $K\,\max(T_N B_P,\ \mathrm{line})$ for memory-B's B block",
+                    "memory-B cycles per MAC", comp / "alpha_fill_memory.png")
+    several = [t for t in TILES if N // t[1] > 1]
+    fit_f = [af[t] for t in several if fill(*t) <= 1]
+    fit_m = [am[t] for t in several if fill(*t, "memory") <= 1]
+    jump = {tn: af[(largest_tm(lambda tm, w: fill(tm, w))[tn] + 8, tn)]
+            / af[(largest_tm(lambda tm, w: fill(tm, w))[tn], tn)] for tn in (TNS[0], N // 2)}
+
+    def rng(vals, fmt: str = ".2f") -> str:
+        lo, hi = f"{min(vals):{fmt}}", f"{max(vals):{fmt}}"
+        return lo if lo == hi else f"{lo} to {hi}"
+
+    ratio = {t: af[t] / am[t] for t in tiles}
+    lo_t, hi_t = min(tiles, key=ratio.get), max(tiles, key=ratio.get)
+    rows80 = sorted({t[0] for t in short})
+    last = M - (tile_rows(rows80[0]) - 1) * rows80[0]
+    text = f"""
+# {NAME}: composite graphs
+
+Each graph here has a composite parameter on its x axis, with the formula in
+the axis label. A point that comes from the fastest tile at its g_c has that
+tile written in it. The working point, the runs and the notation are those of
+the [main README](../README.md).
+
+## γ₀: the FIFO's fastest tile against memory-B
+
+γ₀ = g_c / g_0, where g_0 = α_f · M / ⌈M/T_M⌉ on best_tile₀, the FIFO's
+fastest tile with a free generator. best_tile₀ is {tile_str(t0)}, so
+g_0 = {af[t0]:.3f} · {M} / {tile_rows(t0[0])} = {g0:.1f} cycles. Each element of B serves
+{M / tile_rows(t0[0]):g} MACs on {tile_str(t0)}, and the core spends {af[t0]:.3f} cycles on each MAC, so
+g_0 is the slowest generator that tile keeps up with. The tables of the main
+README divide by {cal['knee']:.1f}, from {tile_str(cal['knee_tile'])}, which is within 0.5% of {tile_str(t0)} with
+a free generator; the two γ₀ differ by {abs(cal['knee'] / g0 - 1):.1%}.
+
+![speedup of the FIFO's fastest tile against γ₀](speedup_gamma0.png)
+
+Memory-B on {tile_str(mem_t)} over the FIFO on its fastest tile at each g_c, with
+the 2 KB FIFO. The FIFO is {mem / par[0][0]:.2f} times faster while γ₀ is small and
+stops winning at γ₀ = {win / g0:.2f}. As the generator slows down, the fastest tile
+goes through {and_list(order)}. Once generation sets the
+time the taller tiles win, because each element of B then serves more MACs.
+
+![the same with a generator that blocks the core](speedup_gamma0_blocking.png)
+
+The same with a FIFO of capacity 0, so every pop waits for the generator. The
+FIFO stops winning at γ₀ = {win0 / g0:.2f}, which takes a generator {win / win0:.1f} times faster
+than with the 2 KB FIFO.
+
+## γ: the tiles of tile_cycles.png in one graph
+
+γ = g_c ⌈M/T_M⌉ / (M α_f) on each tile: the generator's cycles per MAC over
+the tile's own cycles per MAC with a free generator, α_f.
+
+![the tiles of tile_cycles.png against γ](cycles_gamma.png)
+
+Each run's cycles per MAC over α_f of its tile, against γ of that tile, for
+the {len(tiles)} tiles of tile_cycles.png. The colour gives T_M and the marker T_N. The
+runs follow max(1, γ): the tile's own time while the generator keeps up, and
+the generator's time after that. On the tiles whose T_M divides M they lie
+within {max(away):.0%} of max(1, γ) away from γ = 1, and up to {max(near):.0%} above it for
+0.5 ≤ γ ≤ 2. The {and_list(rows80)}-row tiles leave the curve early, up to
+{max(max(over[t]) for t in short):.0%} above it. Their last tile row is {last} rows tall, so each element of B
+generated for it serves only {last} MACs, and the generator falls behind there
+first.
+
+## Generation over memory-B: where each tile stops winning
+
+The x axis is g_c ⌈M/T_M⌉ / (M α_m) on each tile: the generator's cycles per
+MAC over memory-B's cycles per MAC on the same tile, α_m. By the rule of
+section 1 of the main README, a tile beats memory-B while this is below 1.
+
+![the tiles of tile_cycles.png against memory-B](cycles_memory.png)
+
+FIFO cycles per MAC over α_m of the same tile, for the same {len(tiles)} tiles. Each
+tile starts at its α_f / α_m, from {ratio[lo_t]:.2f} on {tile_str(lo_t)} to {ratio[hi_t]:.2f} on {tile_str(hi_t)}, and
+follows the diagonal once the generator sets the time. The tiles whose T_M
+divides M cross memory-B at x = {rng([cross[t] for t in whole])}, the {and_list(rows80)}-row tiles at
+{rng([cross[t] for t in short])}.
+
+## f: where α jumps
+
+f = (T_M (K A_P + 2 max(T_N A_P, line)) + X) / L1 is what a tile row keeps in
+L1, over L1. X is one line for the FIFO's seed, or K max(T_N B_P, line) for
+memory-B's B block.
+
+![α against f with B from the FIFO](alpha_fill.png)
+
+![α against f with B from memory](alpha_fill_memory.png)
+
+Cycles per MAC with a free generator against f, one line per T_N through its
+tiles in order of T_M. On the widths with several tile columns, every FIFO
+tile with f ≤ 1 takes {rng(fit_f, ".3f")} cycles per MAC. Memory-B's tiles with f ≤ 1
+get cheaper with T_M, from {max(fit_m):.3f} to {min(fit_m):.3f}, because a taller tile loads B
+fewer times. Past f = 1 the A band is read again for every tile column, so
+the jump is larger on narrow tiles. With the FIFO it is {jump[TNS[0]]:.2f} times at
+T_N = {TNS[0]}, which has {N // TNS[0]} tile columns, and {jump[N // 2]:.2f} times at T_N = {N // 2}, which
+has two. T_N = {N} has one tile column, so f doesn't matter there. Its jump comes
+from the tile limit: past T_M·(max(T_N·A_P, line) + 2·line) = L1, C no longer
+stays in L1 from one k step to the next.
+"""
+    return text.strip()
 
 
 def sweep_experiment(cal: dict, out: Path) -> tuple[dict, str]:
     """FIFO at every generator cost of all_gcs, 2 KB and capacity 0, all
-    tiles. Figure: speedup.png, speedup over memory-B against gamma_0,
-    measured and predicted, and the tile the FIFO picks."""
+    tiles: the FIFO's best tile against memory-B's best, measured and
+    predicted."""
     res = run(sweep_params(cal))
     knee, a_m0, g_star = cal["knee"], cal["a_m0"], cal["g_star"]
     gcs = all_gcs(cal)
@@ -663,60 +1061,7 @@ def sweep_experiment(cal: dict, out: Path) -> tuple[dict, str]:
     be_blk_pred = crossing(grid, [a_m0 / predict(cal, g, False)[0] for g in grid])
     s_max = a_m0 / cal["a_f0"]
 
-    fig, (ax, bx) = plt.subplots(2, 1, figsize=(7.6, 6.2), sharex=True,
-                                 gridspec_kw={"height_ratios": [3, 1.5]})
-    fine = np.geomspace(min(x), max(x), 300)
-    for parallel, depth, color, label in (
-            (True, FIFO_BYTES, BLUE, "2 KB FIFO, generator in parallel with the core"),
-            (False, 0, ORANGE, "capacity 0, generation blocks the core")):
-        ax.plot(fine, [a_m0 / predict(cal, g * knee, parallel)[0] for g in fine],
-                color=color, lw=1.3)
-        ax.scatter(x, meas_par if parallel else meas_blk, s=16, color=color,
-                   zorder=3, label=label)
-    ax.axhline(1, color=INK2, lw=0.9)
-    for xv, name, right, top in ((1, "knee", False, False),
-                                 (be_meas / knee, "break-even,\nmeasured", True, False),
-                                 (g_star / knee, "break-even,\nmax model", True, True)):
-        ax.axvline(xv, color=AXIS, lw=0.8)
-        bx.axvline(xv, color=AXIS, lw=0.8)
-        ax.text(xv * (1.025 if right else 0.975), 0.99 if top else 0.03, name, rotation=90,
-                color=MUTED, fontsize=7.5, va="top" if top else "bottom",
-                ha="left" if right else "right", transform=ax.get_xaxis_transform())
-    ax.set_ylim(0, s_max + 0.17)
-    ax.text(0.2, s_max + 0.12, "generator hidden", color=MUTED, fontsize=8,
-            ha="center", va="center")
-    ax.text(math.sqrt(g_star / knee * max(x)), s_max + 0.12, "memory-B wins",
-            color=MUTED, fontsize=8, ha="center", va="center")
-    ax.set_ylabel("speedup over memory-B\n(best tile on each side)")
-    ax.set_title("FIFO speedup against generator cost: dots measured, lines "
-                 "predicted from the calibration")
-    ax.legend(loc="lower left", fontsize=8)
-
-    # lower panel: T_M of the named tile, and the range of T_M among ties
     named = [ts[0] for _, ts in picks]
-    for xv, (_, ts) in zip(x, picks):
-        lo, hi = min(t[0] for t in ts), max(t[0] for t in ts)
-        if hi > lo:
-            bx.plot([xv, xv], [lo, hi], color=RAMP[0], lw=3, solid_capstyle="round", zorder=1)
-    bx.plot(x, [t[0] for t in named], color=BLUE, marker="o", ms=3.5, lw=1.1,
-            drawstyle="steps-mid", zorder=2)
-    shown, up = None, True
-    for gc, xv, t in zip(gcs, x, named):
-        # label a tile when the last labelled one is more than 1% slower here
-        if shown is None or (t != shown and cpm(res[fifo(shown, gc)]) > 1.01 * cpm(res[fifo(t, gc)])):
-            bx.annotate(tile_str(t), (xv, t[0]), xytext=(0, 6 if up else -13),
-                        textcoords="offset points", ha="center", fontsize=7, color=INK2)
-            shown, up = t, not up
-    bx.set_xscale("log")
-    plain_ticks(bx.xaxis, [0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16])
-    bx.set_ylim(0, TMS[-1] + 24)
-    bx.set_ylabel("$T_M$ of the best\nFIFO tile (2 KB)")
-    bx.set_xlabel("γ₀ = $g_c$ / knee   (γ of the FIFO's best tile with a free generator)")
-    bx.text(0.995, 0.04, "light bars: tiles within 0.5% of the best", color=MUTED,
-            fontsize=7, ha="right", transform=bx.transAxes)
-    fig.tight_layout()
-    fig.savefig(out / "speedup.png")
-    plt.close(fig)
 
     gap, gap_gc = max((abs(m / p - 1), gc) for m, p, gc in zip(meas_par, pred_par, gcs))
     below = [(gc, m / p - 1) for gc, m, p in zip(gcs, meas_par, pred_par) if gc < knee]
@@ -759,7 +1104,7 @@ cycles, about {1e3 / be_meas:.0f} MB/s at 1 GHz. Like the knee, that figure
 scales with α, which at this working point is mostly access latency paid one
 access at a time (see the sensitivity section).
 """
-    L = ["## Generator sweep", "", "![speedup](speedup.png)", "",
+    L = ["## Generator sweep", "",
          "| | max model | measured |", "|---|---|---|",
          f"| break-even, 2 KB FIFO | g_c = {g_star:.1f} (γ₀ = {g_star / knee:.2f}) | "
          f"g_c = {be_meas:.1f} (γ₀ = {be_meas / knee:.2f}) |",
@@ -784,7 +1129,7 @@ access at a time (see the sensitivity section).
 def depth_experiment(cal: dict, out: Path) -> str:
     """FIFO capacity from 0 to 32 KB at the generator costs of depth_gcs, best
     tile at each capacity, plus a finer sweep around the burst at the start of
-    a tile for two tiles. Figure: depth.png."""
+    a tile for two tiles."""
     knee, a_m0 = cal["knee"], cal["a_m0"]
     gcs = depth_gcs(cal)
     knee_gc, be_gc = round(knee), round(cal["g_star"])
@@ -800,46 +1145,7 @@ def depth_experiment(cal: dict, out: Path) -> str:
 
     within = {gc: smallest(gc, lambda v, gc=gc: v <= 1.01 * unl[gc]) for gc in gcs}
     beats = {gc: smallest(gc, lambda v: v < a_m0) for gc in gcs}
-    labels = ["0", "64", "128", "256", "512", "1K", "2K", "4K", "8K", "16K", "32K"]
-    xs = list(range(len(DEPTHS)))
 
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(11.6, 4.2),
-                                 gridspec_kw={"width_ratios": [1.25, 1]})
-    shown = [min(gcs, key=lambda g: abs(g / knee - g0)) for g0 in (0.5, 0.8, 1.0, 1.25, 2.0)]
-    for gc, color in zip(shown, RAMP):
-        ax.plot(xs[1:], [v / unl[gc] for v, _ in curves[gc][1:]], color=color, marker="o",
-                ms=3.5, lw=1.6, label=f"$g_c$ = {gc}, γ₀ = {gc / knee:.2f}")
-    ax.axhline(1.01, color=MUTED, lw=0.8, ls=(0, (4, 3)))
-    ax.text(len(xs) - 1, 1.015, "1% above", color=MUTED, fontsize=7.5, ha="right",
-            va="bottom")
-    ax.set_xticks(xs[1:], labels[1:])
-    ax.set_ylim(0.98, 1.45)
-    ax.set_xlabel("FIFO capacity, bytes (capacity 0 is in the table)")
-    ax.set_ylabel("cycles per MAC / cycles with a 32 KB FIFO\n(best tile at each capacity)")
-    ax.set_title("Time against FIFO capacity, relative to a FIFO that never fills")
-    ax.legend(loc="upper right", fontsize=7.5)
-
-    ys_w = [DEPTHS.index(within[gc]) for gc in gcs]
-    bx.plot([gc / knee for gc in gcs], ys_w, color=BLUE, marker="o", ms=4, lw=1.4,
-            drawstyle="steps-mid", label="within 1% of a FIFO that never fills")
-    bg = [gc for gc in gcs if beats[gc] is not None]
-    bx.scatter([gc / knee for gc in bg], [DEPTHS.index(beats[gc]) for gc in bg],
-               color=ORANGE, s=22, zorder=3, label="faster than memory-B's best")
-    for xv, name in ((1, "knee"), (cal["g_star"] / knee, "break-even,\nmax model")):
-        bx.axvline(xv, color=AXIS, lw=0.8)
-        bx.text(xv * 1.03, 0.97, name, rotation=90, color=MUTED, fontsize=7.5,
-                va="top", transform=bx.get_xaxis_transform())
-    bx.set_xscale("log")
-    plain_ticks(bx.xaxis, [0.25, 0.5, 1, 2])
-    bx.set_yticks(xs, labels)
-    bx.set_ylim(-0.5, len(xs) - 0.5)
-    bx.set_xlabel("γ₀ = $g_c$ / knee")
-    bx.set_ylabel("smallest FIFO capacity, bytes")
-    bx.set_title("Smallest FIFO capacity that meets each goal")
-    bx.legend(loc="upper left", fontsize=7.5)
-    fig.tight_layout()
-    fig.savefig(out / "depth.png")
-    plt.close(fig)
 
     def flat_from(t: tuple[int, int], gc: int, caps: list[int]) -> float:
         # the smallest multiple of the burst from which time stays within
@@ -864,14 +1170,16 @@ def depth_experiment(cal: dict, out: Path) -> str:
         items = [f"{flat[k]:.2f} times the burst for {tile_str(k[0])} at g_c = {k[1]}" for k in keys]
         return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
 
+    gap_2k = curves[knee_gc][two_k][0] / unl[knee_gc] - 1
+    two_k_text = (f"is {gap_2k:.1%} slower than one that never fills" if gap_2k >= 0.0005
+                  else "is as fast as one that never fills")
     reading = f"""
 How deep the FIFO has to be depends on γ₀. Up to γ₀ = {one_pop / knee:.2f}
 (g_c = {one_pop}) one pop, 64 bytes, is within 1% of a FIFO that never fills:
 the generator refills a block long before the core asks for the next one.
-Closer to the knee the need grows fast, to {size(within[g82])} at γ₀ =
-{g82 / knee:.2f} and {size(within[knee_gc])} at the knee, where the 2 KB FIFO
-is {curves[knee_gc][two_k][0] / unl[knee_gc] - 1:.1%} above one that never
-fills. At g_c = {be_gc}, the max model's break-even, the 2 KB FIFO loses to
+Closer to the knee the need grows: {size(within[g82])} at γ₀ =
+{g82 / knee:.2f}, {size(within[knee_gc])} at the knee, where the 2 KB FIFO
+{two_k_text}, and {size(within[be_gc])} at g_c = {be_gc}. At g_c = {be_gc}, the max model's break-even, the 2 KB FIFO loses to
 memory-B and {size(beats[be_gc])} wins; 4 KB or more comes within
 {deep / bound - 1:.1%} of the max model's bound there, max(α, β) =
 {bound:.4f}. Past the break-even no capacity beats memory-B, and the depth
@@ -885,7 +1193,7 @@ waits, the generator makes T_M · ⌈T_N·A_P / line⌉ · (t_mem + t_1) / g_c
 elements. A smaller FIFO fills up and the generator idles, and later in the
 tile, where the core is faster than the generator, the core stalls for the
 lead it could not bank. The table at the end runs capacities from half to
-twice that burst for the two tiles the curves end on. Where the tile's γ is 1
+twice that burst for tiles {and_list(tile_str(t) for t in BURST_TILES)}. Where the tile's γ is 1
 or more, the time stops falling (stays within 0.5% of its value at twice the
 burst) at {at(hi)}. Where γ is below 1 it stops earlier, at {at(lo)}, because
 the generator is faster than the core for the rest of the tile and part of
@@ -894,7 +1202,7 @@ accumulators instead of loading C, and a core with misses in flight would not
 wait for each line in turn, so this burst comes from the simulator's model
 (see simulator issues).
 """
-    L = ["## FIFO depth", "", "![depth](depth.png)", "",
+    L = ["## FIFO depth", "",
          "| g_c | γ₀ | FIFO that never fills: cycles per MAC, tile | smallest capacity "
          "within 1% of it | smallest capacity faster than memory-B | 2 KB FIFO |",
          "|---|---|---|---|---|---|"]
@@ -925,6 +1233,294 @@ wait for each line in turn, so this burst comes from the simulator's model
         L.append(f"| {tile_str(t)} | {gc} | {beta(gc, t[0]) / cal['alpha_f'][t]:.2f} | "
                  f"{burst(t, gc):.0f} | " + " | ".join(f"{v:.4f}" for v in vals) + " |")
     return "\n".join(L)
+
+
+def tiles_experiment(cal: dict, res: dict, out: Path) -> str:
+    """The FIFO against memory-B on the same tile, in cycles. Graphs:
+    tile_cycles.png, cycles per MAC against g_c, one panel per tile of
+    FIGURE_TMS x FIGURE_TNS;
+    tile_speedup.png, the speedup of every tile with a free generator;
+    tile_breakeven.png, the largest g_c at which the FIFO still wins;
+    tile_speedup_gc.png, the speedup against g_c for six tiles;
+    tile_breakeven_blocking.png, the same limit for a generator that blocks
+    the core; tile_depth.png, cycles per MAC against FIFO capacity, one panel
+    per tile of the cycles figure."""
+    af, am = cal["alpha_f"], cal["alpha_m"]
+    gcs = all_gcs(cal)
+
+    def breakeven(t: tuple[int, int], depth: int, mem: tuple[int, int] | None = None) -> float:
+        """Largest g_c at which B from the FIFO on tile t beats B from memory
+        on tile mem (t itself unless given)."""
+        ys = [am[mem or t] / cpm(res[fifo(t, gc, depth)]) for gc in gcs]
+        assert ys[0] >= 1, f"the FIFO loses at g_c = {gcs[0]} on {t}"
+        g = crossing(gcs, ys)
+        return math.inf if g is None else g
+
+    speed = {t: am[t] / af[t] for t in TILES}
+    be = {t: breakeven(t, FIFO_BYTES) for t in TILES}
+    be0 = {t: breakeven(t, 0) for t in TILES}
+    # the rule: g_c / T_M per MAC, exactly g_c ceil(M / T_M) / M
+    rule = {t: am[t] * M / tile_rows(t[0]) for t in TILES}
+    rule0 = {t: (am[t] - af[t]) * M / tile_rows(t[0]) for t in TILES}
+    a, b = PAIR
+    switch = breakeven(b, FIFO_BYTES, mem=a)
+
+    cycle_tiles = list(product(FIGURE_TMS, FIGURE_TNS))
+    plot_tile_cycles(gcs, {t: [cpm(res[fifo(t, gc)]) for gc in gcs] for t in cycle_tiles},
+                     {t: am[t] for t in cycle_tiles}, out / "tile_cycles.png")
+    plot_tile_map(speed, lambda v: f"{v:.2f}", "memory-B cycles / FIFO cycles at $g_c$ = 0",
+                  out / "tile_speedup.png")
+    plot_tile_map(be, lambda v: f"{v:.0f}", "largest $g_c$ at which the FIFO wins [cycles]",
+                  out / "tile_breakeven.png", log=True)
+    plot_tile_speedup_lines(gcs, {t: [am[t] / cpm(res[fifo(t, gc)]) for gc in gcs]
+                                  for t in LINE_TILES}, out / "tile_speedup_gc.png")
+    plot_tile_map(be0, lambda v: f"{v:.1f}",
+                  "largest $g_c$ at which a blocking generator wins [cycles]",
+                  out / "tile_breakeven_blocking.png", log=True)
+    depth_gc = {t: sorted({max(1, round(f * be[t])) for f in DEPTH_FRACTIONS})
+                for t in cycle_tiles}
+    dres = run([fifo(t, gc, d) for t in cycle_tiles for gc in depth_gc[t] for d in DEPTHS])
+    depth = {t: {gc: [cpm(dres[fifo(t, gc, d)]) for d in DEPTHS] for gc in depth_gc[t]}
+             for t in cycle_tiles}
+    plot_tile_depth(depth, {t: am[t] for t in cycle_tiles}, out / "tile_depth.png")
+    # smallest capacity within 1% of a FIFO that never fills, per tile and g_c
+    flat = {t: {gc: next(d for d, v in zip(DEPTHS, ys) if v <= 1.01 * ys[-1])
+                for gc, ys in depth[t].items()} for t in cycle_tiles}
+
+    # three kinds of tile: A fits L1 in both modes; A fits only with the FIFO,
+    # because memory-B's B block takes the room; the C tile overflows L1
+    lim_t = largest_tm(fill_tile)
+    both = [t for t in TILES if fill(*t, "memory") <= 1 and fill_tile(*t) <= 1]
+    only = [t for t in TILES if fill(*t, "fifo") <= 1 < fill(*t, "memory")
+            and fill_tile(*t) <= 1]
+    short = max(t[0] for t in both)
+    tall = [t for t in only if t[0] > short]
+    wide = [t for t in TILES if t[1] >= N // 2 and fill_tile(*t) > 1]
+    first_wide = {tn: lim_t[tn] + 8 for tn in TNS if tn >= N // 2}
+
+    def rng(vals, fmt: str = ".2f") -> str:
+        lo, hi = f"{min(vals):{fmt}}", f"{max(vals):{fmt}}"
+        return lo if lo == hi else f"{lo} to {hi}"
+
+    def kind(t: tuple[int, int]) -> str:
+        if t in both:
+            return "A fits L1 in both modes"
+        if t in only:
+            return "A fits L1 only with the FIFO"
+        if fill_tile(*t) > 1:
+            return "the C tile overflows L1"
+        return "A fits L1 in neither mode"
+
+    load = (T_MEM + R * T1 - T1) / (LINE // B_P)     # memory-B's cost per element of B
+    near = [t for t in TILES if abs(be0[t] - load) < 0.3]
+    top0 = max(TILES, key=lambda t: be0[t])
+    divides = [t for t in TILES if M % t[0] == 0]
+    dev = {t: be[t] / rule[t] - 1 for t in TILES}
+    dev0 = max(abs(be0[t] / rule0[t] - 1) for t in TILES)
+    worst = min((t for t in TILES if t not in divides), key=lambda t: dev[t])
+    pct = [100 * (speed[t] - 1) for t in wide]
+    widths = and_list(sorted({t[1] for t in tall}))
+    line_table = "\n".join(
+        ["| tile | kind of tile | speedup while the generator keeps up | down to 1 at g_c |",
+         "|---|---|---|---|"]
+        + [f"| {tile_str(t)} | {kind(t)} | {speed[t]:.2f} | {be[t]:.0f} |" for t in LINE_TILES])
+    need = {t: max(flat[t].values()) for t in cycle_tiles}
+    depth_table = "\n".join(
+        ["| T_N | " + " | ".join(f"T_M = {tm}" for tm in FIGURE_TMS) + " |",
+         "|---|" + "---|" * len(FIGURE_TMS)]
+        + [f"| {tn} | " + " | ".join(f"{need[(tm, tn)]} B" for tm in FIGURE_TMS) + " |"
+           for tn in FIGURE_TNS])
+    top = max(tall, key=lambda t: speed[t])
+    over = [t for t in cycle_tiles if fill(*t, "fifo") > 1 and fill(*t, "memory") > 1]
+    odd = [(tm, FIGURE_TNS[0]) for tm in FIGURE_TMS if M % tm]
+    odd_text = (f" The {odd[0][0]}-row panels of the first figure cross early for the "
+                f"same reason: {be[odd[0]]:.0f} cycles on {tile_str(odd[0])} against "
+                f"{rule[odd[0]]:.0f} by the rule." if odd else "")
+    enough = max(need.values())
+    fracs = and_list(f"{f:g}" for f in DEPTH_FRACTIONS)
+
+    text = f"""
+An engineer thinking of generating B with a PRNG FIFO wants to know three
+things about the tile they run: how much faster it gets, how slow the generator
+may be before loading B wins again, and how big a FIFO it takes. The first
+figure answers them for fifteen tiles, one at a time, and the maps after it
+for every tile.
+Each graph compares the two
+sources of B on the same tile, in cycles, on this machine: no L2, and every
+access waits for the one before it. g_c is the generator's cycles per element
+of B. The FIFO holds 2 KB and the generator runs in parallel with the core,
+unless a graph says otherwise.
+
+### 1. Cycles against g_c, and one rule
+
+![cycles per MAC against g_c](tile_cycles.png)
+
+Cycles per MAC against g_c, one panel per tile: a row per width, T_N =
+{and_list(FIGURE_TNS)}, and a column per height, T_M = {and_list(FIGURE_TMS)}. The solid line
+is B from the FIFO and the dashed line is B from memory on the same tile. The
+title of each legend names the tile and its f for both sources, from the
+formula in the figure's title. With f ≤ 1 the A band stays in L1 for a whole
+tile row. Read a panel from left to right. While the generator is fast, the
+FIFO line is flat and its gap to memory-B is the win: {speed[a]:.2f} times on {tile_str(a)} and
+{speed[b]:.2f} on {tile_str(b)}. Then the FIFO line climbs. Where it crosses memory-B's
+line is the slowest generator that still wins: {be[a]:.1f} cycles on {tile_str(a)} and
+{be[b]:.1f} on {tile_str(b)}. With a slower generator, load B.
+
+On {tile_str(a)}, A fits L1 in both modes, so the FIFO saves only B's loads. On
+{tile_str(b)}, memory-B's B block pushes A out of L1 while the FIFO's A band still
+fits, so memory-B costs {am[b]:.2f} cycles per MAC there against {af[b]:.2f}. The two
+are also the tallest tiles {a[1]} wide that each mode fits in L1. An engineer who
+changes tile when they change mode compares the {tile_str(b)} FIFO line with the
+{tile_str(a)} memory-B line in the panel to its left: the FIFO wins while g_c is
+below {switch:.1f}.
+
+On the tiles of the figure where f > 1 for both sources, A is read again in
+both modes. Both lines of the panel start high, and the FIFO gains only
+{rng([speed[t] for t in over])} times.
+
+A FIFO line follows one rule:
+
+```
+FIFO cycles per MAC ≈ max(core cycles per MAC, g_c / T_M)
+```
+
+The core cycles per MAC are the FIFO's time with an instant generator: the
+core's own loads of A and C, its pops and its MACs. Each element of B serves
+T_M MACs, so generating it costs g_c / T_M cycles per MAC, or exactly
+g_c · ⌈M/T_M⌉ / M when T_M doesn't divide M. The FIFO therefore beats memory-B
+while
+
+```
+g_c < T_M × memory-B cycles per MAC
+```
+
+That is {rule[a]:.1f} on {tile_str(a)}, against {be[a]:.1f} measured, and {rule[b]:.1f} on
+{tile_str(b)}, against {be[b]:.1f}. With the rule, an engineer can redo the decision
+for their own tile and their own memory-B number. A generator with no buffer
+adds its time to the core's, so it beats memory-B while
+
+```
+g_c < T_M × (memory-B cycles per MAC − core cycles per MAC)
+```
+
+That is {rule0[a]:.1f} on {tile_str(a)} and {rule0[b]:.1f} on {tile_str(b)}. On every tile it is
+within {dev0:.0%} of the measured limit.
+
+The first rule is a little optimistic. The FIFO restarts empty at every tile,
+so near the crossing it loses time the rule doesn't count. On tiles whose T_M
+divides M, the measured limit is up to {-min(dev[t] for t in divides):.0%} below the rule and
+never more than {max(dev[t] for t in divides):.0%} above it. Where T_M doesn't divide M,
+the last tile row is short. Its elements of B serve fewer rows, so the
+generator falls behind there first, and the limit can be far lower:
+{be[worst]:.0f} cycles on {tile_str(worst)} against {rule[worst]:.0f} by the rule.{odd_text}
+
+### 2. How much the FIFO can win
+
+![speedup with a free generator](tile_speedup.png)
+
+Memory-B's cycles over the FIFO's on each tile, with a generator that costs
+nothing. In the first figure this is the gap between a panel's two flat lines. A real
+generator can only lose some of it. The FIFO wins on every tile, by
+{rng(speed.values())} times. It saves two things memory-B pays for: loading B,
+about {load:.1f} cycles per element of B in every tile row, and the room B's block
+takes in the 32 KB L1.
+
+- Where A fits L1 in both modes, T_M up to {short} here, the FIFO saves only
+  B's loads: {rng([speed[t] for t in both if t[0] == TMS[0]])} times at T_M = {TMS[0]} and
+  {rng([speed[t] for t in both if t[0] == short])} at T_M = {short}. A taller tile loads B fewer
+  times per MAC, so there is less to save.
+- Where A fits L1 only with the FIFO, it wins most: {rng([speed[t] for t in tall])}
+  times on tiles {rng([t[0] for t in tall], "d")} rows tall and {widths} wide, the most at
+  {tile_str(top)}. A row of a B tile narrower than a cache line still takes a
+  whole 64-byte line, so memory-B's B block takes K = {K} lines, {K * LINE // 1024} KB, of
+  L1. That pushes its A band out, and memory-B then reads A from DRAM again
+  for each of the N / T_N tile columns, {N // 8} of them at T_N = 8. The FIFO keeps
+  B out of L1, so its A band still fits.
+- Where the C tile overflows L1, on tiles {and_list(TNS[-2:])} wide from T_M =
+  {first_wide[TNS[-2]]} and {first_wide[TNS[-1]]} up, the FIFO gains {rng(pct, ".0f")}% at most. The C
+  tile, with the two lines of A the core reads next to each of its rows, no
+  longer fits in L1. Both modes then read C from DRAM again at every step
+  along K, which costs far more than loading B.
+
+### 3. How slow the generator may be
+
+![largest g_c at which the FIFO wins](tile_breakeven.png)
+
+The slowest generator, in cycles per element, at which the FIFO still beats
+memory-B on each tile. In the first figure this is where a panel's two lines cross. The
+rule puts it at T_M times memory-B's cycles per MAC. Measured, it is
+{rng([be[t] for t in both if t[0] == TMS[0]], ".0f")} cycles at T_M = {TMS[0]} and
+{rng([be[t] for t in both if t[0] == short], ".0f")} at T_M = {short} where A fits L1 in both
+modes, and {rng([be[t] for t in tall], ".0f")} where A fits only with the FIFO.
+
+Some wide tiles look good on this map, up to {max(be[t] for t in wide):.0f} cycles, but
+only because both modes are slow there: memory-B's cycles per MAC are high,
+so the rule allows a slow generator. The speedup map shows there is almost
+nothing to win on them. Read the two maps together: find a tile with a real
+gain on the speedup map, then read on this one how fast the generator must
+be.
+
+### 4. Between the two maps
+
+![speedup against g_c](tile_speedup_gc.png)
+
+Speedup on the same tile as the generator slows down, for six tiles. Each line
+starts at its value on the speedup map, stays flat while the generator keeps
+up, and falls once it doesn't. It crosses memory-B's line at 1 at its value
+on the map of section 3.
+
+{line_table}
+
+### 5. A generator that blocks the core
+
+![largest g_c at which a blocking generator wins](tile_breakeven_blocking.png)
+
+With a FIFO of capacity 0, every pop waits for the generator, as it would for
+a software generator running on the core. This map is the second rule,
+measured. The generator has to be cheaper than loading B: on {len(near)} of the
+{len(TILES)} tiles the limit is {rng([be0[t] for t in near], ".1f")} cycles per element, the cost
+of loading one element of B here. That cost is one DRAM access per 64-byte
+line of B and one L1 hit per row of an 8×8 block, less the FIFO's pop:
+(t_mem + r·t_1 − a_c) / 64 = {load:.2f} cycles. Where memory-B's B block also
+pushes A or C out of L1, the limit is higher, up to {be0[top0]:.0f} at {tile_str(top0)}.
+Running the generator in parallel buys the difference between this map and
+the map of section 3.
+
+### 6. How big a FIFO
+
+![cycles per MAC against FIFO capacity](tile_depth.png)
+
+Cycles per MAC against FIFO capacity on the tiles of the first figure, laid
+out the same way, with memory-B on the same tile dashed. The title of each
+legend names the tile and its f. The lines are at {fracs} times the tile's
+limit from the first figure, so each panel runs from a generator well ahead
+of the core to one that loses. Capacity 0, the first point of each line, is
+a generator with no buffer. A line flattens at the capacity its g_c needs.
+The most any of a tile's five lines needs, as the smallest capacity within
+1% of {UNLIMITED // 1024} KB:
+
+{depth_table}
+
+### Summary
+
+- The FIFO wins while g_c < T_M × memory-B cycles per MAC, a little less near
+  the crossing and much less when T_M doesn't divide M. Well below that limit,
+  it is memory-B / core cycles per MAC times faster.
+- It gains most where it frees L1. On tiles {rng([t[0] for t in tall], "d")} rows tall and
+  {widths} wide, memory-B's B block pushes A out of L1, and the FIFO is
+  {rng([speed[t] for t in tall])} times faster with a generator as slow as
+  {rng([be[t] for t in tall], ".0f")} cycles per element.
+- Where A fits L1 either way, the FIFO is {rng([speed[t] for t in both])} times faster
+  as long as the generator makes an element in under {rng([be[t] for t in both], ".0f")} cycles.
+  Taller tiles allow slower generators.
+- Where the C tile overflows L1, keep loading B: the FIFO gains
+  {rng(pct, ".0f")}% there whatever the generator.
+- A generator that blocks the core must beat {load:.1f} cycles per element on most
+  tiles, the cost of loading one.
+- {enough} bytes of FIFO is enough on every tile of the first figure, at every
+  g_c shown.
+"""
+    return "\n".join(["## When the FIFO wins, tile by tile", "", text.strip()])
 
 
 def model_sweep_runs() -> list[tuple[float, float, bool, float]]:
@@ -968,51 +1564,10 @@ def collapse_points(cal: dict, res: dict) -> dict[str, list[tuple[float, float]]
 
 def collapse_experiment(cal: dict, res: dict, out: Path) -> str:
     """Every run with a generator against gamma: all model_sweep runs and this
-    working point's sweep. Figure: collapse.png. Section: the composite
+    working point's sweep. Section: the composite
     parameters, the collapse and a worked example tile by tile."""
     pts = collapse_points(cal, res)
     check = model_sweep_check()
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(10.8, 4.4))
-    grid = np.geomspace(1e-3, 1e3, 400)
-    ax.fill_between(grid, np.maximum(1, grid), 1 + grid, color=BAND, lw=0, zorder=0)
-    series = (("model_sweep", BLUE, 2.5, "model_sweep: FIFO larger than a tile's B block"),
-              ("parallel", AQUA, 5, "this working point, 2 KB FIFO"),
-              ("blocking", ORANGE, 5, "this working point, capacity 0"))
-    for name, color, size, label in series:
-        g, y = zip(*pts[name])
-        ax.scatter(g, y, s=size, color=color, alpha=0.45, lw=0, label=label,
-                   rasterized=True)
-    ax.plot(grid, np.maximum(1, grid), color=INK, lw=1.1)
-    ax.plot(grid, 1 + grid, color=INK2, lw=1.1)
-    ax.text(4, 2.4, "max(1, γ): generator in parallel,\nnothing else lost", color=INK,
-            va="top", fontsize=7.5)
-    ax.text(0.05, 2.3, "1 + γ: generation blocks the core", color=INK2,
-            va="bottom", ha="center", fontsize=7.5)
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlim(1e-3, 1e3)
-    ax.set_ylim(0.8, 1.2e3)
-    ax.set_xlabel("γ = β / α")
-    ax.set_ylabel("cycles per MAC / α")
-    ax.set_title("Every run lies between max(1, γ) and 1 + γ")
-    ax.legend(loc="upper left", markerscale=3, fontsize=7.5)
-
-    bx.axvspan(0.5, 2, color=BAND, lw=0, zorder=0)
-    for name, color, size in (("model_sweep", BLUE, 3), ("parallel", AQUA, 5)):
-        g, y = zip(*pts[name])
-        bx.scatter(g, [v / max(1.0, u) for u, v in zip(g, y)], s=size, color=color,
-                   alpha=0.45, lw=0, rasterized=True)
-    bx.axhline(1, color=INK, lw=1.1)
-    bx.text(1, 0.97, "0.5 ≤ γ ≤ 2", color=MUTED, fontsize=7.5, ha="center", va="top",
-            transform=bx.get_xaxis_transform())
-    bx.set_xscale("log")
-    bx.set_xlim(1e-3, 1e3)
-    bx.set_xlabel("γ = β / α")
-    bx.set_ylabel("cycles per MAC / max(α, β)")
-    bx.set_title("Generator in parallel: how far above max(α, β)")
-    fig.tight_layout()
-    fig.savefig(out / "collapse.png")
-    plt.close(fig)
 
     par = pts["model_sweep"] + pts["parallel"]
     outside = sum(not (max(1.0, g) * (1 - 1e-9) <= y <= (1 + g) * (1 + 1e-9)) for g, y in par)
@@ -1042,6 +1597,15 @@ def collapse_experiment(cal: dict, res: dict, out: Path) -> str:
     ex_w2 = tile_account(wide, be_gc)
     ex_w4 = tile_account(wide, be_gc, 4096)
     cols = N // ts[1]
+    best_knee = best(res, knee_gc)[1][0]
+    if best_knee == wide:
+        why_wide = f"That is why {tile_str(wide)} is the best 2 KB tile at the knee."
+    else:
+        why_wide = (f"It is still slower than {tile_str(best_knee)} there, "
+                    f"{ex_w['measured'] / MNK:.4f} against {cpm(res[fifo(best_knee, knee_gc)]):.4f} "
+                    f"cycles per MAC: reading A again for each of its {N // wide[1]} tile "
+                    f"columns makes its α {cal['alpha_f'][wide]:.3f} against "
+                    f"{cal['alpha_f'][best_knee]:.3f}.")
     table = [
         f"| tile {tile_str(ts)} at g_c = {knee_gc} | cycles |", "|---|---|",
         f"| core work of the first tile of a tile row (g_c = 0) | {ex['first']:,.0f}, "
@@ -1055,17 +1619,17 @@ def collapse_experiment(cal: dict, res: dict, out: Path) -> str:
         f"| max(α, β) · M·N·K | {ex['max_model']:,.0f} ({ex['max_model'] / ex['measured'] - 1:+.1%}) |",
     ]
     reading = f"""
-All {len(par) + len(pts['blocking']):,} runs with a generator lie in the shaded
-band between two curves of γ. The lower edge, max(1, γ), is a generator
+All {len(par) + len(pts['blocking']):,} runs with a generator lie in the band
+between two curves of γ. The lower edge, max(1, γ), is a generator
 running in parallel with the core with nothing else lost; no run can be
 faster, since neither the core's work nor the generation shrinks. The upper
 edge, 1 + γ, is generation blocking the core. The capacity-0 runs land on it
 by construction, because every pop then stalls g_c per missing element and the
 cache doesn't depend on time (largest deviation {blocking_err:.2%}).
 {'None' if outside == 0 else outside} of the {len(par):,} parallel runs
-{'is' if outside in (0, 1) else 'are'} outside the band. So the left panel
-shows bounds that hold for every run. What the composites have to explain is
-where between them the parallel runs fall.
+{'is' if outside in (0, 1) else 'are'} outside the band, so the two curves
+are bounds that hold for every run. The composites have to explain where
+between them the parallel runs fall.
 
 Away from γ = 1 most of them sit on the lower edge. Inside 0.5 ≤ γ ≤ 2 they
 spread upward, and that is the range that decides the comparison with memory-B: at
@@ -1093,14 +1657,14 @@ after the last pop) gives the measured time within
 {abs(ex['per_tile'] / ex['measured'] - 1):.1%}. max(α, β) averages over the
 tiles first and comes out {1 - ex['max_model'] / ex['measured']:.0%} low.
 
-48×128 at the same g_c has f = {fill(*wide):.2f}, so A is read again in every
-tile and both tiles of a tile row do the same work ({ex_w['first']:,.0f}
+{tile_str(wide)} at the same g_c has f = {fill(*wide):.2f}, so A is read again in every
+tile and all {N // wide[1]} tiles of a tile row do the same work ({ex_w['first']:,.0f}
 cycles of core work against {ex_w['gen']:,} of generation, tile γ
 {ex_w['gen'] / ex_w['first']:.2f}). The generator is hidden in every tile,
 and the measured time is {ex_w['measured'] / ex_w['max_model'] - 1:.1%} above
-max(α, β). That is why 48×128 is the best 2 KB tile at the knee. At g_c =
+max(α, β). {why_wide} At g_c =
 {be_gc} (tile γ {ex_w2['gen'] / ex_w2['first']:.2f}) the 2 KB FIFO leaves
-48×128 {ex_w2['measured'] / ex_w2['max_model'] - 1:.1%} above max(α, β), and
+{tile_str(wide)} {ex_w2['measured'] / ex_w2['max_model'] - 1:.1%} above max(α, β), and
 a 4 KB FIFO brings it to {ex_w4['measured'] / ex_w4['max_model'] - 1:.1%}.
 That loss is inside the tile: the core is slow while it takes the C misses at
 the start, and 2 KB can't bank enough generation during that stretch (see the
@@ -1136,7 +1700,7 @@ never fills.
          "f has a companion inside a tile, the tile limit T_M·(max(T_N·A_P, line) + 2·line) "
          "≤ L1: between two k steps the core walks the whole C tile and two k-columns of A, "
          "and past the limit C is read from DRAM again inside the tile.", "",
-         "### γ: one curve for every run", "", "![collapse](collapse.png)", "",
+         "### γ: every run lies between two curves", "",
          reading.strip()]
     return "\n".join(L)
 
@@ -1193,12 +1757,11 @@ def sensitivity_experiment(cal: dict, res: dict, out: Path) -> tuple[dict, str]:
         return rows[name]["a_m0"] / rows[name]["a_f0"]
 
     w = rows["the working point"]
-    l2a, l2b, l2c = (rows[k] for k in list(SCENARIOS)[3:6])
     fast = rows["L1 hit and pop in 1 cycle"]
     reading = f"""
 Every number in the sections above holds for this model of the machine: no
 L2, every access paying its full latency before the next one starts, and B
-stored row by row. The table repeats the calibration with one of those
+stored row by row. The table repeats the calibration with one latency
 changed at a time. The last two rows keep this working point's runs and
 change only memory-B: one frees B's own misses, the other stores B in packed
 blocks.
@@ -1221,17 +1784,6 @@ instead of K lines, so it can use the same tall tiles as the FIFO: its best is
 knee. build/sim has no packed layout, so this row comes from a Python copy of
 its loop (`memory_b_python`), which reproduces build/sim's memory-B cycles
 exactly on all {len(TILES)} tiles of the row-major layout.
-
-An L2 that holds the whole problem, as the TDA4VM's 512 KB L2 would (SPRADC1
-§2.8.1), turns B's repeated misses into L2 hits. S_max drops to
-{l2a['a_m0'] / l2a['a_f0']:.3f} with a 6-cycle L2 (0.03 of t_mem, the ratio in
-SPRADC1 Table 3-1) and to {l2b['a_m0'] / l2b['a_f0']:.3f} with 15 cycles. The
-predicted break-even moves out to {l2a['g_star'] / l2a['knee']:.1f} times the
-knee all the same: memory-B's best α is now above the α of tiles {l2a['t_dag'][0]}
-rows tall, so the FIFO can use those, generate B for {tile_rows(l2a['t_dag'][0])}
-tile rows instead of {tile_rows(w['t_dag'][0])}, and keep its small lead up to
-a much slower generator. With only the 64 KB the SDK sets up
-as L2 cache, S_max is {l2c['a_m0'] / l2c['a_f0']:.3f}.
 
 With 1-cycle L1 hits and pops, α_f0 shrinks to {fast['a_f0']:.3f}, S_max rises
 to {s('L1 hit and pop in 1 cycle'):.2f} and the knee falls from
@@ -1274,8 +1826,7 @@ def simulator_issues(cal: dict, sens: dict) -> str:
   again in each of the {tile_rows(tmb[0])} tile rows ({b_miss:,}), less
   {b_miss - extra} misses the FIFO takes on its seeds. {d_hit:.4f} is L1 hits
   for B's loads, and the FIFO's pops give {d_pop:.4f} back. A C7x streams B
-  with its streaming engines, or copies it into L2 SRAM by DMA before it is
-  used. With B's own misses free, S_max is
+  with its streaming engines. With B's own misses free, S_max is
   {sens[hidden]['a_m0'] / sens[hidden]['a_f0']:.3f} and the FIFO breaks even
   below the knee (previous section). A and C misses block the core the same
   way: they are {split['DRAM misses'] / a:.0%} of α_f0.
@@ -1300,9 +1851,6 @@ def simulator_issues(cal: dict, sens: dict) -> str:
   Deployed int8 weights are usually packed in the order the kernel reads
   them; the previous section estimates that case
   (S_max {sens[pk]['a_m0'] / sens[pk]['a_f0']:.3f}).
-- There is no L2, so every L1 miss goes to DRAM. The TDA4VM's C7x has 512 KB
-  of L2, which would hold this whole problem; the previous section shows what
-  that changes.
 - The seed is read through L1 at the start of every tile. At 32×64 that one
   line is what pushes the A band out: f is {fill(32, 64):.3f} with it and
   {fill(32, 64) - LINE / L1:.3f} without.
@@ -1317,6 +1865,14 @@ def simulator_issues(cal: dict, sens: dict) -> str:
 
 
 # ---- README ------------------------------------------------------------------
+COMPOSITES = """
+### Composite graphs
+
+`composites/` holds graphs against γ₀, γ and f, with the formula of each
+composite in the axis label and the fastest tile written in every point that
+comes from one. [composites/README.md](composites/README.md) explains them.
+"""
+
 CHANGES = """
 ## Changes from the first version
 
@@ -1332,12 +1888,17 @@ right and several explanations wrong or too strong. This version:
   with the fewest tile rows;
 - says which agreement in the collapse holds by construction, gives the
   statistics inside 0.5 ≤ γ ≤ 2, and explains the excess there tile by tile;
-- adds α against f, here and in model_sweep (fill.png);
-- draws the measured break-even next to the max model's, on a finer g_c grid;
-- measures depth at 11 generator costs up to a FIFO that never fills, and
+- adds α against f, here and in model_sweep (the fill section);
+- compares the FIFO and memory-B on the same tile, in cycles against g_c
+  (the tile section);
+- measures the break-even on a finer g_c grid, next to the max model's;
+- measures depth at several generator costs up to a FIFO that never fills, and
   traces the burst at the start of a tile to the k = 0 read of C;
-- adds a sensitivity table (an L2, faster L1 hits, no DRAM latency, memory-B
-  without B's misses, packed B) and states the simulator issues with numbers.
+- adds a sensitivity table (faster L1 hits, no DRAM latency, memory-B
+  without B's misses, packed B) and states the simulator issues with numbers;
+- draws graphs against γ₀, γ and f in `composites/`, with each formula in the
+  axis label and the fastest tile written in every point that comes from one;
+- runs N = 512 with tiles up to 512 wide, where the first version ran N = 256.
 """
 
 
@@ -1347,10 +1908,10 @@ def header(cal: dict) -> str:
     return f"""
 # {NAME}: when does a PRNG FIFO beat loading B from memory?
 
-B-stationary matmul at one working point modelled on a 256-bit C7x. B is
-either generated by the PRNG FIFO or loaded through L1 from DRAM; A and C
-always go through L1. The questions are how slow the generator may be before
-loading B is faster, and how deep the FIFO has to be.
+This experiment runs a B-stationary matmul at one working point modelled on a
+256-bit C7x. B comes either from the PRNG FIFO or from DRAM through L1, and A
+and C always go through L1. The questions are how slow the generator may be
+before loading B is faster, and how deep the FIFO has to be.
 
 run: `.venv/bin/python experiments/rewrite/{NAME}.py`. `constraint_tile-v2.py`
 reuses these runs.
@@ -1362,14 +1923,14 @@ reuses these runs.
 | A, C | fp32, A_P = 4 bytes | activations |
 | B | int8, B_P = 1 byte, stored row by row | weights |
 | M, K, N | {M}, {K}, {N} | small enough that the A band fits L1 for some tiles |
-| register block r | {R}: one block row of A is 32 bytes, one 256-bit register | C7504/C7524 vector width (SPRUIV4D §1.2) |
+| register block r | {R}: one block row of A is 32 bytes, one 256-bit register | |
 | cache line | {LINE} bytes | two registers per line |
-| L1 | {L1 // 1024} KB, fully associative, LRU | the TDA4VM's C7x uses 32 KB of its L1D as cache (SPRADC1 §2.8.1) |
-| L2 | none: every L1 miss goes to DRAM, as for operands too big for L2 | the TDA4VM's C7x has 512 KB of L2 (SPRADC1 §2.8.1), which would hold this whole problem; see the sensitivity section |
-| t_1 | {T1} cycles per L1 hit, one access at a time | C7x load: 4 delay slots (SPRUIP0 §3.5.3.5) |
-| t_mem | {T_MEM} cycles | assumed: about 200 ns at the C7x's 1 GHz. TI gives only ratios: from the C7x, L2 SRAM is 0.03 and MSMC 0.36 of the DDR latency (SPRADC1 Table 3-1) |
+| L1 | {L1 // 1024} KB, fully associative, LRU | |
+| L2 | none: every L1 miss goes to DRAM, as for operands too big for L2 | |
+| t_1 | {T1} cycles per L1 hit, one access at a time | |
+| t_mem | {T_MEM} cycles | |
 | a_c | {T1} cycles | a pop costs one L1 hit |
-| mulacc | {MULACC} cycles per {R}×{R}×{R} block ({R ** 3} MACs) | assumed: the 512-bit C71x does 80 fp32 FLOPs per cycle (SPRUIP0 §3.3.1), halved for 256 bits |
+| mulacc | {MULACC} cycles per {R}×{R}×{R} block ({R ** 3} MACs) | |
 | FIFO | {FIFO_BYTES} bytes ({FIFO_BYTES // B_P} elements) | one tile's B block at T_N = 16 |
 | seed | {SEED} bytes per tile, read through L1 | |
 | layout | `--aligned` | every row starts on a cache line |
@@ -1409,11 +1970,15 @@ def main() -> None:
     out = out_dir(NAME)
     cal, cal_text = calibration_experiment(out)
     res, sweep_text = sweep_experiment(cal, out)
+    tiles_text = tiles_experiment(cal, res, out)
     collapse_text = collapse_experiment(cal, res, out)
     fill_text = fill_experiment(cal, out)
+    comp_text = composites_experiment(cal, res, out)
+    (out / "composites" / "README.md").write_text(comp_text + "\n")
     depth_text = depth_experiment(cal, out)
     sens, sens_text = sensitivity_experiment(cal, res, out)
-    parts = [header(cal).strip(), CHANGES.strip(), collapse_text, fill_text, cal_text,
+    parts = [header(cal).strip(), tiles_text, CHANGES.strip(), collapse_text, fill_text,
+             COMPOSITES.strip(), cal_text,
              sweep_text, depth_text, sens_text, simulator_issues(cal, sens)]
     (out / "README.md").write_text("\n\n".join(parts) + "\n")
     print((out / "README.md").read_text())
