@@ -173,6 +173,13 @@ The user approved all of them; start with small samples.
     tiles that DIVIDE M: M 384/768 pick 128×16 and at gc 200 reach 1.566
     vs 2.087 for M = 192 (gc/128 vs gc/96). M 96 at gc 50 picks 48×32
     (divides 96).
+  - **Correction 2026-10-11:** K = 128 at gc ≤ 10 (24×16) is NOT a tie:
+    the A tile is TM×K, so at K = 128 TM = 24 still fits (12 KB). The
+    N = 128 low-gc difference (24×128) is the full width: one tile per
+    row, A read once. The other low-gc width jumps (12×32 vs 12×256) are
+    near ties (TM = 12: A fits, α ≈ 0.85 for every TN).
+  - Report 4.5.2 now has three figures: sw_shapes_K, _N, _M (same script,
+    one figure per varied dimension, from the existing small runs).
   - Mechanism (checked against the alpha counting):
     - For T_M ≥ 16 the A misses are 1/(16·T_N) per MAC, independent of K;
     - the binding constraint at moderate gc is C tile + one A line per

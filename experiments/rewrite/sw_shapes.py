@@ -59,29 +59,32 @@ def main() -> None:
         if key not in best or v < best[key][0]:
             best[key] = (v, (p.tile_h, p.tile_w))
 
-    # figure: best TM and TN against gc, one line per K (they overlap)
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 3.6), sharey=True)
+    # figures sw_shapes_K / _M / _N: best TM and TN against gc, one line per
+    # value of the varied dimension (they overlap where the shape doesn't matter)
     styles = ["-", "--", "-.", ":"]
-    for ax, i, label in ((axes[0], 0, "$T_M^*$"), (axes[1], 1, "$T_N^*$")):
-        for j, k in enumerate(VARY["K"]):
-            shape = (BASE[0], k, BASE[2])
-            xs = GC + [GC[-1] * 1.25]
-            ys = [best[(shape, gc)][1][i] for gc in GC] + [best[(shape, GC[-1])][1][i]]
-            ax.plot(xs, ys, drawstyle="steps-post", linestyle=styles[j],
-                    linewidth=2.4 - 0.4 * j, label=f"$K = {k}$",
-                    marker="osD^"[j], markevery=list(range(len(GC))),
-                    color=SERIES[j], markeredgecolor="white", markeredgewidth=0.8)
-        ax.set_xscale("symlog", linthresh=10, linscale=0.5)
-        ax.set_xticks([0, 10, 30, 100, 200])
-        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
-        ax.set_xlim(0, GC[-1])
-        ax.set_yscale("log", base=2)
-        ax.set_yticks([8, 12, 16, 24, 32, 48, 64, 96, 128, 256])
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
-        ax.set_xlabel(f"$g_c$ (cycles / element), best {label}")
-    axes[0].set_ylabel("tile dimension")
-    legend_above(axes[0], ncols=len(VARY["K"]))
-    print(save(fig, "software/s3_shapes", NAME + "_K" + ("_small" if SMALL else "")))
+    for dim, values in VARY.items():
+        fig, axes = plt.subplots(1, 2, figsize=(7.0, 3.6), sharey=True)
+        for ax, i, label in ((axes[0], 0, "$T_M^*$"), (axes[1], 1, "$T_N^*$")):
+            for j, v in enumerate(values):
+                shape = {"M": (v, BASE[1], BASE[2]), "K": (BASE[0], v, BASE[2]),
+                         "N": (BASE[0], BASE[1], v)}[dim]
+                xs = GC + [GC[-1] * 1.25]
+                ys = [best[(shape, gc)][1][i] for gc in GC] + [best[(shape, GC[-1])][1][i]]
+                ax.plot(xs, ys, drawstyle="steps-post", linestyle=styles[j],
+                        linewidth=2.4 - 0.4 * j, label=f"${dim} = {v}$",
+                        marker="osD^"[j], markevery=list(range(len(GC))),
+                        color=SERIES[j], markeredgecolor="white", markeredgewidth=0.8)
+            ax.set_xscale("symlog", linthresh=10, linscale=0.5)
+            ax.set_xticks([0, 10, 30, 100, 200])
+            ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
+            ax.set_xlim(0, GC[-1])
+            ax.set_yscale("log", base=2)
+            ax.set_yticks([8, 12, 16, 24, 32, 48, 64, 96, 128, 256])
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
+            ax.set_xlabel(f"$g_c$ (cycles / element), best {label}")
+        axes[0].set_ylabel("tile dimension")
+        legend_above(axes[0], ncols=len(values))
+        print(save(fig, "software/s3_shapes", NAME + "_" + dim + ("_small" if SMALL else "")))
 
     lines = []
     for dim, values in VARY.items():

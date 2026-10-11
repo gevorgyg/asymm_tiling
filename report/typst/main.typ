@@ -521,11 +521,29 @@ won't need to recalibrate again for every new matrix. To check, we change one di
   caption: [The best tile height $T_M^*$ (left) and width $T_N^*$ (right) against $g_c$ for four values of the inner dimension $K$ ($M = 192$, $N = 256$).],
 ) <fig-sw-shapes>
 
-@fig-sw-shapes shows that the shape barely matters. Except at the smallest $g_c$, where many tiles are equally good anyway, the best tile is the same for every $K$. The same holds when $N$ changes.
+*How to read the figure:* each value of $K$ is one line, and at every $g_c$ the left panel gives the height of its best tile and the right panel its width. Where the lines lie on top of each other, the best tile is the same for every $K$.
+
+@fig-sw-shapes shows that the shape barely matters. From $g_c approx 20$ on, the best tile is the same for every $K$. Below that, $K = 128$ is the exception: the tile of $A$ is $T_M times K$, so with a smaller $K$ a taller tile still fits in $L_1$.
+
+#figure(
+  image("./figures/sw_shapes_N.svg", width: 100%),
+  caption: [As @fig-sw-shapes, for four values of the width $N$ ($M = 192$, $K = 256$).],
+) <fig-sw-shapes-n>
+
+The same holds when $N$ changes (@fig-sw-shapes-n). Again, the lines only part at a small $g_c$. There, the height of 12 lets the tile of $A$ fit in $L_1$, so every width costs about the same and the best width jumps between near ties. $N = 128$ differs for a different reason: its best tile is as wide as the whole matrix, so every row of $A$ is read only once.
 
 *Why doesn't the shape matter?* What decides the best tile is how well it uses the cache (@sec-alpha), and that does not depend on the size of the matrix. Once the tile of $A$ is too large to stay in $L_1$, $A$ is read again once for every tile in its row, which depends on the width $T_N$ but not on $K$. And the limit that bounds the best tiles, that the tile of $C$ and one line of $A$ per row must fit in $L_1$, involves only $T_M$ and $T_N$. The matrix only changes how much work there is, not which tile does it best.
 
-The one exception is $M$, through the generation cost: $B$ is generated once per row of tiles (@sec-refine), so heights that divide $M$ waste nothing on a short last row. A larger $M$ has more such heights, and at a large $g_c$ it can use a taller tile. In practice, a software engineer can find the best tile once for a given cache and reuse it for other matrices, preferring heights that divide $M$.
+The one exception is $M$, through the generation cost: $B$ is generated once per row of tiles (@sec-refine), so heights that divide $M$ waste nothing on a short last row. A larger $M$ has more such heights, and at a large $g_c$ it can use a taller tile.
+
+#figure(
+  image("./figures/sw_shapes_M.svg", width: 100%),
+  caption: [As @fig-sw-shapes, for four values of the height $M$ ($K = 256$, $N = 256$).],
+) <fig-sw-shapes-m>
+
+@fig-sw-shapes-m shows this. Up to $g_c = 30$ every $M$ picks the same tile. Beyond that, the best height follows the divisors of $M$: 64 does not divide 96, so $M = 96$ settles for 48, and 128 divides 384 and 768 but not 192, so only the two larger matrices can use it.
+
+In practice, a software engineer can find the best tile once for a given cache and reuse it for other matrices, preferring heights that divide $M$.
 
 // TODO: small sample (coarse tile grid); rerun with SMALL = False at the end
 
