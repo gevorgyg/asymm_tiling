@@ -180,6 +180,42 @@ The user approved all of them; start with small samples.
     near ties (TM = 12: A fits, α ≈ 0.85 for every TN).
   - Report 4.5.2 now has three figures: sw_shapes_K, _N, _M (same script,
     one figure per varied dimension, from the existing small runs).
+  - **Cost of reusing the 192×256×256 best tile (2026-10-13, scratchpad
+    reuse_tile.py):** K 128: ≤ 4 %; K 512/1024: +37/38 % at gc 0 only
+    (12×32 → A re-read 8×; 12×256 reads it once), 0 elsewhere; M 96: +12 %
+    at gc 50 (64 ∤ 96); M 384/768: +33 % at gc 200 (128 | M), 0 at gc 100;
+    N 512/1024: ≤ 4 %; N 128: the 12×256 tile is too wide, cut to 12×128
+    it costs +0.6 %. The user rejected "the shape barely matters"; the
+    report now says: usually free, up to a third, predictable; rerun the
+    model for a new M (choose_tile got M_cal; the 192 table picks the
+    best tile at M 96/384/768 at every gc), recalibrate for a new K.
+  - **General rules instead of fixed numbers (2026-10-13), all verified:**
+    - PRNG budget (report 4.6.1): free while gc ≤ T_M,fit · α(gc 0), T_M,fit
+      = tallest tile whose A tile (T_M·K) fits L1. Matches L1 8/16/32/64 KB
+      (3.5/10/20/40), R 2/8/16, memory 100/400, MAC 1/4 and 1 (existing
+      hw_prng_budget / hw_registers / hw_memory / hw_mac_cost runs).
+    - Compute unit (report 4.6.5): the MAC cost just adds to α in the
+      refined model: predicts the best runtime within 0.2 % and picks the
+      best tile at every MAC cost × gc of hw_mac_cost.
+    - Dataflow crossover (report 4.2): gc* = R_M · T_B (B-stationary
+      runtime at gc 0): R 2: 6.8 (6–7), R 4: 4.6 (4–5), R 8: 4.7 (4–5),
+      R 4 + 1 cycle/MAC: 8.6 (8–9). R 16: B-stationary faster even at
+      gc 0 (α_C 0.81 > α_B 0.44; not investigated).
+  - **fig_vs_square explanations (2026-10-13, report 4.5.4):** zero gain
+    for 32×32 at gc 14–35 = same α plateau as 64×32 (1.150 / 1.148) and
+    gc/32 < α up to gc ≈ 37; 64×64 vs 96×64 both α 3.74 (gc 180–230).
+    Dashed line's two hills follow the best tile's path: wide (24×128,
+    α 0.89 vs 24×24 1.28) → square 48×48 at gc 45–50 (valley) → tall
+    narrow (96×16, peak 50 % at gc 160) → zero from gc ≈ 400 (96×96 α
+    3.70 < gc·2/192).
+  - **Old table on a new N / K (2026-10-13, scratchpad test_n.py, the
+    report's choose_tile):** N 128/512/1024: ≤ 3.9 % (gc 5–10), exact
+    from gc 20 → no recalibration needed. K 128: ≤ 4.3 %; K 512: exact;
+    K 1024: +37.8 % at gc 5 (picks 12×32, a near tie in the 256 table) →
+    recalibrate. With its own table every shape is exact (≤ 0.8 %).
+    The K 37 % reuse cost at gc 0 was the same near tie (12×32 vs 12×256:
+    0.02 % apart at K 256). Report 4.5.2 now ends with "reuse the table,
+    not the tile" + a table (M no / N not needed / K yes / hardware yes).
   - Mechanism (checked against the alpha counting):
     - For T_M ≥ 16 the A misses are 1/(16·T_N) per MAC, independent of K;
     - the binding constraint at moderate gc is C tile + one A line per
@@ -790,12 +826,15 @@ associative at 16 KB.)
 | H2 L1 vs PRNG (small) | hw_l1_vs_prng (reads hw_prng_budget's results_small; table only, no figure) | as H1 | as H1 | as H1 | as H1 | 0 new |
 | H3 FIFO size (small) | hw_fifo_size (results_small) | FIFO capacity 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 16384 elements | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 5,10,20,30,40,60,100,200 | 6160 |
 | H3b L1 vs FIFO split (small) | hw_sram_split (results_small); the user asked 2026-10-04 "a bigger cache or a bigger FIFO?", then "up to taking all of the space" | budget 16 KB: FIFO 64 B / 256 B / 1/2/4/8/12/14/15/15.5 KB; 32 KB: 64 B / 256 B / 1/2/4/8/16/24/28/30/31/31.5 KB (4-byte elements); L1 (FA) = budget − FIFO, at least 0.5 KB | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 5,10,20,30,60,100,200 | 11858 |
+| H3c FIFO size on other hardware (small) | hw_fifo_size (results_configs_small, README_configs_small.md), done 2026-10-13 (13 min). Worst slowdown over gc with 16 / 256 / 1024 elements: default 32/3/2 %, mem 90 24/2/0, mem 360 55/11/2, L1 8 KB 44/2/0, L1 32 KB 24/4/3, MAC 1/4 33/3/0, R 2 1/0/0, R 8 55/13/0, R 16 79/49/19 (4096: 9 %). Register block matters most, then memory latency; report 4.6.2 table tab-fifo-configs + "size the FIFO in register blocks, ~16 blocks". The "smallest capacity within 1 %" metric is jumpy (best-tile switches), so the report uses the worst slowdown at fixed sizes; started 2026-10-13; the user asked "when does the capacity become meaningless for other configs, what affects it most?" | one change at a time × FIFO capacities as H3: memory 90 / 360 cycles, L1 8 / 32 KB (FA), MAC cost 16 (1/4 cycle/MAC); register blocks = H3 register-block row | as H3 | as H3 | as H3 | 30800 |
+| H3d FIFO vs register block × MAC cost (small) | hw_fifo_size (results_regmac_small, README_regmac_small.md), done 2026-10-13 (15 min). Worst slowdown at 256 / 1024 el.: 4×4 free 3/2 %, 1/4 0/0, 1 0/0; 8×8 free 13/0, 1/4 8/0, 1 1/0; 16×16 free 49/19 (4096: 9 %), 1/4 13/2, 1 1/1; 2×2 none needed. A slower compute unit needs a smaller FIFO (the core consumes B slower); report 4.6.2 tab-fifo-mac + suggestion "size the FIFO by how fast the core is"; started 2026-10-13; the user asked whether "~16 register blocks" depends on the MAC cost | R = 2/4/8/16 × MAC free / 1/4 / 1 cycle per MAC (mulacc_cost = m·R³ per block multiply) × FIFO 16/64/256/1024/4096/16384 | as H3 | as H3 | 5,10,20,60,200 | 27720 |
+| F4c dataflow crossover | dataflow_crossover (out/dataflow_crossover/README.md), done 2026-10-13 | both dataflows, tile 64×32; R 2/4/8/16 free MAC + R 4 with 1 cycle/MAC (mulacc_cost = R³) | 64 | 32 | 0..40 step 1 | 410 |
 | H3 threshold check | (scratch run, not kept) | 64×32 tile; FIFO 16 vs 16384 | 64 | 32 | 40,44,46,47,48,49,50,52,56,60 | 20 |
 | H3 register blocks (small) | hw_fifo_size (results_regdim_small), run by the user in the background; R 6, 12, 16 added 2026-10-04 (11550 more runs); the figure shows only the powers of two 2/4/8/16 (the user's choice: 6 and 12 don't divide the tiles, so the trend is irregular, e.g. 6×6 needs a bigger FIFO than 8×8 at gc 20); figure hw_fifo_size_registers (gc 20 and 60 panels, added 2026-10-04, the user asked; gc 10 skipped: anomaly; gc 200 skipped: R 4 = R 8) | R = 2/4/8 × FIFO capacities as H3 | as H3 | as H3 | 5,10,20,60,200 | 11550 |
 | H5a L2 (small) | hw_l2 (results_small) | L2 none / 32 / 64 / 128 / 256 / 512 KB fully assoc / 64 KB 8-way, 14 cycles; memory 180 | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 4312 |
 | H5b memory (small) | hw_memory (results_small) | memory 100 / 180 / 300 / 400 cycles, no L2 | as H5a | as H5a | as H5a | 2464 |
 | H6 registers (small) | hw_registers (results_small) | register block R = 2/4/8/16 (≈ 3R² registers); FIFO 16384 (unlimited) and 256 (1 KB) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 4928 |
-| H7 MAC cost (small) | hw_mac_cost (results_small) | mulacc_cost c = 0/4/16/64 cycles per 4×4×4 block (= 0, 1/16, 1/4, 1 cycle/MAC) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 2464 |
+| H7 MAC cost (small) | hw_mac_cost (results_small); 2026-10-13 the report section became "How fast must the compute unit be?" with the new figure hw_compute_speed (best(c, gc) / best(0, gc)) | mulacc_cost c = 0/4/16/64 cycles per 4×4×4 block (= 0, 1/16, 1/4, 1 cycle/MAC) | 4,8,12,16,24,32,48,64,96,128,192 | 4,8,16,32,64,128,256 | 0,5,10,20,30,50,100,200 | 2464 |
 | H4 part 1 | hw_assoc (reads model_sweep + assoc_sweep) | as F7: 3 L1 × 6 matrices × fully assoc / 8-way / 4-way | as F7 | as F7 | as F7 | 0 new |
 | F1 paper reproduction (report 4.1) | fig_paper (new standalone script, no old results), 2026-10-09 | 256×256×256, B FROM MEMORY, A/C 8 B, B 8/4/2/1 B (ρ 1, 1/2, 1/4, 1/8), 16 KB FA L1, no L2; reads = L1 misses × 64 B; C-tile areas 512 and 1024, aspect ratio T_N/T_M powers of two | 4..256 | 4..256 | – | 52 |
 | S2 autotune | sw_autotune (reads F5 runs) | strategies = candidate sets: full step 4, step 8, step 16, divisors of M, divisors × 2^k widths, powers of two, squares, default 16×32 | as F5 | as F5 | F5's gc > 0 | 0 new |

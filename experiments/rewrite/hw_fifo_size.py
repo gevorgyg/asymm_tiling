@@ -75,6 +75,83 @@ def main() -> None:
     (out_dir(NAME) / f"README{'_small' if SMALL else ''}.md").write_text(report)
     print(report)
     register_blocks(tiles)
+    other_configs(tiles, t)
+    register_blocks_mac(tiles)
+
+
+# does the FIFO a register block needs depend on the MAC cost? mulacc_cost is
+# charged per register-block multiply (R^3 MACs), so it is scaled by R^3 to
+# keep the cost per MAC the same for every R
+MAC_PER_MAC = {"free": 0, "1/4": 0.25, "1": 1}
+
+
+def register_blocks_mac(tiles: list) -> None:
+    caps = [16, 64, 256, 1024, 4096, 16384]
+    params = [replace(Params(l1_assoc=-1), reg_dim=r, mulacc_cost=int(m * r ** 3),
+                      fifo_capacity=cap, tile_h=tm, tile_w=tn, gen_cost=gc)
+              for r in REG for m in MAC_PER_MAC.values() for cap in caps
+              for gc in REG_GC for tm, tn in tiles]
+    stats = run_many(params, out_dir(NAME) / "results_regmac_small.json")
+    t = {(p.reg_dim, p.mulacc_cost, p.fifo_capacity, p.gen_cost, p.tile_h, p.tile_w):
+         s["Simulation: Total cycles"] / MNK for p, s in zip(params, stats)}
+    rows = []
+    for r in REG:
+        for name, m in MAC_PER_MAC.items():
+            c = int(m * r ** 3)
+            best = {(cap, gc): min(t[(r, c, cap, gc, *tl)] for tl in tiles)
+                    for cap in caps for gc in REG_GC}
+            worst = [max(best[(cap, gc)] / best[(REF, gc)] for gc in REG_GC) - 1 for cap in caps]
+            rows.append(f"| {r}×{r} | {name} | " + " | ".join(f"{w:.0%}" for w in worst) + " |")
+    report = (f"# {NAME} (small): FIFO size vs register block and MAC cost\n\n"
+              f"Worst slowdown over gc {REG_GC} with a FIFO of the given capacity "
+              f"(elements), vs an unlimited FIFO. MAC cost per MAC (scaled by R^3 per "
+              f"block multiply).\n\n| R | MAC | " + " | ".join(map(str, caps)) + " |\n" +
+              "|---" * (2 + len(caps)) + "|\n" + "\n".join(rows) + "\n")
+    (out_dir(NAME) / "README_regmac_small.md").write_text(report)
+    print(report)
+
+
+# when does the capacity stop mattering on other hardware? The smallest
+# capacity within 1 % of an unlimited FIFO, per configuration and gc. One
+# change from the default at a time; the register block sweep is above.
+CONFIGS = {
+    "default": {},
+    "memory 90 cycles": {"mem_cycles": 90},
+    "memory 360 cycles": {"mem_cycles": 360},
+    "L1 8 KB": {"l1_size": 13},
+    "L1 32 KB": {"l1_size": 15},
+    "MAC 1/4 cycle": {"mulacc_cost": 16},
+}
+
+
+def enough_capacity(best: dict, gc: int) -> int:
+    ref = best[(REF, gc)]
+    return min(c for c in CAP if all(best[(d, gc)] <= ref * (1 + LIMIT) for d in CAP if d >= c))
+
+
+def other_configs(tiles: list, default: dict) -> None:
+    rows = []
+    for name, change in CONFIGS.items():
+        if change:
+            params = [replace(Params(l1_assoc=-1), **change, fifo_capacity=cap, tile_h=tm,
+                              tile_w=tn, gen_cost=gc)
+                      for cap in CAP for gc in GC for tm, tn in tiles]
+            stats = run_many(params, out_dir(NAME) / "results_configs_small.json")
+            t = {(p.fifo_capacity, p.gen_cost, p.tile_h, p.tile_w):
+                 s["Simulation: Total cycles"] / MNK for p, s in zip(params, stats)}
+        else:
+            t = default
+        best = {(cap, gc): min(t[(cap, gc, *tl)] for tl in tiles) for cap in CAP for gc in GC}
+        rows.append(f"| {name} | " + " | ".join(str(enough_capacity(best, gc)) for gc in GC) +
+                    " | " + " | ".join(f"{best[(16, gc)] / best[(REF, gc)]:.2f}" for gc in GC) + " |")
+    report = (f"# {NAME} (small): smallest capacity within 1 % per configuration\n\n"
+              f"Left: smallest capacity (elements) within 1 % of an unlimited FIFO, per gc. "
+              f"Right: slowdown with the smallest FIFO (16 elements).\n\n"
+              "| config | " + " | ".join(f"gc {gc}" for gc in GC) + " | " +
+              " | ".join(f"16 el. gc {gc}" for gc in GC) + " |\n" +
+              "|---" * (1 + 2 * len(GC)) + "|\n" + "\n".join(rows) + "\n")
+    (out_dir(NAME) / "README_configs_small.md").write_text(report)
+    print(report)
 
 
 # larger register blocks need a larger FIFO: the same slowdown, one line per

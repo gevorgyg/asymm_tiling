@@ -59,7 +59,24 @@ def main() -> None:
     legend_above(ax, ncols=len(MAC))
     print(save(fig, "hardware/h7_mac_cost", NAME + ("_small" if SMALL else "")))
 
-    lines = ["| gc | " + " | ".join(f"c = {c} ({c / 64:g}/MAC)" for c in MAC) + " |",
+    # hw_compute_speed: the same runs from the compute unit's side, the slowdown
+    # caused by a MAC cost against a free MAC at the same gc
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    for i, c in enumerate(MAC):
+        if c == 0:
+            continue
+        per_mac = "1" if c == 64 else f"1/{64 // c}"
+        ax.plot(GC, [best[(c, gc)][0] / best[(0, gc)][0] for gc in GC],
+                label=f"{per_mac} cycle / MAC", **series(i))
+    ax.set_xlabel("$g_c$ (cycles / element)")
+    ax.set_ylabel("slowdown vs a free MAC")
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}×"))
+    ax.set_xlim(0, GC[-1])
+    ax.set_ylim(bottom=1)
+    legend_above(ax, ncols=len(MAC) - 1)
+    print(save(fig, "hardware/h7_mac_cost", "hw_compute_speed" + ("_small" if SMALL else "")))
+
+    lines =["| gc | " + " | ".join(f"c = {c} ({c / 64:g}/MAC)" for c in MAC) + " |",
              "|---" * (1 + len(MAC)) + "|"]
     for gc in GC:
         lines.append(f"| {gc} | " + " | ".join(
