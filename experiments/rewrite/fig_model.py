@@ -27,6 +27,7 @@ TN = 32
 GC = [30, 100, 200]
 M, K, N = 192, 256, 256
 MNK = M * K * N
+R = 4   # register block (R_M = R_N), for the startup term
 
 
 def b_term(gc: int, tm: int) -> float:
@@ -69,6 +70,35 @@ def main() -> None:
         ax.set_ylim(0, 6)
         legend_above(ax, ncols=1 + len(GC))
         print(save(fig, "model", name + ("_small" if SMALL else "")))
+
+    # fig_model_refined: the full refined model (per-row max + startup,
+    # report: Refining The Model, refinement 3) against the same markers
+    pure = {}   # alpha of a row of exactly tm rows: take the short last row out of the mix
+    for tm in TM:
+        e = M % tm
+        pure[tm] = (M * t[(0, tm)] - (e * pure[e] if e else 0)) / (M - e)
+
+    def refined(gc: int, tm: int) -> float:
+        rows = [tm] * (M // tm) + ([M % tm] if M % tm else [])
+        startup = gc * R * R * -(-M // tm) * -(-N // TN) / MNK
+        return sum(max(r * pure[r], gc) for r in rows) / M + startup
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.plot(TM, [t[(0, tm)] for tm in TM], label=r"$\alpha$ ($g_c = 0$)", **series(0))
+    ax.plot([], [], linestyle="none", label=" ")
+    for i, gc in enumerate(GC, start=1):
+        ax.plot(TM, [refined(gc, tm) for tm in TM], color=SERIES[i], linestyle="--",
+                linewidth=1.4, label=f"refined model, $g_c = {gc}$")
+        ax.plot(TM, [t[(gc, tm)] for tm in TM], linestyle="none",
+                label=f"measured, $g_c = {gc}$", **series(i))
+    ax.set_xlabel("$T_M$")
+    ax.set_ylabel("cycles / MAC")
+    ax.set_xlim(0, max(TM) + 4)
+    ax.set_ylim(0, 6)
+    legend_above(ax, ncols=1 + len(GC))
+    print(save(fig, "model", "fig_model_refined" + ("_small" if SMALL else "")))
+    worst = max(abs(t[(gc, tm)] / refined(gc, tm) - 1) for gc in GC for tm in TM)
+    print(f"fig_model_refined: worst |measured / refined - 1| = {worst:.2%}")
 
 
 if __name__ == "__main__":

@@ -818,7 +818,7 @@ associative at 16 KB.)
 | Exp | Script (out/ dir) | Differs from base | T_M | T_N | g_c | Runs |
 |---|---|---|---|---|---|---|
 | F2 alpha | fig_alpha | – | 4..128 step 4 | 4, 8, 16, 32, 64 | 0 | 160 |
-| F3 mem vs gen | fig_model (two figures: fig_model_simple = gc/T_M for report 3.3.3, fig_model = staircase for 3.3.4) | – | 4..128 step 4 | 32 | 0, 30, 100, 200 (100 added 2026-10-03, the user asked) | 128 |
+| F3 mem vs gen | fig_model (three figures: fig_model_simple = gc/T_M for report 3.3.3, fig_model = staircase for 3.3.4, fig_model_refined = full per-row model + startup after refinement 3, added 2026-10-14, worst 0.18 %; the off-curve points T_M 88/92 and 108–128 are short last rows, startup only 0.002–0.006 cycles/MAC) | – | 4..128 step 4 | 32 | 0, 30, 100, 200 (100 added 2026-10-03, the user asked) | 128 |
 | F4 dataflow | fig_dataflow (MODEL_LINES = False since 2026-10-10: the user removed the model from report 4.2, which comes before the model) | both dataflows | 64 | 32 | 0..100 step 1 | 202 |
 | F4 best vs best | fig_dataflow (results_best) → figure fig_dataflow_best (added 2026-10-03, the user asked; in report §3.2.1) | both dataflows | 4, 8..128 step 8 | 4, 8, 16, 32, 64 | 0..30 step 1, 35..100 step 5 | 7650 |
 | F4b ratio | fig_dataflow_ratio | both dataflows | 4, 8, 16, 32, 64, 128 | 32 | 0..100 step 1 | 1212 |

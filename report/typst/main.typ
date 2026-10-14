@@ -332,15 +332,15 @@ We start by *finding the Empirically Best Tiles*. To find the best tile at each 
 The figure shows an interesting phenomenon. At first as $g_c$ grows, the best tile gets taller and wider, but after $g_c$ passes 20,
 the best tile still keeps growing taller, but it now prefers becoming narrower. This continues until a point in which a tall and wide tile is preferred again. The figure raises some interesting questions, and these are our attempts to answer them:
 
-- *Why does $T_M$ grow?* So that generation stays hidden. Each generated element of $B$ is shared by the $T_M$ rows of its tile
+- Why does $T_M$ grow? So that generation stays hidden. Each generated element of $B$ is shared by the $T_M$ rows of its tile
   (@sec-dataflow), so a taller tile spreads the generation cost over more rows. As $g_c$ grows, we need a bigger $T_M$ to keep
   generation hidden behind the memory accesses.
-- *Why does $T_N$ first grow and then suddenly start shrinking?* So that the tile still fits in $L_1$. At first, once the tile of
+- Why does $T_N$ first grow and then suddenly start shrinking? So that the tile still fits in $L_1$. At first, once the tile of
   $A$ no longer fits in $L_1$ (at $T_M >= 16$), $T_N$ grows, because a wider tile allows for reloading $A$ tiles fewer times.
   This is true up to a second cliff in the cost of memory, which we analyze in @sec-alpha. Passing that second cliff is
   horrible for performance. We arrive at that cliff later when $T_N$ is smaller, therefore causing the best tile to start
   lowering $T_N$ for the purpose of delaying that inevitable second cliff.
-- *Why does it turn wide again at very high $g_c$?* From $g_c = 400$ on, generation dominates *every* good tile, so the width no longer matters either. Up to 263 tiles are within 1% of the best performing shape.
+- Why does it turn wide again at very high $g_c$? From $g_c = 400$ on, generation dominates *every* good tile, so the width no longer matters either. Up to 263 tiles are within 1% of the best performing shape.
 
 Finding these tiles took a simulation of every tile at every $g_c$. To explain them properly, and to find the best tile without
 such a sweep, we need a model of the runtime, which the next section develops.
@@ -408,37 +408,62 @@ At the moment that generating $B$ costs time, the simple model predicts the runt
   caption: [The two costs of the simple model against $T_M$ ($T_N = 32$): the memory cost $alpha$ measured at $g_c = 0$ (solid), the generation cost $g_c slash T_M$ (dashed), and the measured runtime (markers) at $g_c = 30$, $100$ and $200$.],
 ) <fig-model-simple>
 
-*Intuition:* The runtime always follows the higher of the two curves. The *best tile* is therefore the *lowest point* of that
+Trying to understand the formula intuitively, the runtime always follows the higher of the two curves. The *best tile* is therefore the *lowest point* of that
 upper curve, "the minimum of the maximum". For a rising and a falling curve this minimum is located at their crossing point. To
 the left, generation dominates and a taller tile helps. To the right, memory dominates and a taller tile hurts.
 
-*Why don't the points follow the curves?* At $g_c = 30$ generation is cheap, and the measured runtime sits on the higher curve
-almost everywhere. At $g_c = 100$ and $200$ it clearly does not. Instead it follows a decreasing step shape above the generation
-curve. Analysing the points that do touch the curve shows that those are the points that have tiles at heights that divide the
+We can see that most of the points don't actually follow the curves. At $g_c = 30$ generation is cheap, and the measured runtime sits on the higher curve almost everywhere. At $g_c = 100$ and $200$ it clearly does not. Instead it follows a decreasing step shape above the generation curve.
+
+Analysing the points that do touch the curve shows that those are the points that have tiles at heights that divide the
 height of the matrix: $M = 192$, such as $T_M = 48$ and $64$. In addition, we can see that a few measurements are slower than both curves. Why the simple model misses these points, and how to fix it, is the subject of the next section.
 
 === Refining The Model <sec-refine>
 
-The simple model misses some points of @fig-model-simple. Three refinements explain them.
+Here we try to refine the model to address the points that miss the model previously. For that, three refinements are needed.
 
-*1. $B$ is generated once per row of tiles.* The flat steps come from how often $B$ is generated. The core finishes a whole row of tiles before moving down, and every row of tiles needs all of $B$ again. So $B$ is generated once per row of tiles, $ceil(M slash T_M)$ times in total, and its cost per MAC is
-$ g_c dot ceil(M slash T_M) / M. $
-This cost only changes when the number of rows of tiles changes. With $M = 192$, every height from 48 to 63 needs four rows, so
-they all generate $B$ four times, a taller tile in this range only makes the last row shorter. When $T_M$ divides $M$ this is exactly $g_c slash T_M$, which is why the measurements touched the simple curve only there. @fig-model shows that with this staircase, the measurements follow the model again.
+*1. $B$ is generated once per row of tiles:* The flat steps come from how often $B$ is generated. The core finishes a whole row of
+tiles before moving down (a whole row tile of matirx A), and every row of tiles the entire matrix $B$. Meaning $B$ is generated
+once per row of tiles, or $ceil(M slash T_M)$ times total, giving it a cost per MAC of: $ g_c dot ceil(M slash T_M) / M. $
+
+Interestingly when $T_M$ divides $M$ this is exactly $g_c slash T_M$, which is why the measurements touched the simple curve only there.
+
+@fig-model shows that with this staircase, the measurements follow the model again.
 
 #figure(
   image("./figures/fig_model.svg", width: 100%),
   caption: [As @fig-model-simple, with the generation cost of the refined model $g_c dot ceil(M slash T_M) slash M$ (dashed).],
 ) <fig-model>
 
-*2. The startup term: the FIFO starts empty at every tile.* Each tile loads its own seed, so the FIFO starts empty, and the first register block of $B$ must be generated before the core can start. Nothing overlaps with this wait, so it is added on top of the max: $g_c dot R_M R_N$ cycles per tile. It is small for large tiles, but grows with the number of tiles.
+*2. The startup term:* Each tile loads its own seed, so the FIFO starts empty, and the first register block of $B$ must be
+generated before the core can start. Nothing overlaps with this wait, so it is added on top of the max. It adds: $g_c dot R_M R_N$
+cycles per tile. It is small for large tiles, but its effect grows with the number of tiles.
 
-*3. The max is taken per row of tiles.* A few heights are still slower than both curves, for example $T_M = 88$ at $g_c = 200$. Here $192 = 88 + 88 + 16$: two full rows of tiles and a short last row of 16. Each row of tiles generates all of $B$, but the short row has very little memory work to hide it behind. The full rows wait for memory, the short row waits for generation, and since the rows run one after the other, these waits add up. Taking the max of the averages, as the simple model does, lets the full rows' spare memory time hide the short row's generation, which cannot happen. The fix is to take the max for each row of tiles and add them up:
+*3. The max is taken per row of tiles:* A few heights are still slower than both curves. The reason for this is the extra row that
+appears when the tile height does not divide the matrix height. Each row of tiles generates all of $B$, but the short residual row
+has a lot less memory work to hide behind (because its $T_M$ is smaller). The full rows wait for memory, the short row waits for
+generation, and since the rows run one after the other, these waits add up. The simple model affectively takes the max of the
+averages. That lets the full row's spare memory time "hide" the short row's generation explaining the shortfalls of the previous
+figure. The fix is to take the max for each row of tiles and add them up instead:
+
 $ T / (M N K) = 1 / M sum_"rows" max(r dot alpha(r), g_c) + "startup", $
+
 $ "startup" = (g_c dot R_M R_N dot ceil(M slash T_M) dot ceil(N slash T_N)) / (M N K) $
-where $r$ is the height of the row and $alpha(r)$ is measured for a tile of that height in the same $g_c = 0$ runs. The startup term is the wait from step 2, $g_c dot R_M R_N$ cycles at the start of every tile, multiplied by the number of tiles and spread over all the MACs. When $T_M$ divides $M$, all the rows are the same, and the formula reduces to the simple model of @sec-simple-model plus the startup term. There are then $M slash T_M$ rows, all of height $r = T_M$, and with no short row $alpha(T_M)$ is simply the measured $alpha(T_M, T_N)$, so the sum has $M slash T_M$ equal terms:
+
+Where $r$ is the height of the row and $alpha(r)$ is measured for a tile of that height in the same $g_c = 0$ runs. 
+
+The startup is  $g_c dot R_M R_N$ cycles at the start of every tile, multiplied by the number of tiles and spread over all the MACs.
+
+When $T_M$ divides $M$, all the rows are the same, and the formula reduces to the simple model of @sec-simple-model plus the
+startup term. There are $M slash T_M$ rows, all with a height of $r = T_M$, with no short row. $alpha(T_M)$ is simply the measured $alpha(T_M, T_N)$, so the sum has $M slash T_M$ equal terms:
 $ 1 / M sum_"rows" max(r dot alpha(r), g_c) = 1 / M dot M / T_M dot max(T_M dot alpha, g_c) = max(alpha, g_c / T_M), $
-where the last step moves the $1 slash T_M$ into the max, dividing both of its terms. This is exactly the simple model.
+where the last step moves the $1 slash T_M$ into the max, dividing both of its terms. Giving us exactly the simple model.
+
+@fig-model-refined shows the same measurements as @fig-model, now against the full refined model. Over all the points of the figure, the model is within 0.2% of the measurement.
+
+#figure(
+  image("./figures/fig_model_refined.svg", width: 100%),
+  caption: [As @fig-model, with the full refined model (dashed): the max taken per row of tiles, plus the startup term.],
+) <fig-model-refined>
 
 == Software Focused Design Questions <sec-sw>
 
