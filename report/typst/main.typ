@@ -137,9 +137,10 @@ To get there, we:
 
 + Build a cycle-level simulator of a core with a cache hierarchy and a PRNG-FIFO.
 + Check that it reproduces the results of the original analysis (@reproduce).
-+ Develop a simple model that predicts the runtime of a tile when $B$ is created by FIFO generation, and refine it until it
-  matches the simulator (@sec-simple-model).
-+ Use the model to find the best tile, and follow how its shape changes with the cost of generation (@sec-tile).
++ Choose the dataflow that suits a PRNG-FIFO best (@sec-dataflow).
++ Find the best tile by simulation, and follow how its shape changes with the cost of generation (@sec-tile).
++ Develop a simple model that explains these tiles and predicts the runtime of a tile when $B$ is created by FIFO generation,
+  and refine it until it matches the simulator (@sec-simple-model).
 + Answer practical design questions: which tile a software engineer should choose, and how a hardware engineer should balance the cache, the FIFO and the generator.
 
 = Methodology
@@ -468,7 +469,7 @@ where the last step moves the $1 slash T_M$ into the max, dividing both of its t
 == Software Focused Design Questions <sec-sw>
 
 A software engineer gets the hardware as it is, and has to decide how to use it. For example which tile to choose for a given
-generator and for the matrices at hand. here we aim to help that engineer, so he'll use the best configuration possible for the
+generator and for the matrices at hand. Here we aim to help that engineer, so he'll use the best configuration possible for the
 setup he has to work with.
 
 === Can Our Model Be Trusted To Choose The Tile? <sec-test-model>
@@ -545,32 +546,27 @@ def choose_tile(alpha, M, N, K, gc, R=4, M_cal=None):
     return best_tile
 ```
 
-This begs the question: *How good is the refined model?* We simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 41 values of $g_c$ from 1 to 600. The refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 1.5% slower than the best one.
+Now that we know how to predict the best tile, we shall check how good the predictions are. We simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 41 values of $g_c$ from 1 to 600. The refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 1.5% slower than the best one.
 
 @fig-model-validation shows this for every run. A perfect model would put every point on the diagonal. The simple model
-underestimates many runs, mostly the tiles with a short residual row of tiles. the refined model puts almost all of them on the line.
+underestimates many runs. The refined model puts almost all of them on the line.
 
 #figure(
   image("./figures/fig_model_validation.svg", width: 100%),
   caption: [Measured against predicted runtime for every tile and $g_c > 0$, for the simple model of @sec-simple-model (left) and the refined model (right). Points on the dashed diagonal are predicted exactly.],
 ) <fig-model-validation>
 
-The further the dots are from the digonal line, the worst the prediction is. From this, we can easily see a segnificant advantage
+The further the dots are from the diagonal line, the worse the prediction is. From this, we can easily see a significant advantage
 to using the refined model. But even so, even the refined one misses at some points.
 
 The misses are almost always in the same *direction*. The measured runtime is *higher* than predicted.
-The reason for this most likely stems from the use of a max term in out model. It assumes that generation and memory overlap
+The reason for this most likely stems from the use of a max term in our model. It assumes that generation and memory overlap
 perfectly, which is only true in the best case. The misses we see in the figure gather where the memory and generation costs are
 about equal, on the other hand, when one of them clearly dominates, the other hides behind it completely and the model is almost
 always exact. 
 
 When they are equal, there is less room for error, so every short moment in which the core runs faster than the generator turns
-into a wait for the FIFO, and adds directly to the runtime. This extra runtime is what out model missed.
-
-*But these predictions don't effect the choise much*. The models biggest errors fall on tiles that cause cache thresing. Those
-tiles are never the ones chosen at the end because they are 2 to 4 times slower than the best, meaning errors fall mostly on tiles
-that would not have been chosen. At all but one value of $g_c$ the model picks the best tile, or one within 0.01% of its
-performence. 
+into a wait for the FIFO, and adds directly to the runtime. This extra runtime is what our model missed.
 
 All in all, a software engineer can trust the model to choose the tile. The calibration runs are the only simulations needed, and
 the choice itself takes a short script instead of a sweep over every tile and every $g_c$.
@@ -643,7 +639,8 @@ In one sentence: *calibrate once per hardware and $K$, and for everything else, 
 
 === How Much Autotuning Is Needed? <sec-sw-autotune>
 
-Finding the best tile means calibrating the model, one run per candidate tile (@sec-test-model). With the 1536 tiles of @sec-tile, that is a lot of runs. Can a smaller set of candidates do almost as well? We compare several sets: every tile in steps of 4, 8 or 16, only heights that divide $M$, only powers of two, only square tiles, and no tuning at all (the default $16 times 32$ tile). For each set, the model picks a tile at every $g_c$ from its candidates, and we measure how much slower it is than the best tile overall.
+Finding the best tile means calibrating the model, one run per candidate tile (@sec-test-model). With the 1536 tiles of @sec-tile,
+that is a lot of runs, so we want to check if a smaller set of candidates can do almost as well. We compare several sets: every tile in steps of 4, 8 or 16, only heights that divide $M$, only powers of two, only square tiles, and no tuning at all (the default $16 times 32$ tile). For each set, the model picks a tile at every $g_c$ from its candidates, and we measure how much slower it is than the best tile overall.
 
 #figure(
   image("./figures/sw_autotune.svg", width: 100%),
@@ -658,8 +655,9 @@ matter, add every width for the same heights. And only when even the last 1.5% m
 
 === Does The Choice Of Tile Matter? <sec-sw-choice>
 
-Finally, we wanted to check *how much does the choice matter?* Is using the best tile shape actually better than just using the
-convenient square? We found out that it depends, and that sometimes it's significantly better. And the following figure shows it.
+Finally, we wanted to check how much does the choice actaully matter. Is using the best tile shape actually better than just using
+the convenient square? We found out that it depends. That sometimes it's significantly better and sometimes it's just as good, but
+it's *never* worse. And the following figure shows it.
 
 #figure(
   image("./figures/fig_vs_square.svg", width: 100%),
@@ -681,12 +679,12 @@ Square tiles are optimal when all matrices cost the same @hongkung1981. @fig-vs-
  show, and the gain rises again, because the height of the square cannot keep up with the $g_c$ values and can't hide it any
  longer.
 
-*Against the best square tile of any size* (dashed line), we compare the best tile overall with the best square tile of any size.
-The net gains are smaller, and the line has two hills, with no gain at the ends and in between the hills. This exact phenomenon can
-be seen in the section about the path of the best tile overall in @fig-best-tile. There we see that the best tile starts short and wide, passes through a square around $g_c = 45$, and ends tall and
-narrow up until it turns wide again at extremely high $g_c$ values. This same pattern of behaviour can be seen in @fig-vs-square as well.
+Looking at the best square tile of any size (black dashed line), we compare the best tile overall with the best square tile of any size.
+The net gains are smaller, and the line has two hills, with no gain at the ends and in between the hills. 
 
-*Our suggestion.* Don't default to a square tile. A square is only safe when generation is almost free, or when it is so expensive that it dominates every tile. Everywhere in between, the best tile saves up to half of the runtime, and choosing it costs only the calibration and a short script (@sec-test-model). This is what makes the questions of this section worth answering: choosing the tile pays off.
+This exact phenomenon can be seen in the section about the path of the best tile overall in @fig-best-tile. There we see that the best tile starts short and wide, passes through a square around $g_c = 45$, and ends tall and narrow up until it turns wide again at extremely high $g_c$ values. This same pattern of behaviour can be seen in @fig-vs-square as well.
+
+Our suggestion, don't default to a square tile. A square is only safe when generation is almost free, or when it is so expensive that it dominates every tile. Everywhere in between, the best tile saves up to half of the runtime, and choosing it costs only the calibration and a short script (@sec-test-model).
 
 == Hardware Focused Design Questions <sec-hw>
 
@@ -711,17 +709,19 @@ doubling of $L_1$.
 A bigger cache allows the use of bigger tiles while also allowing for no thrashing of the cache. A taller tile (bigger $T_M$)
 generates $B$ fewer times, creating dead time between generations, which in turn allows for higher generation times.
 
-*Should I use a bigger cache or a faster generator?* We see that doubling the cache gives the same runtime gains as halving the
-generation cost. This makes the two upgrades interchangeable. Halving $g_c$ can also be done with a second generator working in
-parallel, so the engineer can simply pick whichever upgrade is cheaper and more convenient.
+This experiment can help us understand if we should use a bigger cache or a faster generator. We see that doubling the cache gives the same runtime gains as halving the generation cost. This makes the two upgrades interchangeable. Halving $g_c$ can also be done with a second generator working in parallel, so the engineer can simply pick whichever upgrade is cheaper and more convenient.
 
-*A rule for any hardware.* Generation stays hidden as long as producing one element of $B$ takes no longer than the work it is shared by. In the best tile, every element serves the $T_M$ rows of its tile (@sec-dataflow), and every row costs the core $alpha$ cycles per MAC. So the generator is free up to
-$ g_c approx T_M dot alpha, $
-where $T_M$ is the tallest tile whose tile of $A$ still fits in $L_1$ ($T_M dot K$ elements), and $alpha$ is the runtime per MAC with free generation. This also explains the doubling: a cache twice as large fits a tile of $A$ twice as tall. In our default setup, $T_M = 12$ and $alpha approx 0.85$, so $g_c approx 10$, and for 8, 32 and 64 KB the rule gives about 3.5, 20 and 40, exactly where the lines of @fig-hw-prng start to climb. The rule holds for the other hardware we tested as well, because everything else enters through $alpha$:
-- A larger register block makes the core faster (a smaller $alpha$), so the generator has to be faster too: with $8 times 8$ blocks, $alpha approx 0.28$, and generation already costs 15% at $g_c = 5$. With $2 times 2$ blocks, $alpha approx 3.1$, and $g_c = 30$ is still free.
-- A slower memory or a slower compute unit makes $alpha$ larger, and gives the generator more time: with one cycle per MAC, $alpha approx 1.85$, and $g_c = 20$ is still free.
+For general hardware configurations, generation stays hidden as long as producing one element of $B$ takes no longer than the work
+it is shared by. In the best tile, every element serves the $T_M$ rows of its tile (@sec-dataflow), and every row costs the core
+$alpha$ cycles per MAC. So the generator is free up to: $ g_c approx T_M dot alpha, $
+where $T_M$ is the tallest tile whose tile of $A$ still fits in $L_1$, and $alpha$ is the runtime per MAC with free generation.
+This explains the doubling. A cache twice as large fits a tile of $A$ that is twice as tall. 
 
-*Our suggestion.* Measure $alpha$ once with free generation, find the tallest tile whose tile of $A$ fits in $L_1$, and choose the slowest generator with $g_c$ below $T_M dot alpha$. A generator slower than that is not a disaster: up to about twice this $g_c$ the slowdown in our runs stays around 5%. Everything that makes the core faster, such as larger register blocks or a faster compute unit, needs a faster generator to match it.
+Lets look at a numerical example, in our default setup, $T_M = 12$ and $alpha approx 0.85$, so $g_c approx 10$, and for 8, 32 and 64 KB the rule gives about 3.5, 20 and 40, those are exactly the points in which lines of @fig-hw-prng start to climb.
+
+Our suggestion, measure $alpha$ once with free generation, find the tallest tile whose tile of $A$ fits in $L_1$, and choose the
+slowest generator with $g_c$ below $T_M dot alpha$. A generator slower than that is not catastrophic, *up to* about twice this $g_c$
+the slowdown in our simulations stays around 5%.
 
 // TODO: replace the figure with the full-grid run (hw_prng_budget, SMALL = False) at the end
 
@@ -743,7 +743,15 @@ therefore the core spends long enough on each block of $B$ for the generator to 
 tile is only $24$ rows tall, therefore the core finishes faster than the generator produces, meaning that a small FIFO affects it
 more. From this we can see that the size of the FIFO does not depend on $g_c$ alone, but on the tile size as well.
 
-*Does this hold on other hardware?* The FIFO lets the generator work ahead while the core is stalled on a cache miss, and lets the core catch up when it runs on hits. So the size it needs should follow how long the core's slow stretches are, and how many elements it takes at once. We repeated the experiment with one change at a time: a faster and a slower memory, a smaller and a larger $L_1$, a MAC cost of a quarter of a cycle, and register blocks from $2 times 2$ to $16 times 16$. For each, @tab-fifo-configs gives the worst slowdown over all $g_c$ for three sizes of the FIFO.
+We shall check if this is also true for other hardware, the FIFO lets the generator work ahead while the core is stalled on a
+cache miss, and lets the core catch up when it runs on hits. So the size it needs should follow how long the core's slow stretches
+are, and how many elements it takes at once. We repeated the same experiment with one change at a time:
+
+- A faster and a slower memory.
+- A MAC cost of a quarter of a cycle and of one cycle.
+- Register blocks from $2 times 2$ to $16 times 16$, also together with these MAC costs.
+
+For each, @tab-fifo-configs gives the worst slowdown over all $g_c$ for three sizes of the FIFO.
 
 #figure(
   table(
@@ -753,35 +761,42 @@ more. From this we can see that the size of the FIFO does not depend on $g_c$ al
     [Default (memory 180 cycles, 16 KB $L_1$, $4 times 4$)], [32%], [3%], [2%],
     [Memory 90 cycles], [24%], [2%], [0%],
     [Memory 360 cycles], [55%], [11%], [2%],
-    [$L_1$ 8 KB], [44%], [2%], [0%],
-    [$L_1$ 32 KB], [24%], [4%], [3%],
     [MAC $1 slash 4$ cycle], [33%], [3%], [0%],
+    [MAC 1 cycle], [12%], [0%], [0%],
     [Register block $2 times 2$], [1%], [0%], [0%],
     [Register block $8 times 8$], [55%], [13%], [0%],
+    [Register block $8 times 8$, MAC $1 slash 4$ cycle], [63%], [8%], [0%],
+    [Register block $8 times 8$, MAC 1 cycle], [67%], [1%], [0%],
     [Register block $16 times 16$], [79%], [49%], [19%],
+    [Register block $16 times 16$, MAC $1 slash 4$ cycle], [66%], [13%], [2%],
+    [Register block $16 times 16$, MAC 1 cycle], [64%], [1%], [1%],
   ),
-  caption: [The worst slowdown over all $g_c$ caused by a FIFO of 16, 256 and 1024 elements, compared with an unlimited FIFO, changing one parameter of the default configuration at a time.],
+  caption: [The worst slowdown over all $g_c$ caused by a FIFO of 16, 256 and 1024 elements, compared with an unlimited FIFO, changing one or two parameters of the default configuration at a time. The MAC costs are per MAC. The rows with a MAC cost of one cycle or another register block are over $g_c = 5, 10, 20, 60, 200$.],
 ) <tab-fifo-configs>
 
-The register block matters most by far. Every pop takes a whole register block, $R_M R_N$ elements, at once, so the FIFO has to hold several blocks before it can smooth anything. With $2 times 2$ blocks even the smallest FIFO is enough, while $16 times 16$ blocks, 256 elements per pop, are still 19% slower with 4 KB and need almost the whole unlimited FIFO. The memory latency comes second: a miss of 360 cycles is a long stretch in which the generator has to bank its elements, and 1 KB is no longer enough. The size of $L_1$ barely changes the answer.
+The register block matters most by far. Every pop takes a whole register block of $R_M R_N$ size elements at once. With $2 times
+2$ blocks even the smallest FIFO is enough, while $16 times 16$ blocks, 256 elements per pop, are still 19% slower with a
+relatively large 4 KB capacity.
 
-*Does the cost of a MAC change this?* For our $4 times 4$ blocks a quarter of a cycle per MAC changes little, but larger blocks make the core faster, and there the speed of the compute unit matters. We therefore repeated the register block sizes with a MAC cost of a quarter of a cycle and of one cycle (@tab-fifo-mac).
+The memory latency is next in importance. The outcome it gives seems backwards, a slower memory makes the core slower, that goes
+against intuition, because it should give the generator more time.The extra latency hardly changes $alpha$, but every miss now
+stalls it twice as long, while between the misses, the hits run almost as fast as with the lower memory latency. During a stall
+the generator keeps working, and on a miss, everything it produces has waits in the queue. Right after the miss, the core runs
+much faster than the generator again, and quickly uses it up and stalling. Therefore A longer stall means we need more space to store more
+data, so the FIFO needs to grow roughly in proportion to the latency. about 128 elements with 90 cycles, 256 with
+180, and 512 to 1024 with 360.
 
-#figure(
-  table(
-    columns: 4,
-    align: (left, center, center, center),
-    table.header([*Register block*], [*Free MAC*], [*$1 slash 4$ cycle per MAC*], [*1 cycle per MAC*]),
-    [$4 times 4$], [3% #h(0.3em) / #h(0.3em) 2%], [0% #h(0.3em) / #h(0.3em) 0%], [0% #h(0.3em) / #h(0.3em) 0%],
-    [$8 times 8$], [13% #h(0.3em) / #h(0.3em) 0%], [8% #h(0.3em) / #h(0.3em) 0%], [1% #h(0.3em) / #h(0.3em) 0%],
-    [$16 times 16$], [49% #h(0.3em) / #h(0.3em) 19%], [13% #h(0.3em) / #h(0.3em) 2%], [1% #h(0.3em) / #h(0.3em) 1%],
-  ),
-  caption: [The worst slowdown over all $g_c$ caused by a FIFO of 256 elements (1 KB) / 1024 elements (4 KB), compared with an unlimited FIFO, for three register blocks and three costs of a MAC. With $2 times 2$ blocks no FIFO is needed at any MAC cost.],
-) <tab-fifo-mac>
+For our $4 times 4$ blocks a quarter of a cycle per MAC changes little, but larger blocks make the core faster, and there the
+speed of the compute unit matters. With $2 times 2$ blocks no FIFO is needed at any MAC cost. 
+A slower compute unit needs a smaller FIFO. The time spent on arithmetic slows the pace at which the core takes elements from the
+FIFO, so it runs ahead of the generator less. With one cycle per MAC, 1 KB is enough for every register block up to $16 times 16$.
+What the FIFO has to cover is therefore not the register block alone, but how fast the core consumes $B$. large register blocks with fast arithmetic need the largest FIFO.
 
-A slower compute unit needs a smaller FIFO. The time spent on arithmetic slows the pace at which the core takes elements from the FIFO, so it runs ahead of the generator less, and there is less to smooth. With one cycle per MAC, 1 KB is enough for every register block up to $16 times 16$. What the FIFO has to cover is therefore not the register block alone, but how fast the core consumes $B$: large register blocks with fast arithmetic need the largest FIFO.
-
-*Our suggestion.* Size the FIFO by how fast the core is. With a slow compute unit, about one cycle per MAC, 1 KB is enough for any register block. With a fast one, the FIFO has to grow with the register block: about 1 KB for our $4 times 4$ blocks, 2 KB for $8 times 8$ blocks, and more than 16 KB for $16 times 16$ blocks. The FIFO also grows roughly in proportion to the memory latency: twice the latency needs about twice the FIFO. A larger FIFO gains almost nothing, and as the next section shows, it can even reduce performance, because it takes memory away from the cache.
+Our suggestion, size the FIFO by how fast the core is. With a slow compute unit, about one cycle per MAC, 1 KB is enough for any
+register block. With a fast one, the FIFO has to grow with the register block. About 1 KB for our $4 times 4$ blocks, 2 KB for $8
+times 8$ blocks, and more than 16 KB for $16 times 16$ blocks. The FIFO also grows roughly in proportion to the memory latency.
+Twice the latency needs about twice the FIFO. A larger FIFO that that gains almost nothing, and as the next section shows, it can
+even reduce performance because of the memory it takes away from the cache.
 
 === Should I use a bigger cache or a bigger FIFO? <sec-hw-split>
 When we have a certain SRAM budget, we need to decide how much should go to the FIFO queue vs how much goes to the cache.  To see how to split it, we fix a budget of 16 KB or 32 KB and give the FIFO anything from 64 bytes to almost all of it, and the cache the rest.
@@ -793,7 +808,7 @@ When we have a certain SRAM budget, we need to decide how much should go to the 
 
 @fig-hw-split shows that with a FIFO that is too small, the generator cannot work ahead, and the computation slows down. But a
 minimum can be seen at around 10% FIFO budget share, while a FIFO share above 50% quickly turns catastrophic in terms of performance. 
-Therefore our suggestion is that once the FIFO holds a few register blocks (about 1 KB) every additional byte should go to the cache.
+Therefore our suggestion is that once the FIFO is large enough (about 1 KB in our setup, @sec-hw-fifo gives the size for other hardware) every additional byte should go to the cache.
 
 // TODO: replace the figures with the full-grid runs (hw_fifo_size and hw_sram_split, SMALL = False) at the end
 
@@ -844,11 +859,11 @@ every $g_c$ we compare the best runtime with the best runtime of a free MAC, wit
   caption: [Slowdown caused by the compute unit: the best runtime with a MAC cost divided by the best runtime with a free MAC, for three costs of a MAC.],
 ) <fig-hw-mac>
 
-When generation is cheap, every cycle counts. At a small $g_c$, the core does its arithmatic right after the memory access because
-the generation is negligible, therefore the cost of a MAC is simply added to the memory cost. A scalar unit can make the
+When generation is cheap, every cycle counts. At a small $g_c$, the core does its arithmetic right after the memory access, and
+since there is no wait for generation to hide it in, the cost of a MAC is simply added to the memory cost. A scalar unit can make the
 computation more than twice as slow, and even a quarter of a cycle per MAC costs almost 30% more.
 
-On the other hand When generation is expensive, a slow compute unit is almost free. The generator keeps working in the
+On the other hand when generation is expensive, a slow compute unit is almost free. The generator keeps working in the
 background while the core computes, so the time spent on arithmetic fills time in which the core would otherwise stall. As long as memory plus arithmetic still take less time than generation, the arithmetic is hidden completely.
 
 Our suggestion, the compute unit only has to be as fast as the generator lets it be. A system with a slow generator can save
