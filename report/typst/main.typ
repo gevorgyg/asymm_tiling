@@ -814,16 +814,24 @@ Therefore our suggestion is that once the FIFO is large enough (about 1 KB in ou
 
 === Does The Cache Need To Be Fully Associative? <sec-hw-assoc>
 
-So far the cache was fully associative, which behaves like the software-managed scratchpad of an accelerator. Real caches are usually 8-way or 4-way set-associative, which carries with it the main advantage of being cheaper to build. Therefore we wanted to test how much performance we need to pay if we decide to go with the cheaper build. We repeat the search for the best tile on a 16 KB 4-, 8-, 16- and 32-way $L_1$, and compare their best runtime with the fully associative one.
+So far the cache was fully associative, which mimics the behavior of a software-managed scratchpad. Non scratchpad caches are
+usually 8-way or 4-way set-associative though, which carries with it the main advantage of being automatic when it comes to memory
+allocation. We wanted to test how much performance we need to pay if we decide to go with the cheaper build. We repeat the search for the best tile on a 16 KB 4-, 8-, 16- and 32-way $L_1$, and compare their best runtime with the fully associative one.
 
 #figure(
   image("./figures/hw_assoc_unpadded.svg", width: 100%),
   caption: [Extra time of the best tile on a 4-, 8-, 16- and 32-way $L_1$ over the best tile on a fully associative $L_1$ (16 KB, our $192 times 256 times 256$ matrix). The 4-, 8- and 16-way lines coincide.],
 ) <fig-hw-assoc>
 
-@fig-hw-assoc shows that the price is very high. As long as generation is almost free, the set-associative caches lose almost nothing. But once generation costs rise even a little, the performance becomes two to six times worse. Even with their own best tile. Adding ways barely helps: the 4-, 8- and 16-way caches give exactly the same results, and only the 32-way cache does somewhat better.
+@fig-hw-assoc shows that the price of going set-associative is very high. As long as generation is not almost free, the
+performance becomes two to six times worse with a set-associative cache. Adding ways barely helps: the 4-, 8- and 16-way caches
+give exactly the same results, and only the 32-way cache does better but in a negligible amount.
 
-*Why is it so bad?* A set-associative cache decides where a line goes by its address: line number $l$ can only go to set $l mod S$, where $S$ is the number of sets (32 here), and each set holds only a few lines. Along a row, consecutive lines go to consecutive sets, $0, 1, 2, dots$. But a tile does not walk along a row: at every step of the inner loop, it needs the *same* column from every row of the tile. A row of our matrices is 256 elements of 4 bytes, exactly 16 cache lines, so going one row down adds 16 to the line number:
+A set-associative cache decides where a line goes by its address. line number $l$ can only go to set $l(mod S)$, where $S$ is the
+number of sets, and each set holds only a few lines. Along a row, consecutive lines go to consecutive sets, $0, 1, 2, dots$. But a
+tile does not strictly walk along a row. For our setup, at every step of the inner loop, the core needs the *same* column from
+every row of the tile. In out case a row is 256 elements of 4 bytes, meaning 16 cache lines, so going down by one row down adds 16
+to the line number, we can see the effect in the table below:
 
 #align(center, table(
   columns: 6,
@@ -833,22 +841,31 @@ So far the cache was fully associative, which behaves like the software-managed 
   [set ($mod 32$)], [0], [16], [0], [16], [0],
 ))
 
-Adding 16 twice is a full turn of 32, so all the rows of a tile column land on the same two sets, while the other 30 sets hold lines the tile does not need right now. Two sets of 8 ways hold only 16 rows, so any tile taller than that thrashes, even though the cache as a whole has plenty of room. The 4-way cache has twice the sets but half the ways, which again leaves exactly 16 rows, and so does the 16-way cache, where the whole column lands in a single set of 16 ways. Only beyond that point do more ways help: the 32-way cache also puts the whole column into one set, but that set holds 32 lines. Without tall tiles, every generated element of $B$ is shared by only a few rows, and the generation cost cannot be hidden.
+Adding 16 twice is a full turn of 32, so all the rows of a tile column land on the same two sets. Two sets of 8 ways hold only 16
+rows, so any tile taller than that thrashes the cache, even though there's still plenty of room. The 4-way cache has twice the sets but half the ways, which again leaves exactly 16 rows, and so does the 16-way cache, where the whole column lands in a single set of 16 ways.
 
-*The fix: padding.* The problem is not the cache, but that the length of a row is a power of two, like the number of sets. Storing every row with a few unused elements at its end changes how far apart the rows are, without changing the matrix. If a row takes an *odd* number of cache lines, the rows spread over all the sets: with rows of 272 elements, 17 lines, the rows start at sets $0, 17, 2, 19, 4, dots$, and only repeat after all 32 sets have been used. The padding is never read, so it only costs a little memory. (Our simulator has no separate row length, so we emulate the padding by enlarging the matrix to $192 times 272 times 272$.)
+Fortunately, there's a fix. The problem is not the cache, but the fact that the length of a row and the number of sets are both
+powers of two. Therefore if we can just pad the matrix with a few extra elements to every row, it will change how far apart the
+rows are, without affectively changing the matrix. Specifically if we make the matrix hold rows with an *odd* number of cache
+lines, that will allow the rows spread over all the sets. For example, with rows of 272 elements, 17 lines, the rows start at sets $0, 17, 2, 19, 4, dots$, and only repeat after all 32 sets have been used. In addition, the padding does not have to be read, so it only costs a little extra memory.
 
 #figure(
   image("./figures/hw_assoc_padded.svg", width: 100%),
   caption: [Extra time of the best tile on an 8-way $L_1$ over a fully associative one, for rows of 256 elements (unpadded), 260 and 272 (padded).],
 ) <fig-hw-assoc-padded>
 
-@fig-hw-assoc-padded shows the effect. With rows of 17 lines, the 8-way cache is almost exactly as good as the fully associative one. The padding has to give an *odd* number of lines, though: a row of 260 elements is 16.25 lines, so the rows still alternate between two sets and only move on to the next pair every four rows. This spreads them slowly and unevenly, and the cache still loses a lot.
+@fig-hw-assoc-padded shows the effects of padding. With rows of 17 lines, the 8-way cache is almost exactly as good as the fully
+associative one. The padding has to give an *odd* number of lines.A row of 260 elements is 16.25 lines, so the rows still
+alternate between two sets and only move on to the next pair every four rows. This spreads them slowly and unevenly, it's still
+better than rows with power of two size, but worst than giving it a little extra padding so the rows will have an odd number of
+elements.
 
-*Our suggestion.* A fully associative cache or a scratchpad mostly protects against unpadded data, and making a set-associative cache more associative is an expensive fix: here it would need more ways than a row has lines before it helps at all. Padding is nearly free. We therefore suggest an ordinary 8-way or even 4-way cache, together with software that pads the rows of its matrices to an odd number of cache lines. Matrices whose rows are not a power of two long already suffer much less from this.
+Our suggestion, a fully associative cache or a scratchpad mostly protects against unpadded data, and making a set-associative
+cache more associative or replacing it with a scratchpad is an expensive fix. Padding is nearly free. We therefore suggest an ordinary 8-way or even 4-way cache, together with software that pads the rows of its matrices to an odd number of cache lines.
 
 === How Fast Must The Compute Unit Be? <sec-hw-mac>
 
-The last part of the hardware is the compute unit that does the MACs. Throughout this report a MAC costs nothing (@tab-params), as in an accelerator that does hundreds of MACs per cycle. A fast compute unit costs area and power, so how fast
+The last part of the hardware is the compute unit that does the MACs. A fast compute unit costs area and power, so how fast
 does it really need to be? To check, we give every register block multiply ($R_M R_N$ elements over $R_M$ steps of $K$, 64 MACs)
 a cost, from $1 slash 16$ of a cycle per MAC, roughly a 16-wide vector unit, up to one cycle per MAC, roughly a scalar core. At
 every $g_c$ we compare the best runtime with the best runtime of a free MAC, with the default configuration otherwise
@@ -860,19 +877,24 @@ every $g_c$ we compare the best runtime with the best runtime of a free MAC, wit
 ) <fig-hw-mac>
 
 When generation is cheap, every cycle counts. At a small $g_c$, the core does its arithmetic right after the memory access, and
-since there is no wait for generation to hide it in, the cost of a MAC is simply added to the memory cost. A scalar unit can make the
-computation more than twice as slow, and even a quarter of a cycle per MAC costs almost 30% more.
+since there is no wait for generation to hide it in, the cost of a MAC is simply added to the memory cost. A scalar unit can make the computation more than twice as slow, and even a quarter of a cycle per MAC costs almost 30% more.
 
-On the other hand when generation is expensive, a slow compute unit is almost free. The generator keeps working in the
-background while the core computes, so the time spent on arithmetic fills time in which the core would otherwise stall. As long as memory plus arithmetic still take less time than generation, the arithmetic is hidden completely.
+On the other hand when generation is expensive, a slow compute unit has almost no effect. The generator keeps working in the
+background while the core computes, so the time spent on arithmetic fills time in which the core would otherwise stall anyway. As long as memory plus arithmetic still take less time than generation, the arithmetic is hidden completely.
 
 Our suggestion, the compute unit only has to be as fast as the generator lets it be. A system with a slow generator can save
 area and power with a slower compute unit, almost for free, so in that case no need to spend more on better compute. The other way
-around also holds. If you have a fast generator it must also come with a fast compute unit, or the performance would suffer.
+around also holds. If you have a fast generator it must also come with a fast compute unit, or the performance would suffer immensely.
 
-*How slow exactly?* The model of @sec-refine answers this without new simulations. The core does its memory accesses and its arithmetic one after the other, so a MAC cost $c$ simply adds to the memory cost: every tile now costs $alpha + c$ per MAC instead of $alpha$, and the rest of the model stays the same. With this one change, the model predicts the best runtime of every MAC cost and $g_c$ we simulated within 0.2%, and picks the best tile every time. For a single tile, the arithmetic is free as long as
+We can also predict how much slower the model will run, the model of @sec-refine provides the answer to this. The core does its
+memory accesses and its arithmetic one after the other, so a MAC cost $c$ is simply added to the memory cost. Every tile now costs $alpha + c$ per MAC instead of $alpha$, and the rest of the model stays the same. With this one change, the model predicts the best runtime of every MAC cost and $g_c$ we simulated within 0.2%, and picks the best tile, or one within 0.1% of it (@fig-hw-mac-model). For a single tile, the arithmetic is free as long as
 $ alpha + c <= g_c dot ceil(M slash T_M) / M, $
 that is, as long as memory and arithmetic together still take less time than generation. So the engineer can calibrate $alpha$ once with a free MAC, and then evaluate any compute unit by adding its cost per MAC to the table and rerunning the script of @sec-test-model.
+
+#figure(
+  image("./figures/hw_mac_model.svg", width: 100%),
+  caption: [The best runtime against $g_c$ for four costs of a MAC: measured (markers), and predicted by the refined model with $alpha + c$ in place of $alpha$ (dashed), calibrated only on the runs with a free MAC and free generation.],
+) <fig-hw-mac-model>
 
 // TODO: replace the figure with the full-grid run (hw_mac_cost, SMALL = False) at the end
 

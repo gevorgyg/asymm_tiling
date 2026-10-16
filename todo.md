@@ -1,7 +1,5 @@
 # to fix:
 [ ] - 4.5.2: refine.
-[ ] - 4.6.4: refine.
-[ ] - 4.6.5: refine.
 
 # GENERAL
 [x] - add fifo.  

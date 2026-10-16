@@ -196,7 +196,10 @@ The user approved all of them; start with small samples.
       hw_prng_budget / hw_registers / hw_memory / hw_mac_cost runs).
     - Compute unit (report 4.6.5): the MAC cost just adds to α in the
       refined model: predicts the best runtime within 0.2 % and picks the
-      best tile at every MAC cost × gc of hw_mac_cost.
+      best tile (or within 0.06 %: c 1/16, gc 100) at every MAC cost × gc
+      of hw_mac_cost. Proof script: hw_mac_model_check.py (2026-10-15):
+      at gc 0 every tile's runtime grows by exactly c (77/77 tiles);
+      per-tile error up to 3.3 % (balance-point tiles). Figure hw_mac_model (best runtime vs gc, measured markers + model dashed, 4 MAC costs) added to report 4.6.5 as fig-hw-mac-model.
     - Dataflow crossover (report 4.2): gc* = R_M · T_B (B-stationary
       runtime at gc 0): R 2: 6.8 (6–7), R 4: 4.6 (4–5), R 8: 4.7 (4–5),
       R 4 + 1 cycle/MAC: 8.6 (8–9). R 16: B-stationary faster even at
