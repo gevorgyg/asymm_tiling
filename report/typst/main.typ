@@ -573,69 +573,54 @@ the choice itself takes a short script instead of a sweep over every tile and ev
 
 // TODO (later): redo fig_model_accuracy with the per-row max and decide whether to add it here
 
-=== Does The Best Tile Depend On The Matrix Shape? <sec-sw-shapes>
+=== Can One Calibration Serve Many Matrices? <sec-sw-shapes>
 
-All the results so far are for one matrix. A software engineer will probably have other matrices, and he would hope that he
-won't need to recalibrate again for every new matrix. To check, we change one dimension at a time. $K$ from 128 to 1024, and $M$ and $N$ over a similar range, with the default configuration otherwise (@tab-params).
+All the results so far are for one matrix, and calibrating every new matrix again costs one simulation per candidate tile. A
+software engineer would rather keep a few calibration tables, templates, and use them for every matrix he meets. Which dimensions
+of the matrix does a template have to match?
 
-#figure(
-  image("./figures/sw_shapes_K.svg", width: 100%),
-  caption: [The best tile height $T_M^*$ (left) and width $T_N^*$ (right) against $g_c$ for four values of the inner dimension $K$ ($M = 192$, $N = 256$).],
-) <fig-sw-shapes>
+$M$ does not have to match at all. The table holds the $alpha$ of a single row of tiles, and how many rows there are is computed
+by the model, not measured. $N$ changes $alpha$ only a little. $K$ is what matters: the tile of $A$ is $T_M times K$, so $K$
+decides which tile heights still fit in $L_1$. We therefore keep one template for each of a few values of $K$, each calibrated
+once on a $192 times K times 256$ matrix.
 
-*How to read the figure:* each value of $K$ is one line, and at every $g_c$ the left panel gives the height of its best tile and the right panel its width. Where the lines lie on top of each other, the best tile is the same for every $K$.
-
-To see what a different shape costs, we also take the best tile of our $192 times 256 times 256$ matrix and measure how much slower it is on each other shape than that shape's own best tile. This is what the engineer pays if he reuses the old tile instead of choosing again.
-
-*$K$ (@fig-sw-shapes):* From $g_c = 30$ on, the lines lie on top of each other (apart from a near tie at $K = 512$, $g_c = 200$), and below that they part in two places. Both come from the tile of $A$, which is $T_M times K$, so its size grows with $K$:
-- *$K = 128$, small $g_c$:* with a smaller $K$, the tile of $A$ still fits in $L_1$ at a height of 24 ($24 times 128$ elements of
-  4 bytes is 12 KB), so the best tile is taller and narrower. The old tile is almost as good, at most 4% slower.
-- *$K = 512$ and $1024$, $g_c = 0$:* the line shows the same height, 12, but a different width, and here the width matters a lot.
-  At $K = 256$ a tile of $A$ of 12 rows fits in $L_1$, so every width costs about the same, and the old best tile happens to be
-  $12 times 32$. At $K = 512$ the same tile of $A$ no longer fits, so it is read again for every tile in its row, 8 times with $T_N = 32$, but only once with $T_N = 256$, the whole width of the matrix. The old tile is 37% slower. This is bad luck more than a rule: on the original matrix, $12 times 32$ beat $12 times 256$ by only 0.02%, and $12 times 256$ would have cost nothing extra on every $K$. From $g_c = 5$ on, the old best tile is already $12 times 256$, and it costs nothing extra.
+Before templates can work, there is one condition. Every row of $C$ has to start at the beginning of a cache line, which means
+that the length of a row, $N$, has to be a whole number of 64-byte lines, a multiple of 16 elements. If it is not, a row of a tile
+of $C$ starts in the middle of a line and touches one more line than it needs. The tile then takes more of the cache, and starts to
+thrash at a smaller height. @fig-sw-alignment shows three matrices that differ only in $N$: with $N = 300$, which is 18.75 lines
+per row, $alpha$ starts to climb at $T_M approx 80$ instead of 128.
 
 #figure(
-  image("./figures/sw_shapes_N.svg", width: 100%),
-  caption: [As @fig-sw-shapes, for four values of the width $N$ ($M = 192$, $K = 256$).],
-) <fig-sw-shapes-n>
+  image("./figures/sw_alignment.svg", width: 100%),
+  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for $200 times 200 times N$ with $N = 288$, 300 and 304. The lines of 288 and 304, whole numbers of cache lines per row, coincide. Above $T_M = 128$ all three thrash completely.],
+) <fig-sw-alignment>
 
-*$N$ (@fig-sw-shapes-n):* From $g_c = 20$ on, the lines lie on top of each other. Below that the widths jump around, for two reasons:
-- *$N = 512$ and $1024$:* at a height of 12 the tile of $A$ fits in $L_1$, so every width costs about the same and the best width jumps between near ties. The old tile is at most 4% slower.
-- *$N = 128$:* the best tile is as wide as the whole matrix, $24 times 128$, so every row of $A$ is read only once, no matter if its tile fits. The old $12 times 256$ tile is wider than this matrix, but cut down to its full width, $12 times 128$, it is less than 1% slower.
+No template can predict this, because it depends on the exact length of the row. The fix is the same as in @sec-hw-assoc: store
+every row of $C$ with a few unused elements at its end, up to a multiple of 16 elements (and start $C$ itself on a cache line,
+which any aligned allocation does). In the experiment below we pad both $K$ and $N$ this way.
 
-*Why does the best tile mostly stay the same?* What decides the best tile is how well it uses the cache (@sec-alpha), and for most tiles that does not depend on the size of the matrix. The limit that bounds the best tiles, that the tile of $C$ and one line of $A$ per row must fit in $L_1$, involves only $T_M$ and $T_N$. $K$ and $N$ only matter when they change which tiles fit: $K$ through the size of the tile of $A$, and $N$ when a single tile covers the whole width.
+To test the templates, we calibrated seven of them, for $K$ from 128 to 1024, and picked 20 matrices whose sizes are not powers of
+two, such as $150 times 304 times 208$ and $140 times 800 times 112$. For every matrix and six values of $g_c$ from 5 to 160, the
+model chooses a tile from a template, with the matrix's own $M$, $N$ and $K$, and we compare its runtime with the best tile of
+that matrix, found by simulating all of its tiles. A short last row whose height is not in the template uses the nearest height
+that is. @fig-sw-templates compares several ways of choosing the template.
 
 #figure(
-  image("./figures/sw_shapes_M.svg", width: 100%),
-  caption: [As @fig-sw-shapes, for four values of the height $M$ ($K = 256$, $N = 256$).],
-) <fig-sw-shapes-m>
+  image("./figures/sw_templates.svg", width: 100%),
+  caption: [How close the tile chosen with each kind of table is to the best tile, over 20 matrices and six values of $g_c$ (120 cases): the share of the cases within 1%, between 1% and 5%, and more than 5% slower, and the worst case. "Own table" calibrates every matrix itself; "same ratios" calibrates a matrix 1.5 times larger in every dimension.],
+) <fig-sw-templates>
 
-*$M$ (@fig-sw-shapes-m):* Here it is the other way around. Up to $g_c = 30$ every $M$ picks the same tile, and the lines part only at a large $g_c$, through the generation cost: $B$ is generated once per row of tiles (@sec-refine), so the best height follows the divisors of $M$, which leave no short last row.
-- *$M = 96$, $g_c = 50$:* 64 does not divide 96, so $M = 96$ settles for 48. The old $64 times 32$ tile leaves a short last row of 32 and is 12% slower.
-- *$M = 384$ and $768$, $g_c >= 100$:* 128 divides both, but not 192, so the larger matrices can use a taller tile. At $g_c = 100$ this gains almost nothing, but at $g_c = 200$, where generation dominates, $B$ is generated $M slash 96$ times with the old tile instead of $M slash 128$ times, and the old tile is 33% slower.
+The template must not have a smaller $K$ than the matrix. A tile of $A$ that fits in $L_1$ with the template's $K$ may not fit
+with the real, larger one, and the model then chooses a tile that thrashes. The template with the closest $K$ fails exactly this
+way, up to 35% slower. Taking the next $K$ up avoids it: a tile that fits with a larger $K$ fits with the real one too, and the
+worst that can happen is that the model passes over a few taller tiles that would have fit. With this rule, 98% of the cases are
+within 5% of the best tile, and the worst is 8% slower. Four templates instead of seven are almost as good. A single table for all
+matrices is up to 38% slower, and calibrating on a matrix with the same ratios brings nothing beyond a template with a larger $K$.
 
-*What should the software engineer do?* Don't reuse the tile, reuse the table. The calibration table is the expensive part,
-one simulation per candidate tile, while choosing a tile from it with the script of @sec-test-model takes seconds. So there is no
-reason to carry a tile over from another matrix, even though it is usually free: the engineer should simply choose again for every
-new matrix and every $g_c$. The only question is when the table itself has to be measured again. To check, we used the table of our
-$192 times 256 times 256$ matrix to choose the tiles of every other shape, and compared them with the best tile of that shape:
-
-#align(center, table(
-  columns: 3,
-  align: (left, left, left),
-  table.header([*The matrix changes in*], [*New calibration?*], [*Tile chosen with the old table*]),
-  [$M$], [No], [The best tile, at every $g_c$],
-  [$N$], [Not needed], [At most 4% slower, the best tile from $g_c = 20$ on],
-  [$K$], [Yes], [Up to 38% slower at a small $g_c$],
-  [The hardware], [Yes], [-],
-))
-
-$M$ only decides how many rows of tiles there are, which the model computes rather than measures, so the table carries over as it
-is. $N$ changes $alpha$ by only a few percent. $K$ changes the size of the tile of $A$, and with it which tiles fit in the cache,
-which is exactly what $alpha$ measures. And $alpha$ is a property of the hardware, so a new cache or FIFO needs a new table as well.
-In one sentence: *calibrate once per hardware and $K$, and for everything else, just rerun the model.*
-
-// TODO: small sample (coarse tile grid); rerun with SMALL = False at the end
+Our suggestion is to pad the rows of $C$ to a whole number of cache lines, keep a few templates for values of $K$ about a factor
+of two apart, and for every new matrix run the script of @sec-test-model on the template with the next $K$ up. Only when the last
+few percent matter is it worth calibrating the matrix itself, which in our runs always came within 2% of the best tile. New
+hardware needs new templates, since $alpha$ is a property of the cache.
 
 === How Much Autotuning Is Needed? <sec-sw-autotune>
 
