@@ -576,8 +576,8 @@ the choice itself takes a short script instead of a sweep over every tile and ev
 === Can One Calibration Serve Many Matrices? <sec-sw-shapes>
 
 All the results so far are for one matrix, and calibrating every new matrix again costs one simulation per candidate tile. A
-software engineer would rather keep a few calibration tables, templates, and use them for every matrix he meets. Which dimensions
-of the matrix does a template have to match?
+software engineer would rather keep a few calibration tables, templates, and use them for every matrix he meets. So we want to
+check if maybe a few premade calibration templates can serve many different matrices.
 
 $M$ does not have to match at all. The table holds the $alpha$ of a single row of tiles, and how many rows there are is computed
 by the model, not measured. $N$ changes $alpha$ only a little. $K$ is what matters: the tile of $A$ is $T_M times K$, so $K$
@@ -619,8 +619,7 @@ matrices is up to 38% slower, and calibrating on a matrix with the same ratios b
 
 Our suggestion is to pad the rows of $C$ to a whole number of cache lines, keep a few templates for values of $K$ about a factor
 of two apart, and for every new matrix run the script of @sec-test-model on the template with the next $K$ up. Only when the last
-few percent matter is it worth calibrating the matrix itself, which in our runs always came within 2% of the best tile. New
-hardware needs new templates, since $alpha$ is a property of the cache.
+few percent matter is it worth calibrating the matrix itself, which in our runs always came within 2% of the best tile.
 
 === How Much Autotuning Is Needed? <sec-sw-autotune>
 
