@@ -6,8 +6,10 @@ the argmin of the total cycles. One plot: TM* blue, TN* red.
 
   measured (solid + markers) and the refined model's pick (thin dashed, same
   color), the max taken per row of tiles (report: Refining The Model):
-    T / MNK = 1/M sum over rows of tiles max(r * alpha(r), gc) + S,
-    S = tiles * R^2 * gc / MNK   (one FIFO startup per tile),
+    T / MNK = 1/M sum over rows of tiles max(r * alpha(r) + s, gc),
+    s = ceil(N/TN) * R^2 * gc / (K N)   (one FIFO startup per tile of the
+    row, on the memory side: it only adds time while the generator would
+    otherwise be idle; changed 2026-10-17, it used to be added after the max),
   with alpha(r), the alpha of a row of exactly r rows, recovered from the
   gc = 0 runs by taking the short last row out of the mix.
   Near ties (tiles within 1 % of the best) are listed in the README table,
@@ -62,8 +64,8 @@ def pure_alpha(alpha: dict) -> dict:
 def model(pure: dict, tm: int, tn: int, gc: int) -> float:
     full, e = divmod(M, tm)
     rows = [tm] * full + ([e] if e else [])
-    tiles = cdiv(M, tm) * cdiv(N, tn)
-    return sum(max(r * pure[(r, tn)], gc) for r in rows) / M + tiles * R * R * gc / MNK
+    s = cdiv(N, tn) * R * R * gc / (K * N)   # startup of one row of tiles
+    return sum(max(r * pure[(r, tn)] + s, gc) for r in rows) / M
 
 
 def main() -> None:

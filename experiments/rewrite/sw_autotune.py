@@ -7,7 +7,9 @@ picks from those candidates at each gc, measured against the true best of all
 No new runs: everything comes from the fig_best_tile cache.
 
 The model is the refined one (report 3.3.4): per row of tiles
-max(r alpha(r), gc) plus the startup term, alpha read straight from the
+max(r alpha(r) + s, gc), s = the startup of one row of tiles on the memory
+side (changed 2026-10-17, it used to be added after the max), alpha read
+straight from the
 candidates' table. If the short last row's height is not a candidate, the
 candidate's own alpha is used for it (no extra runs).
 
@@ -61,8 +63,8 @@ def main() -> None:
         alpha = lambda r: t[(0, r, tn)] if (r, tn) in cands else t[(0, tm, tn)]
         full, e = divmod(M, tm)
         rows = [tm] * full + ([e] if e else [])
-        startup = gc * R * R * cdiv(M, tm) * cdiv(N, tn) / MNK
-        return sum(max(r * alpha(r), gc) for r in rows) / M + startup
+        s = gc * R * R * cdiv(N, tn) / (K * N)   # startup of one row of tiles
+        return sum(max(r * alpha(r) + s, gc) for r in rows) / M
 
     results = {}
     for name, cands in STRATEGIES.items():

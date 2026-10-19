@@ -4,8 +4,9 @@ All runs of the fig_best_tile grid with gc > 0 (192x256x256, TM 4..192,
 TN 4..128 in steps of 4, gc up to 600; default setup). Nothing is re-run.
 
   simple:   max(alpha(TM, TN), gc / TM)                    (report 3.3.1)
-  refined:  1/M sum over rows of tiles max(r alpha(r), gc) + startup,
-            startup = gc R^2 ceil(M/TM) ceil(N/TN) / MNK    (report 3.3.4)
+  refined:  1/M sum over rows of tiles max(r alpha(r) + s, gc),
+            s = gc R^2 ceil(N/TN) / (K N), the startup of one row of tiles
+            on the memory side (fig_best_tile.model; changed 2026-10-17)
 
 alpha(r), the alpha of a tile of exactly r rows, is recovered from the
 gc = 0 runs by un-mixing the edge tile (smallest heights first).
@@ -50,10 +51,7 @@ def main() -> None:
         return max(alpha[(tm, tn)], gc / tm)
 
     def refined(tm: int, tn: int, gc: int) -> float:
-        full, e = divmod(M, tm)
-        rows = [tm] * full + ([e] if e else [])
-        startup = gc * R * R * cdiv(M, tm) * cdiv(N, tn) / MNK
-        return sum(max(r * pure[(r, tn)], gc) for r in rows) / M + startup
+        return fbt.model(pure, tm, tn, gc)
 
     runs = [(gc, tm, tn) for gc in fbt.GC if gc > 0 for tm in fbt.TM for tn in fbt.TN]
     measured = [t[r] for r in runs]

@@ -189,6 +189,22 @@ The user approved all of them; start with small samples.
     report now says: usually free, up to a third, predictable; rerun the
     model for a new M (choose_tile got M_cal; the 192 table picks the
     best tile at M 96/384/768 at every gc), recalibrate for a new K.
+  - **MODEL CHANGE 2026-10-17 (the user approved; committed before):** the
+    startup term moved INSIDE the per-row max, on the memory side:
+    T/MNK = 1/M Σ_rows max(r·α(r) + s, gc), s = gc·R²·⌈N/T_N⌉/(K·N).
+    Found by checking fig_model: memory-bound points sit exactly startup
+    above α, generation-bound points only 0.002–0.004 above the B term
+    (startup predicted up to 0.049): the generator is busy anyway, so the
+    old "+ startup after the max" double-counted it. Full grid: within
+    0.1 % 85 → 90 %, within 1 % 96.1 → 96.4 %, over-predictions 4877 → 0,
+    worst pick 1.49 → 0.08 % (exact best at 33/41 gc, the rest near ties).
+    Updated: fig_best_tile, fig_model (refined), fig_model_validation,
+    sw_autotune (full grid 0.1 %, 100 % within 1 %; other strategies
+    unchanged), sw_templates (own 1.9 %, rest unchanged), hw_mac_model_check
+    (best runtime within 0.23 %, picks the best tile every time; per-tile
+    worst on the coarse grid 3.3 → 4.9 %: the old double count was masking
+    the overlap under-prediction). Report: 4.4 refinements 2–3 + derivation,
+    4.5.1 step 2 + script + numbers, 4.5.3, 4.6.5.
   - **General rules instead of fixed numbers (2026-10-13), all verified:**
     - PRNG budget (report 4.6.1): free while gc ≤ T_M,fit · α(gc 0), T_M,fit
       = tallest tile whose A tile (T_M·K) fits L1. Matches L1 8/16/32/64 KB

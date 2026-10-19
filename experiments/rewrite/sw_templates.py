@@ -112,8 +112,8 @@ def row_alpha(alpha: dict, m_cal: int) -> dict:
 
 def predict(pure: dict, tm: int, tn: int, m: int, k: int, n: int, gc: int) -> float:
     rows = [tm] * (m // tm) + ([m % tm] if m % tm else [])
-    work = sum(max(r * nearest(pure, r, tn), gc) for r in rows) / m
-    return work + gc * R * R * math.ceil(m / tm) * math.ceil(n / tn) / (m * n * k)
+    s = gc * R * R * math.ceil(n / tn) / (k * n)   # startup of one row of tiles, memory side
+    return sum(max(r * nearest(pure, r, tn) + s, gc) for r in rows) / m
 
 
 def runtime(params: list, file: str) -> dict:

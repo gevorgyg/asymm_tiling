@@ -80,8 +80,8 @@ def main() -> None:
 
     def refined(gc: int, tm: int) -> float:
         rows = [tm] * (M // tm) + ([M % tm] if M % tm else [])
-        startup = gc * R * R * -(-M // tm) * -(-N // TN) / MNK
-        return sum(max(r * pure[r], gc) for r in rows) / M + startup
+        s = gc * R * R * -(-N // TN) / (K * N)   # startup of one row of tiles, memory side
+        return sum(max(r * pure[r] + s, gc) for r in rows) / M
 
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     ax.plot(TM, [t[(0, tm)] for tm in TM], label=r"$\alpha$ ($g_c = 0$)", **series(0))

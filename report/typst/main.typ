@@ -436,8 +436,10 @@ Interestingly when $T_M$ divides $M$ this is exactly $g_c slash T_M$, which is w
 ) <fig-model>
 
 *2. The startup term:* Each tile loads its own seed, so the FIFO starts empty, and the first register block of $B$ must be
-generated before the core can start. Nothing overlaps with this wait, so it is added on top of the max. It adds: $g_c dot R_M R_N$
-cycles per tile. It is small for large tiles, but its effect grows with the number of tiles.
+generated before the core can start. This wait only adds time when memory is the bottleneck, and the generator would otherwise be
+idle. When generation is the bottleneck, the generator is busy all the time anyway, and the wait is already part of the
+generation time. So the startup belongs on the memory side of the max. It adds $g_c dot R_M R_N$ cycles per tile. It is small for
+large tiles, but its effect grows with the number of tiles.
 
 *3. The max is taken per row of tiles:* A few heights are still slower than both curves. The reason for this is the extra row that
 appears when the tile height does not divide the matrix height. Each row of tiles generates all of $B$, but the short residual row
@@ -446,24 +448,26 @@ generation, and since the rows run one after the other, these waits add up. The 
 averages. That lets the full row's spare memory time "hide" the short row's generation explaining the shortfalls of the previous
 figure. The fix is to take the max for each row of tiles and add them up instead:
 
-$ T / (M N K) = 1 / M sum_"rows" max(r dot alpha(r), g_c) + "startup", $
+$ T / (M N K) = 1 / M (floor(M / T_M) dot max(T_M dot alpha(T_M) + s, g_c) + max(e dot alpha(e) + s, g_c)), $
 
-$ "startup" = (g_c dot R_M R_N dot ceil(M slash T_M) dot ceil(N slash T_N)) / (M N K) $
+$ e = M mod T_M, quad s = (g_c dot R_M R_N dot ceil(N slash T_N)) / (K N) $
 
-Where $r$ is the height of the row and $alpha(r)$ is measured for a tile of that height in the same $g_c = 0$ runs. 
+The first term is the $floor(M slash T_M)$ full rows of tiles, and the second is the short last row of height $e$, which
+disappears when $T_M$ divides $M$. $alpha(r)$ is measured for a tile of height $r$ in the same $g_c = 0$ runs.
 
-The startup is  $g_c dot R_M R_N$ cycles at the start of every tile, multiplied by the number of tiles and spread over all the MACs.
+$s$ is the startup of one row of tiles: $g_c dot R_M R_N$ cycles at the start of each of its $ceil(N slash T_N)$ tiles, in the
+same units as $T_M dot alpha(T_M)$ and $g_c$ (cycles divided by the $K N$ MACs that every row of the matrix does).
 
-When $T_M$ divides $M$, all the rows are the same, and the formula reduces to the simple model of @sec-simple-model plus the
-startup term. There are $M slash T_M$ rows, all with a height of $r = T_M$, with no short row. $alpha(T_M)$ is simply the measured $alpha(T_M, T_N)$, so the sum has $M slash T_M$ equal terms:
-$ 1 / M sum_"rows" max(r dot alpha(r), g_c) = 1 / M dot M / T_M dot max(T_M dot alpha, g_c) = max(alpha, g_c / T_M), $
-where the last step moves the $1 slash T_M$ into the max, dividing both of its terms. Giving us exactly the simple model.
+When $T_M$ divides $M$, the short row disappears, and the formula reduces to the simple model of @sec-simple-model. There are $M slash T_M$ full rows and no short row, and $alpha(T_M)$ is simply the measured $alpha(T_M, T_N)$:
+$ 1 / M dot M / T_M dot max(T_M dot alpha + s, g_c) = max(alpha + s / T_M, g_c / T_M), $
+where the last step moves the $1 slash T_M$ into the max, dividing both of its terms. Giving us exactly the simple model, with the
+startup added to the memory cost.
 
 @fig-model-refined shows the same measurements as @fig-model, now against the full refined model. Over all the points of the figure, the model is within 0.2% of the measurement.
 
 #figure(
   image("./figures/fig_model_refined.svg", width: 100%),
-  caption: [As @fig-model, with the full refined model (dashed): the max taken per row of tiles, plus the startup term.],
+  caption: [As @fig-model, with the full refined model (dashed): the max taken per row of tiles, with the startup term on the memory side.],
 ) <fig-model-refined>
 
 == Software Focused Design Questions <sec-sw>
@@ -478,8 +482,8 @@ Simulating every tile at every $g_c$ is expensive, so before anything else the e
 tile instead. To choose a tile shape, we need to do three steps:
 
 + *Calibration:* The long part. Run every candidate tile once with $g_c = 0$ and record its $alpha(T_M, T_N)$. This gives you a table.
-+ *Prediction:* This is the fast part. For a given $g_c$, go over every pair $(T_M, T_N)$ in the table. Compute its generation cost $g_c slash T_M$, take
-  the max between it and $alpha(T_M, T_N)$, and add the small startup term. If $T_M$ does not divide $M$, use the per-row max of
++ *Prediction:* This is the fast part. For a given $g_c$, go over every pair $(T_M, T_N)$ in the table. Compute its generation cost $g_c slash T_M$, and
+  take the max between it and $alpha(T_M, T_N)$ plus the small startup term. If $T_M$ does not divide $M$, use the per-row max of
   @sec-refine instead. The $alpha$ of the residual last row can be read from the same table.
 + *Choosing:* Pick the pair with the smallest result. If several pairs tie, pick the one with the smaller $alpha$, as it has more room before generation becomes the bottleneck.
 
@@ -504,26 +508,22 @@ def alpha_of_rows(alpha, M_cal):
 
 # the refined model for one tile, in cycles per MAC
 def predict_runtime(row_alpha, T_M, T_N, M, N, K, gc, R):
-    # the heights of the rows of tiles
-    row_heights = []
-    for i in range(M // T_M):
-        row_heights.append(T_M)
-    if M % T_M > 0:
-        row_heights.append(M % T_M)
+    # the startup of one row of tiles: every tile waits for its first
+    # register block, which only adds time on the memory side
+    startup = gc * R * R * math.ceil(N / T_N) / (K * N)
 
-    # every row takes the longer of its memory and its generation time
-    work = 0
-    for r in row_heights:
-        memory_time = r * row_alpha[(r, T_N)]
-        generation_time = gc
-        work = work + max(memory_time, generation_time)
-    work = work / M
+    # every row takes the longer of its memory and its generation time:
+    # first the full rows of height T_M, then the short last row, if any
+    full_rows = M // T_M
+    short_row = M % T_M
+    full_row_time = max(T_M * row_alpha[(T_M, T_N)] + startup, gc)
+    work = full_rows * full_row_time
+    if short_row > 0:
+        short_memory = short_row * row_alpha[(short_row, T_N)] + startup
+        short_row_time = max(short_memory, gc)
+        work = work + short_row_time
 
-    # the startup term: every tile waits for its first register block
-    number_of_tiles = math.ceil(M / T_M) * math.ceil(N / T_N)
-    startup = gc * R * R * number_of_tiles / (M * N * K)
-
-    return work + startup
+    return work / M
 
 
 # the fastest predicted tile; on a tie, the one with the smaller alpha
@@ -546,7 +546,7 @@ def choose_tile(alpha, M, N, K, gc, R=4, M_cal=None):
     return best_tile
 ```
 
-Now that we know how to predict the best tile, we shall check how good the predictions are. We simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 41 values of $g_c$ from 1 to 600. The refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 1.5% slower than the best one.
+Now that we know how to predict the best tile, we shall check how good the predictions are. We simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 41 values of $g_c$ from 1 to 600. The refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 0.1% slower than the best one.
 
 @fig-model-validation shows this for every run. A perfect model would put every point on the diagonal. The simple model
 underestimates many runs. The refined model puts almost all of them on the line.
@@ -559,7 +559,7 @@ underestimates many runs. The refined model puts almost all of them on the line.
 The further the dots are from the diagonal line, the worse the prediction is. From this, we can easily see a significant advantage
 to using the refined model. But even so, even the refined one misses at some points.
 
-The misses are almost always in the same *direction*. The measured runtime is *higher* than predicted.
+The misses are always in the same *direction*. The measured runtime is *higher* than predicted.
 The reason for this most likely stems from the use of a max term in our model. It assumes that generation and memory overlap
 perfectly, which is only true in the best case. The misses we see in the figure gather where the memory and generation costs are
 about equal, on the other hand, when one of them clearly dominates, the other hides behind it completely and the model is almost
@@ -635,7 +635,7 @@ that is a lot of runs, so we want to check if a smaller set of candidates can do
 
 Our suggestion is to always tune, but start small. Calibrate the heights that divide $M$ with power-of-two widths first. for our
 runs the tile it picks is within about 10% of the best at every $g_c$, and within 1% at most of them. If the last few percent
-matter, add every width for the same heights. And only when even the last 1.5% matter the full grid calibration needs to be done.
+matter, add every width for the same heights. And only when even the last few tenths of a percent matter the full grid calibration needs to be done.
 
 === Does The Choice Of Tile Matter? <sec-sw-choice>
 
@@ -763,7 +763,7 @@ The register block matters most by far. Every pop takes a whole register block o
 relatively large 4 KB capacity.
 
 The memory latency is next in importance. The outcome it gives seems backwards, a slower memory makes the core slower, that goes
-against intuition, because it should give the generator more time.The extra latency hardly changes $alpha$, but every miss now
+against intuition, because it should give the generator more time. The extra latency hardly changes $alpha$, but every miss now
 stalls it twice as long, while between the misses, the hits run almost as fast as with the lower memory latency. During a stall
 the generator keeps working, and on a miss, everything it produces has waits in the queue. Right after the miss, the core runs
 much faster than the generator again, and quickly uses it up and stalling. Therefore A longer stall means we need more space to store more
@@ -871,7 +871,7 @@ area and power with a slower compute unit, almost for free, so in that case no n
 around also holds. If you have a fast generator it must also come with a fast compute unit, or the performance would suffer immensely.
 
 We can also predict how much slower the model will run, the model of @sec-refine provides the answer to this. The core does its
-memory accesses and its arithmetic one after the other, so a MAC cost $c$ is simply added to the memory cost. Every tile now costs $alpha + c$ per MAC instead of $alpha$, and the rest of the model stays the same. With this one change, the model predicts the best runtime of every MAC cost and $g_c$ we simulated within 0.2%, and picks the best tile, or one within 0.1% of it (@fig-hw-mac-model). For a single tile, the arithmetic is free as long as
+memory accesses and its arithmetic one after the other, so a MAC cost $c$ is simply added to the memory cost. Every tile now costs $alpha + c$ per MAC instead of $alpha$, and the rest of the model stays the same. With this one change, the model predicts the best runtime of every MAC cost and $g_c$ we simulated within 0.3%, and picks the best tile every time (@fig-hw-mac-model). For a single tile, the arithmetic is free as long as
 $ alpha + c <= g_c dot ceil(M slash T_M) / M, $
 that is, as long as memory and arithmetic together still take less time than generation. So the engineer can calibrate $alpha$ once with a free MAC, and then evaluate any compute unit by adding its cost per MAC to the table and rerunning the script of @sec-test-model.
 

@@ -52,8 +52,8 @@ def main() -> None:
 
     def predict(tm: int, tn: int, gc: int, c: float) -> float:
         rows = [tm] * (M // tm) + ([M % tm] if M % tm else [])
-        work = sum(max(r * (pure[(r, tn)] + c), gc) for r in rows) / M
-        return work + gc * R * R * math.ceil(M / tm) * math.ceil(N / tn) / (M * N * K)
+        s = gc * R * R * math.ceil(N / tn) / (K * N)   # startup of one row of tiles, memory side
+        return sum(max(r * (pure[(r, tn)] + c) + s, gc) for r in rows) / M
 
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, c in enumerate(H.MAC):
