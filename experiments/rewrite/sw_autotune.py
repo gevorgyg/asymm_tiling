@@ -83,7 +83,7 @@ def main() -> None:
                 **series(i))
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
-    ax.set_ylim(0.8, 1000)
+    ax.set_ylim(0.05, 1000)   # the full grid is at 0.08 % since the startup fix (2026-10-17)
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g} %"))
     ax.set_xlabel("calibration runs ($g_c = 0$, one per candidate tile)")
