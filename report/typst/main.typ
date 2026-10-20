@@ -845,10 +845,14 @@ lines, that will allow the rows spread over all the sets. For example, with rows
 ) <fig-hw-assoc-padded>
 
 @fig-hw-assoc-padded shows the effects of padding. With rows of 17 lines, the 8-way cache is almost exactly as good as the fully
-associative one. The padding has to give an *odd* number of lines.A row of 260 elements is 16.25 lines, so the rows still
+associative one. The padding has to give an *odd* number of lines. A row of 260 elements is 16.25 lines, so the rows still
 alternate between two sets and only move on to the next pair every four rows. This spreads them slowly and unevenly, it's still
-better than rows with power of two size, but worst than giving it a little extra padding so the rows will have an odd number of
-elements.
+better than rows with power of two size, but worse than giving it a little extra padding so the rows will have an odd number of
+lines.
+
+The small peak of the 17-line rows around $g_c = 15$ to $20$ comes from the best tile there, $24 times 128$. It nearly fills the
+cache, and padding spreads its rows well but not perfectly evenly, so one set has to hold 9 lines instead of the max of 8 for that
+set. Our simulator missed a better option of because it is not part of our grid of tile size options.
 
 Our suggestion, a fully associative cache or a scratchpad mostly protects against unpadded data, and making a set-associative
 cache more associative or replacing it with a scratchpad is an expensive fix. Padding is nearly free. We therefore suggest an ordinary 8-way or even 4-way cache, together with software that pads the rows of its matrices to an odd number of cache lines.
