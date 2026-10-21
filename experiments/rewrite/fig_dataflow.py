@@ -39,6 +39,12 @@ BEST_TN = [4, 8, 16, 32, 64]
 BEST_GC = list(range(0, 31)) + list(range(35, 101, 5))
 
 
+def marks(gcs: list) -> list:
+    """the same marker positions for both lines: every 2 cycles up to gc = 30
+    (where C-stationary is still on the plot), then every 10 (the user asked)."""
+    return [j for j, gc in enumerate(gcs) if (gc <= 30 and gc % 2 == 0) or gc % 10 == 0]
+
+
 def main() -> None:
     base = Params(tile_h=TM, tile_w=TN, l1_assoc=-1)
     params = [replace(base, orientation=o, gen_cost=gc) for o in FLOWS.values() for gc in GC]
@@ -55,7 +61,7 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     dense = [g / 4 for g in range(0, 4 * GC[-1] + 1)]
     for i, (name, o) in enumerate(FLOWS.items()):
-        ax.plot(GC, [t[(o, gc)] for gc in GC], label=name, markevery=5, **series(i))
+        ax.plot(GC, [t[(o, gc)] for gc in GC], label=name, markevery=marks(GC), **series(i))
     # the model coincides with the measurements; drawn only if MODEL_LINES (the
     # report's dataflow section comes before the model, so it shows data only)
     for j, o in enumerate(FLOWS.values() if MODEL_LINES else []):
@@ -96,7 +102,7 @@ def best_vs_best() -> None:
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, (name, o) in enumerate(FLOWS.items()):
         ax.plot(BEST_GC, [best[(o, gc)][0] for gc in BEST_GC], label=name + ", best tile",
-                markevery=[j for j, gc in enumerate(BEST_GC) if gc % 10 == 0], **series(i))
+                markevery=marks(BEST_GC), **series(i))
     ax.set_xlabel("$g_c$ (cycles / element)")
     ax.set_ylabel("cycles / MAC")
     ax.set_xlim(0, BEST_GC[-1])

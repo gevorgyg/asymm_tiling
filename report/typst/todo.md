@@ -1,5 +1,2 @@
-[ ] - try to add K to the model.
-[ ] - consider it like who's reading the paper did not read the original paper.
-[ ] - add more points to the C-B graph.
-[ ] - trashing of the residual tile.
-[ ] - add block diagram.
+[ ] - 4.4.1 - the osilation, explain why the yellow one for example just becomes constant at a big enough Tm. Because there the
+residual is always threshing anyway I assume.

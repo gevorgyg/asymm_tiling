@@ -5,7 +5,9 @@
 // in the body. Compile with `typst compile report-template.typ`
 // ==========================================================
 
-#let title = "Evaluating Matrix Tiling 
+#import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
+
+#let title = "Evaluating Matrix Tiling
 Multiplication For Asymmetric Data Cost"
 #let author = "Regev Ginzburg, Areg Mkhitaryan"
 #let course = "Project Aleph Spring 2026"
@@ -143,11 +145,89 @@ To get there, we:
   and refine it until it matches the simulator (@sec-simple-model).
 + Answer practical design questions: which tile a software engineer should choose, and how a hardware engineer should balance the cache, the FIFO and the generator.
 
+== Notation <sec-notation>
+
+@tab-notation lists the symbols used throughout the report, as a reference for the reader. Each one is also explained where it
+first appears.
+
+#figure(
+  table(
+    columns: 3,
+    align: (center, left, left),
+    table.header([*Symbol*], [*Meaning*], [*Unit or default*]),
+    table.cell(colspan: 3)[_Matrices and tiles_],
+    [$A, B, C$], [$C = A dot B$, where $B$ is the random matrix], [],
+    [$M, K, N$], [$A$ is $M times K$, $B$ is $K times N$, $C$ is $M times N$], [$192 times 256 times 256$],
+    [MAC], [one multiply-accumulate; the whole product takes $M N K$ of them], [],
+    [$T_M, T_N$], [tile height and width: a tile computes $T_M times T_N$ elements of $C$, over all of $K$], [elements],
+    [row of tiles], [the tiles that share the same $T_M$ rows of $A$, computed one after the other along $N$], [],
+    [$r$], [the height of a row of tiles: $T_M$, or $e$ for the short last row], [elements],
+    [$e, e_N$], [what is left at the edge: $e = M mod T_M$ (short last row), $e_N = N mod T_N$ (narrow last tile)], [elements],
+    [$R_M, R_N, R_K$], [register block: the core loads $R_M times R_N$ blocks, and one block multiply is $R_M R_N R_K$ MACs], [$4 times 4$ ($R_K = 4$)],
+    table.cell(colspan: 3)[_Hardware_],
+    [$L_1, L_2$], [the first and second cache levels], [16 KB $L_1$, no $L_2$],
+    [$E$], [elements in one cache line: line size divided by element size], [$64 slash 4 = 16$],
+    [$L_"mem"$], [memory (DRAM) latency], [180 cycles],
+    [$g_c$], [generation cost: the time the PRNG takes to produce one element of $B$], [cycles per element],
+    [$c$], [the cost of one MAC], [0 cycles],
+    [$rho$], [in the reproduction of the paper only: the cost of bringing an element of $B$ into the cache, relative to one of $A$], [],
+    table.cell(colspan: 3)[_Model_],
+    [$T$], [runtime; $T slash (M N K)$ is the runtime per MAC], [cycles],
+    [$alpha$], [memory cost: the runtime per MAC when generation is free ($g_c = 0$)], [cycles per MAC],
+    [$alpha_"fits", alpha_"no fit"$], [the two levels of $alpha$: the strip of $A$ of a row of tiles stays in $L_1$ or not], [cycles per MAC],
+    [$s$], [the startup of one row of tiles: the FIFO starts empty at every tile], [same units as $g_c$],
+  ),
+  caption: [The symbols used throughout the report.],
+) <tab-notation>
+
 = Methodology
 
 == `asymm_tiling` Simulator
 
 To evaluate matrix multiplication under asymmetric data access costs, we designed and implemented `asymm_tiling`, a modular, cycle-accurate architectural simulator written in C++20. The simulator models the execution of general matrix multiply operations across configurable multi-level cache hierarchies, comparing conventional DRAM-backed dataflows against hardware-accelerated on-the-fly streaming.
+
+@fig-system shows the system we simulate. $A$ and $C$ live in memory and reach the core through the cache hierarchy, while $B$ is
+never stored, instead a PRNG generator produces it from a seed, one element every $g_c$ cycles, into a FIFO from which the core pops
+one register block at a time.
+
+#let box-fill = rgb("#eef3fa")
+#let gen-fill = rgb("#fbf1e6")
+#let small(it) = text(size: 7.5pt, fill: rgb("#444444"), it)
+
+#figure(
+  {
+  set par(justify: false)
+  set text(size: 9pt, hyphenate: false)
+  diagram(
+    spacing: (8mm, 10mm),
+    node-stroke: 0.6pt,
+    node-corner-radius: 3pt,
+    node-inset: 6pt,
+    edge-stroke: 0.7pt,
+    // memory hierarchy: A and C live here, B never does
+    node((0, 0), [*DRAM* \ #small[$A$, $C$, seeds of $B$] \ #small[180 cycles]], name: <dram>, fill: box-fill, width: 27mm),
+    node((1, 0), [*$L_2$* \ #small[optional]], name: <l2>, fill: box-fill, stroke: (dash: "dashed", thickness: 0.6pt), width: 16mm),
+    node((2, 0), [*$L_1$ data cache* \ #small[16 KB, 64-byte lines] \ #small[LRU, write-back, 4 cycles]], name: <l1>, fill: box-fill, width: 36mm),
+    // the core
+    node((3.4, 0.5), [*Registers* \ #small[blocks of $A$, $B$, $C$] \ #small[$R_M times R_N$ each]], name: <regs>, fill: white, width: 29mm),
+    node((3.4, 1.5), [*MAC unit* \ #small[one block multiply:] \ #small[$R_M R_N R_K$ MACs]], name: <mac>, fill: white, width: 29mm),
+    node(enclose: (<regs>, <mac>), name: <core>, fill: box-fill, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
+    node((3.4, 2.15), small[*Core*], stroke: none, fill: none),
+    // B: generated on the fly, never stored
+    node((1, 1), [*PRNG generator* \ #small[one element of $B$] \ #small[every $g_c$ cycles]], name: <prng>, fill: gen-fill, width: 32mm),
+    node((2, 1), [*FIFO* \ #small[capacity in elements] \ #small[pop $R_M R_N$: 2 cycles]], name: <fifo>, fill: gen-fill, width: 36mm),
+    // data paths
+    edge(<dram>, <l2>, "<|-|>"),
+    edge(<l2>, <l1>, "<|-|>"),
+    edge(<l1>, <regs>, "<|-|>", small[$A$, $C$], label-side: left),
+    edge(<prng>, <fifo>, "-|>", small[$B$]),
+    edge(<fifo>, <regs>, "-|>", small[$B$], label-side: right),
+    edge(<regs>, <mac>, "<|-|>"),
+    edge(<l1>, <prng>, "-|>", small[seed, once per tile], label-side: right, stroke: (dash: "dashed", thickness: 0.7pt)),
+  )
+  },
+  caption: [The simulated system with its default parameters (@tab-params). $A$ and $C$ come from memory through the cache hierarchy; $B$ is generated on the fly into the FIFO, from a seed that is read once per tile.],
+) <fig-system>
 
 === Architecture
 
@@ -234,7 +314,13 @@ Unless stated otherwise, every experiment uses the configuration in @tab-params,
 = Experiments And Results
 == Reproducing The Original Paper <reproduce>
 
-Before adding a generator, we check that our simulator reproduces the original analysis @notes-random-tiling @notes-asym-cost, where $B$ is still a stored matrix, only in a lower precision. There, an element of $B$ costs a fraction $rho$ of an element of $A$ to bring into fast memory. With a tile of $C$ of $T_M times T_N$ elements, the traffic per MAC is $1 slash T_N$ for $A$ and $rho slash T_M$ for $B$, so for a fixed tile area the traffic is smallest when
+Our project starts from an earlier analysis of tiling for multiplication by a random matrix @notes-random-tiling @notes-asym-cost.
+It asks how to tile $C = A dot B$ when $B$ is cheaper to access than $A$, for example because it is stored in a lower precision,
+and it measures the cost of a tile by its traffic. For every step of $K$, a tile of $C$ of $T_M times T_N$ elements needs $T_M$
+elements of $A$ and $T_N$ elements of $B$, while the tile of $C$ itself stays in the cache for the whole of the inner dimension
+$K$, and it does $T_M T_N$ MACs with them. When all elements cost the same, this traffic is smallest for a square tile. But when $B$ is cheaper, the best tile is no longer square.
+
+Before adding a generator, we check that our simulator reproduces the original analysis @notes-random-tiling @notes-asym-cost, where $B$ is still a stored matrix, only in a lower precision. There, an element of $B$ costs a fraction $rho$ of an element of $A$ to bring into the cache. With a tile of $C$ of $T_M times T_N$ elements, the traffic per MAC is $1 slash T_N$ for $A$ and $rho slash T_M$ for $B$, so for a fixed tile area the traffic is smallest when
 $ T_N / T_M = 1 / rho. $
 The cheaper $B$ is, the more the best tile stretches along it, and the more it saves compared with a square tile.
 
@@ -261,7 +347,7 @@ is popped again and again for every register block of $R_M$ rows, meaning it is 
 
 #figure(
   image("./figures/fig_dataflow.svg", width: 100%),
-  caption: [Runtime of the two dataflows against $g_c$ on the tile $64 times 32$.],
+  caption: [Runtime of the two dataflows against $g_c$ on the tile $64 times 32$. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
 ) <fig-dataflow>
 
 From the figure we can learn a couple of things. *$C$-stationary is faster only when generation is almost free.* At $g_c <= 2$ it
@@ -283,7 +369,7 @@ the store for the end of the loop. This gives $C$-stationary a clear edge when $
 
 #figure(
   image("./figures/fig_dataflow_ratio.svg", width: 100%),
-  caption: [Runtime of $C$-stationary divided by the runtime of $B$-stationary against $g_c$, for $T_N = 32$ and six tile heights.],
+  caption: [Runtime of $C$-stationary divided by the runtime of $B$-stationary against $g_c$, for $T_N = 32$ and six tile heights. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
 ) <fig-dataflow-ratio>
 
 @fig-dataflow-ratio repeats the comparison for six tile heights ($T_M = 4, 8, 16, 32, 64, 128$) at $T_N = 32$, for every integer $g_c$ from 0 to 100. It can be clearly seen that for each configuration, every line follows the same pattern:
@@ -303,7 +389,7 @@ the same picture, $C$-stationary is faster only while $g_c <= 3$, and from there
 
 #figure(
   image("./figures/fig_dataflow_best.svg", width: 100%),
-  caption: [Runtime of each dataflow at its own best tile against $g_c$.],
+  caption: [Runtime of each dataflow at its own best tile against $g_c$. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
 ) <fig-dataflow-best>
 
 === Does this depend on the hardware?
@@ -392,10 +478,13 @@ convenient and it allows us to analyze and study the behaviour of $alpha(T_M, T_
   64$--$88$. The narrower tiles ($T_N <= 16$) do not reach the second step in this figure's range. The wider tiles reach this
   step "sooner". This step is due to the combination of $T_N$ and $T_M$ giving a tile that causes the overflow of tile $C$ from
   $L_1$, destroying performance.
-+ The wide tiles have a "sawtooth" shape at their second step. This is a phenomenon of enabling tiles that do not completely
++ The wide tiles have an "oscillating" shape at their second step. This is a phenomenon of enabling tiles that do not completely
   divide the matrix dimensions. Those tiles, include a residual tile that is smaller than the full one, causing *less* thrashing
   of the $L_1$ cache when the $C$ tile overflows. On the other hand, those tiles that *do divide* the matrix, have no residual
   tile, therefore reaching maximal thrashing.
++ The narrow tiles have a "sawtooth" shape: small dips at some points. The reason is simillar to the previous point. After the
+  first step, these heights leave a very short residual row of tiles, short enough for its tile of $A$ to fit in $L_1$, so it is
+  cheap and pulls the *average* $alpha$ down.
 
 === Analyzing the Fromula with different $g_c$ values <sec-mem-vs-gen>
 
@@ -418,11 +507,11 @@ the left, generation dominates and a taller tile helps. To the right, memory dom
 We can see that most of the points don't actually follow the curves. At $g_c = 30$ generation is cheap, and the measured runtime sits on the higher curve almost everywhere. At $g_c = 100$ and $200$ it clearly does not. Instead it follows a decreasing step shape above the generation curve.
 
 Analysing the points that do touch the curve shows that those are the points that have tiles at heights that divide the
-height of the matrix: $M = 192$, such as $T_M = 48$ and $64$. In addition, we can see that a few measurements are slower than both curves. Why the simple model misses these points, and how to fix it, is the subject of the next section.
+height of the matrix ($M = 192$), such as $T_M = 48$ and $64$. In addition, we can see that a few measurements are slower than both curves. Why the simple model misses these points, and how to fix it, is the subject of the next section.
 
 === Refining The Model <sec-refine>
 
-Here we try to refine the model to address the points that miss the model previously. For that, three refinements are needed.
+Here we try to refine the model to address the points that miss the model previously. For that, three refinements are needed, and a fourth adds $K$ to the model.
 
 *1. $B$ is generated once per row of tiles:* The flat steps come from how often $B$ is generated. The core finishes a whole row of
 tiles before moving down (a whole row tile of matirx A), and every row of tiles the entire matrix $B$. Meaning $B$ is generated
@@ -457,6 +546,13 @@ $ e = M mod T_M, quad s = (g_c dot R_M R_N dot ceil(N slash T_N)) / (K N) $
 The first term is the $floor(M slash T_M)$ full rows of tiles, and the second is the short last row of height $e$, which
 disappears when $T_M$ divides $M$. $alpha(r)$ is measured for a tile of height $r$ in the same $g_c = 0$ runs.
 
+The same holds along the width. If $T_N$ does not divide $N$, every row of tiles ends with a narrower tile of width
+$e_N = N mod T_N$, which has its own $alpha$, so the cost of a row is its full tiles and its narrow last tile, weighted by width:
+$ alpha(r) = (floor(N slash T_N) dot T_N dot alpha(r, T_N) + e_N dot alpha(r, e_N)) / N. $
+Unlike the short row, the narrow tile needs no max of its own, because all the tiles of a row share the same generation of $B$.
+When $alpha$ is measured on the same matrix, this mix is already part of the measurement. It matters for a matrix with a
+different $N$ (refinement 4).
+
 $s$ is the startup of one row of tiles: $g_c dot R_M R_N$ cycles at the start of each of its $ceil(N slash T_N)$ tiles, in the
 same units as $T_M dot alpha(T_M)$ and $g_c$ (cycles divided by the $K N$ MACs that every row of the matrix does).
 
@@ -471,6 +567,35 @@ startup added to the memory cost.
   image("./figures/fig_model_refined.svg", width: 100%),
   caption: [As @fig-model, with the full refined model (dashed): the max taken per row of tiles, with the startup term on the memory side.],
 ) <fig-model-refined>
+
+*4. $K$ and the strip of $A$:* So far $alpha$ was measured on one matrix, with one $K$. A different $K$ changes $alpha$ in only
+one way. The strip of $A$ that a row of tiles needs is $T_M times K$ elements, so $K$ decides whether it stays in $L_1$ from one
+tile to the next, the first cliff of @sec-alpha. The rest of what decides $alpha$, the tile of $C$ and the second cliff, does not
+involve $K$. @fig-kmodel-alpha shows this: for every $K$, $alpha$ takes the same two levels, and only the height at which it jumps
+from one to the other moves.
+
+#figure(
+  image("./figures/sw_kmodel_alpha.svg", width: 100%),
+  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$, $192 times K times 256$) for four values of $K$, with the first cliff predicted for each $K$ (dotted). For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
+) <fig-kmodel-alpha>
+
+The strip of $A$ stays in $L_1$ while it fits next to the tile of $C$ that is being finished and the next one coming in. Counting
+in cache lines of $E$ elements, where $E$ is the size of a cache line divided by the size of an element (64 / 4 = 16 in our
+setup), a row of tiles of height $r$ fits when
+$ r dot (ceil(K slash E) + 2 ceil(T_N slash E)) < L_1 "lines", $
+where $L_1$ lines is the number of lines $L_1$ holds (256 in our setup), and the dotted lines in @fig-kmodel-alpha are exactly
+this prediction. Within each of the two levels, $alpha$ still drifts a
+little with $K$, because of $C$ itself: every element of $C$ is loaded from memory once, a line for every $E$ elements, and that
+cost is shared by the $K$ MACs of the element. This adds $L_"mem" slash (E K)$ cycles per MAC, where $L_"mem"$ is the memory
+latency. Together, the $alpha$ of a row of tiles at any $K$ is
+$ alpha(r, T_N, K) = cases(
+  alpha_"fits" (r, T_N) & "if the row fits",
+  alpha_"no fit" (r, T_N) & "otherwise",
+) + L_"mem" / (E K), $
+where $alpha_"fits"$ and $alpha_"no fit"$ are the two levels without the part that depends on $K$. Both are calibrated once:
+$alpha_"fits"$ on a matrix with a small $K$, where short tiles fit, and $alpha_"no fit"$ on one with a large $K$, where none do,
+each after subtracting its own $L_"mem" slash (E K)$. This $alpha$ is what the formula of refinement 3 uses, for any $K$ from the
+small one up: above the large $K$ no row fits either, so only the $1 slash K$ term changes.
 
 == Software Focused Design Questions <sec-sw>
 
@@ -489,68 +614,7 @@ tile instead. To choose a tile shape, we need to do three steps:
   @sec-refine instead. The $alpha$ of the residual last row can be read from the same table.
 + *Choosing:* Pick the pair with the smallest result. If several pairs tie, pick the one with the smaller $alpha$, as it has more room before generation becomes the bottleneck.
 
-With the table generated by the first step, the second and third steps can be done very fast with a simple script:
-
-```python
-maybe put script example here?
-```
-
-// ```python
-// import math
-//
-//
-// # alpha of a single row of tiles: take the short last row out of the mix
-// def alpha_of_rows(alpha, M_cal):
-//     row_alpha = {}
-//     for tile in sorted(alpha):  # smallest heights first
-//         T_M, T_N = tile
-//         short_row = M_cal % T_M
-//         total = M_cal * alpha[(T_M, T_N)]
-//         if short_row > 0:
-//             total = total - short_row * row_alpha[(short_row, T_N)]
-//         row_alpha[(T_M, T_N)] = total / (M_cal - short_row)
-//     return row_alpha
-//
-//
-// # the refined model for one tile, in cycles per MAC
-// def predict_runtime(row_alpha, T_M, T_N, M, N, K, gc, R):
-//     # the startup of one row of tiles: every tile waits for its first
-//     # register block, which only adds time on the memory side
-//     startup = gc * R * R * math.ceil(N / T_N) / (K * N)
-//
-//     # every row takes the longer of its memory and its generation time:
-//     # first the full rows of height T_M, then the short last row, if any
-//     full_rows = M // T_M
-//     short_row = M % T_M
-//     full_row_time = max(T_M * row_alpha[(T_M, T_N)] + startup, gc)
-//     work = full_rows * full_row_time
-//     if short_row > 0:
-//         short_memory = short_row * row_alpha[(short_row, T_N)] + startup
-//         short_row_time = max(short_memory, gc)
-//         work = work + short_row_time
-//
-//     return work / M
-//
-//
-// # the fastest predicted tile; on a tie, the one with the smaller alpha
-// # M_cal: the M the table was measured on, if it is not M
-// def choose_tile(alpha, M, N, K, gc, R=4, M_cal=None):
-//     if M_cal is None:
-//         M_cal = M
-//     row_alpha = alpha_of_rows(alpha, M_cal)
-//
-//     best_tile = None
-//     best_time = None
-//     for tile in alpha:
-//         T_M, T_N = tile
-//         time = predict_runtime(row_alpha, T_M, T_N, M, N, K, gc, R)
-//         if best_tile is None or time < best_time:
-//             best_tile = tile
-//             best_time = time
-//         elif time == best_time and alpha[tile] < alpha[best_tile]:
-//             best_tile = tile
-//     return best_tile
-// ```
+With the table generated by the first step, the second and third steps can be done very fast.
 
 Now that we know how to predict the best tile, we shall check how good the predictions are. We simulated every tile with $T_M$ from 4 to 192 and $T_N$ from 4 to 128, both in steps of 4 (1536 tiles), at 41 values of $g_c$ from 1 to 600. The refined model predicts the runtime within 1% in 96% of the runs, and the tile it picks is never more than 0.1% slower than the best one.
 
@@ -575,22 +639,18 @@ When they are equal, there is less room for error, so every short moment in whic
 into a wait for the FIFO, and adds directly to the runtime. This extra runtime is what our model missed.
 
 All in all, a software engineer can trust the model to choose the tile. The calibration runs are the only simulations needed, and
-the choice itself takes a short script instead of a sweep over every tile and every $g_c$.
+the choice itself takes a short computation instead of a sweep over every tile and every $g_c$.
 
 // TODO (later): redo fig_model_accuracy with the per-row max and decide whether to add it here
 
-=== Can One Calibration Serve Many Matrices? <sec-sw-shapes>
+=== Does The Model Work For Other Matrices? <sec-sw-shapes>
 
-All the results so far are for one matrix, and calibrating every new matrix again costs one simulation per candidate tile. A
-software engineer would rather keep a few calibration tables, templates, and use them for every matrix he meets. So we want to
-check if maybe a few premade calibration templates can serve many different matrices.
+All the results so far are for one matrix, and calibrating every new matrix again costs one simulation per candidate tile. With
+$M$ and $K$ in the model (refinements 3 and 4 of @sec-refine), two calibrations should be enough for any matrix: $M$ only decides
+how many rows of tiles there are, and $K$ only which of the two calibrated levels of $alpha$ a row uses. $N$ changes $alpha$ only a
+little, because it only decides how many tiles there are along a row of tiles, and how wide the last one is (refinement 3).
 
-$M$ does not have to match at all. The table holds the $alpha$ of a single row of tiles, and how many rows there are is computed
-by the model, not measured. $N$ changes $alpha$ only a little. $K$ is what matters: the tile of $A$ is $T_M times K$, so $K$
-decides which tile heights still fit in $L_1$. We therefore keep one template for each of a few values of $K$, each calibrated
-once on a $192 times K times 256$ matrix.
-
-Before templates can work, there is one condition. Every row of $C$ has to start at the beginning of a cache line, which means
+Before this can work, there is one condition. Every row of $C$ has to start at the beginning of a cache line, which means
 that the length of a row, $N$, has to be a whole number of 64-byte lines, a multiple of 16 elements. If it is not, a row of a tile
 of $C$ starts in the middle of a line and touches one more line than it needs. The tile then takes more of the cache, and starts to
 thrash at a smaller height. @fig-sw-alignment shows three matrices that differ only in $N$: with $N = 300$, which is 18.75 lines
@@ -598,34 +658,35 @@ per row, $alpha$ starts to climb at $T_M approx 80$ instead of 128.
 
 #figure(
   image("./figures/sw_alignment.svg", width: 100%),
-  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for $200 times 200 times N$ with $N = 288$, 300 and 304. The lines of 288 and 304, whole numbers of cache lines per row, coincide. Above $T_M = 128$ all three thrash completely.],
+  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for $200 times 200 times N$ with $N = 288$, 300 and 304. The lines of 288 and 304, whole numbers of cache lines per row, coincide. Above $T_M = 128$ all three thrash completely. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
 ) <fig-sw-alignment>
 
-No template can predict this, because it depends on the exact length of the row. The fix is the same as in @sec-hw-assoc: store
+No calibration can predict this, because it depends on the exact length of the row. The fix is the same as in @sec-hw-assoc: store
 every row of $C$ with a few unused elements at its end, up to a multiple of 16 elements (and start $C$ itself on a cache line,
 which any aligned allocation does). In the experiment below we pad both $K$ and $N$ this way.
 
-To test the templates, we calibrated seven of them, for $K$ from 128 to 1024, and picked 20 matrices whose sizes are not powers of
-two, such as $150 times 304 times 208$ and $140 times 800 times 112$. For every matrix and six values of $g_c$ from 5 to 160, the
-model chooses a tile from a template, with the matrix's own $M$, $N$ and $K$, and we compare its runtime with the best tile of
-that matrix, found by simulating all of its tiles. A short last row whose height is not in the template uses the nearest height
-that is. @fig-sw-templates compares several ways of choosing the template.
+To test the model, we calibrated it only twice, on $192 times 128 times 256$ and $192 times 1024 times 256$, and picked 120
+matrices whose sizes are not powers of two: 20 by hand, such as $150 times 304 times 208$ and $140 times 800 times 112$, and 100 at
+random, with $M$ from 64 to 384, $K$ from 128 to 1024 and $N$ from 96 to 512. For every matrix and
+six values of $g_c$ from 5 to 160, the model chooses a tile with the matrix's own $M$, $N$ and $K$, and we compare its runtime with
+the best tile of that matrix, found by simulating all of its tiles. A short last row whose height was not calibrated uses the
+nearest height that was. @fig-sw-kmodel compares this with calibrating every matrix itself, and with using one calibration for all
+of them.
 
 #figure(
-  image("./figures/sw_templates.svg", width: 100%),
-  caption: [How close the tile chosen with each kind of table is to the best tile, over 20 matrices and six values of $g_c$ (120 cases): the share of the cases within 1%, between 1% and 5%, and more than 5% slower, and the worst case. "Own table" calibrates every matrix itself; "same ratios" calibrates a matrix 1.5 times larger in every dimension.],
-) <fig-sw-templates>
+  image("./figures/sw_kmodel.svg", width: 100%),
+  caption: [How close the chosen tile is to the best tile, over 120 matrices and six values of $g_c$ (720 cases): the share of the cases within 1%, between 1% and 5%, and more than 5% slower, and the worst case. "K model" uses the two calibrations and refinement 4; "own table" calibrates every matrix itself; "one table" uses the calibration of $192 times 256 times 256$ for all.],
+) <fig-sw-kmodel>
 
-The template must not have a smaller $K$ than the matrix. A tile of $A$ that fits in $L_1$ with the template's $K$ may not fit
-with the real, larger one, and the model then chooses a tile that thrashes. The template with the closest $K$ fails exactly this
-way, up to 35% slower. Taking the next $K$ up avoids it: a tile that fits with a larger $K$ fits with the real one too, and the
-worst that can happen is that the model passes over a few taller tiles that would have fit. With this rule, 98% of the cases are
-within 5% of the best tile, and the worst is 8% slower. Four templates instead of seven are almost as good. A single table for all
-matrices is up to 38% slower, and calibrating on a matrix with the same ratios brings nothing beyond a template with a larger $K$.
+With $K$ in the model, the two calibrations choose a tile within 1% of the best one in 95% of the cases, and within 5% in all but
+two of them (the worst is 6%). That is almost as good as calibrating every matrix itself, which is never more than 2% off. Without
+the $1 slash K$ term the worst case is 12%, and one calibration for all matrices, which ignores $K$, is up to 40% slower: it predicts that a tile of $A$ fits where
+it does not.
 
-Our suggestion is to pad the rows of $C$ to a whole number of cache lines, keep a few templates for values of $K$ about a factor
-of two apart, and for every new matrix run the script of @sec-test-model on the template with the next $K$ up. Only when the last
-few percent matter is it worth calibrating the matrix itself, which in our runs always came within 2% of the best tile.
+We also changed $K$ alone, on $192 times K times 256$ with 18 values of $K$ from 96 to 4096, none of them calibrated. The model
+chooses the best tile at every $g_c$, except at $K = 96$, below the small calibration, where its tile is 0.5% slower. Above the large
+calibration, at $K = 1280$, 2048 and 4096, it predicts the $alpha$ of every tile within 0.5%. So the small calibration should use the
+smallest $K$ the engineer expects, while any $K$ where no row fits serves as the large one.
 
 === How Much Autotuning Is Needed? <sec-sw-autotune>
 
@@ -674,7 +735,7 @@ The net gains are smaller, and the line has two hills, with no gain at the ends 
 
 This exact phenomenon can be seen in the section about the path of the best tile overall in @fig-best-tile. There we see that the best tile starts short and wide, passes through a square around $g_c = 45$, and ends tall and narrow up until it turns wide again at extremely high $g_c$ values. This same pattern of behaviour can be seen in @fig-vs-square as well.
 
-Our suggestion, don't default to a square tile. A square is only safe when generation is almost free, or when it is so expensive that it dominates every tile. Everywhere in between, the best tile saves up to half of the runtime, and choosing it costs only the calibration and a short script (@sec-test-model).
+Our suggestion, don't default to a square tile. A square is only safe when generation is almost free, or when it is so expensive that it dominates every tile. Everywhere in between, the best tile saves up to half of the runtime, and choosing it costs only the calibration and a short computation (@sec-test-model).
 
 == Hardware Focused Design Questions <sec-hw>
 
@@ -857,6 +918,37 @@ set. Our simulator missed a better option of because it is not part of our grid 
 Our suggestion, a fully associative cache or a scratchpad mostly protects against unpadded data, and making a set-associative
 cache more associative or replacing it with a scratchpad is an expensive fix. Padding is nearly free. We therefore suggest an ordinary 8-way or even 4-way cache, together with software that pads the rows of its matrices to an odd number of cache lines.
 
+=== Does The Replacement Policy Matter? <sec-hw-policy>
+
+So far the cache always evicted the least recently used line (LRU). LRU has one well-known weakness: a loop over a little more data
+than the cache holds. The line needed next is then always the one that was used longest ago, exactly the one LRU evicts, so every
+access misses. We have seen this past the cliffs of $alpha$: above $T_M = 128$, for example, nearly every load misses, and $alpha$
+jumps to about 23. A random replacement policy does not have this weakness. It evicts a random line, so part of the loop survives
+by chance, and the hit rate falls gradually instead of collapsing. Random replacement could therefore make tall tiles usable past
+a cliff, just where hiding a slow generator needs them. To check, we compare LRU, FIFO (evict the line that entered first) and
+random replacement on the default 16 KB fully associative $L_1$, with the default configuration otherwise (@tab-params).
+
+#figure(
+  image("./figures/hw_policy_alpha.svg", width: 100%),
+  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for three replacement policies of a 16 KB fully associative $L_1$. The vertical axis is logarithmic.],
+) <fig-hw-policy-alpha>
+
+@fig-hw-policy-alpha shows that random replacement does exactly that: it smooths the cliffs. Just past a cliff it is cheaper than
+LRU. At $T_M = 16$ the strip of $A$ just misses fitting in $L_1$, LRU loses all of it, while random keeps most of it, and above
+$T_M = 128$ random keeps part of the loop, about 14 cycles per MAC instead of 23. Everywhere else, though, random is more
+expensive, because it sometimes evicts a line that is still needed, where LRU keeps everything.
+
+#figure(
+  image("./figures/hw_policy.svg", width: 100%),
+  caption: [The best runtime over all tiles against $g_c$, for three replacement policies of a 16 KB fully associative $L_1$.],
+) <fig-hw-policy>
+
+That is why random loses where it matters (@fig-hw-policy). The best tile always sits just below a cliff, where LRU keeps everything
+the tile needs, so the advantage of random past the cliffs never helps it, while its random evictions cost 5% to 28% at every
+$g_c$. FIFO is in between, up to 20% slower than LRU.
+
+Our suggestion is to keep LRU. Tiling already makes the access pattern of the best tile LRU-friendly.
+
 === How Fast Must The Compute Unit Be? <sec-hw-mac>
 
 The last part of the hardware is the compute unit that does the MACs. A fast compute unit costs area and power, so how fast
@@ -883,7 +975,7 @@ around also holds. If you have a fast generator it must also come with a fast co
 We can also predict how much slower the model will run, the model of @sec-refine provides the answer to this. The core does its
 memory accesses and its arithmetic one after the other, so a MAC cost $c$ is simply added to the memory cost. Every tile now costs $alpha + c$ per MAC instead of $alpha$, and the rest of the model stays the same. With this one change, the model predicts the best runtime of every MAC cost and $g_c$ we simulated within 0.3%, and picks the best tile every time (@fig-hw-mac-model). For a single tile, the arithmetic is free as long as
 $ alpha + c <= g_c dot ceil(M slash T_M) / M, $
-that is, as long as memory and arithmetic together still take less time than generation. So the engineer can calibrate $alpha$ once with a free MAC, and then evaluate any compute unit by adding its cost per MAC to the table and rerunning the script of @sec-test-model.
+that is, as long as memory and arithmetic together still take less time than generation. So the engineer can calibrate $alpha$ once with a free MAC, and then evaluate any compute unit by adding its cost per MAC to the table and letting the model of @sec-test-model choose again.
 
 #figure(
   image("./figures/hw_mac_model.svg", width: 100%),
