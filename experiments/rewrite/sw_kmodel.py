@@ -17,8 +17,8 @@ Nothing is re-run: the calibrations are the sw_templates templates
 
   sw_kmodel_alpha:  alpha against T_M (T_N = 16) for four values of K, with
                     the predicted first cliff of each K (dotted).
-  sw_kmodel:        per way of getting alpha, the share of the 120 cases
-                    (20 matrices x 6 gc) within 1 %, 1-5 % and more than 5 %
+  sw_kmodel:        per way of getting alpha, the share of the 780 cases
+                    (130 matrices x 6 gc) within 1 %, 1-5 % and more than 5 %
                     of the best tile, and the worst case.
 
 run:  .venv/bin/python experiments/rewrite/sw_kmodel.py
@@ -140,6 +140,24 @@ def more_shapes() -> list:
 MORE_SHAPES = more_shapes()
 
 
+def big_k_shapes() -> list:
+    """10 test matrices with K above the large calibration (the user asked,
+    2026-10-21): M in 64..384, K in 1280..4096, N in 96..512, K and N padded
+    to a multiple of 16, at most 100 M MACs each."""
+    rng = random.Random(20261021)
+    out = []
+    while len(out) < 10:
+        m = rng.randrange(64, 385)
+        k = S.pad16(rng.randrange(1280, 4097))
+        n = S.pad16(rng.randrange(96, 513))
+        if m * k * n <= 100_000_000 and (m, k, n) not in out:
+            out.append((m, k, n))
+    return out
+
+
+BIG_K_SHAPES = big_k_shapes()
+
+
 def main() -> None:
     base = Params(l1_assoc=-1)
     tt = S.runtime([replace(base, m=S.TEMPLATE_M, k=k, n=S.TEMPLATE_N, tile_h=tm, tile_w=tn,
@@ -151,7 +169,10 @@ def main() -> None:
     st |= S.runtime([replace(base, m=m, k=k, n=n, tile_h=tm, tile_w=tn, gen_cost=gc)
                      for m, k, n in MORE_SHAPES for gc in [0] + S.TEST_GC
                      for tm, tn in S.test_tiles(m, n)], "shapes_more.json")
-    shapes = list(S.SHAPES) + MORE_SHAPES
+    st |= S.runtime([replace(base, m=m, k=k, n=n, tile_h=tm, tile_w=tn, gen_cost=gc)
+                     for m, k, n in BIG_K_SHAPES for gc in [0] + S.TEST_GC
+                     for tm, tn in S.test_tiles(m, n)], "shapes_big_k.json")
+    shapes = list(S.SHAPES) + MORE_SHAPES + BIG_K_SHAPES
     tables = calibration_tables(tt)
 
     # 1. alpha at the K values in between, from the calibrations only
@@ -166,7 +187,7 @@ def main() -> None:
             lines_out.append(f"| {name} {ks} | {k} | {sum(e <= .03 for e in errs) / len(errs):.0%} | "
                              f"{sum(e <= .05 for e in errs) / len(errs):.0%} | {max(errs):.1%} |")
 
-    # 2. the tile choice on the 120 padded test matrices (the first 20 + 100 random)
+    # 2. the tile choice on the 130 padded test matrices (the first 20 + 100 random + 10 big K)
     ways = {"own table": None, **{f"K model, {n}": v for n, v in CALIBRATIONS.items()},
             "one table ($K = 256$)": ([256], False)}
     excess = {}
@@ -186,7 +207,7 @@ def main() -> None:
                 meas = {tl: st[(m, k, n, gc, *tl)] for tl in tiles}
                 pick = min(tiles, key=lambda tl: (predict(a, *tl, m, k, n, gc), a(*tl, k)))
                 excess[name].append(meas[pick] / min(meas.values()) - 1)
-    lines_out += ["", "## tile choice on the 120 padded matrices (20 + 100 random, 6 gc each)", "",
+    lines_out += ["", "## tile choice on the 130 padded matrices (20 + 100 random + 10 big K, 6 gc each)", "",
                   "| alpha from | median | within 1 % | within 5 % | worst |", "|---|---|---|---|---|"]
     for name, xs in excess.items():
         lines_out.append(f"| {name} | {statistics.median(xs):.2%} | "

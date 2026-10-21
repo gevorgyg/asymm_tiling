@@ -77,6 +77,7 @@ def main() -> None:
     register_blocks(tiles)
     other_configs(tiles, t)
     register_blocks_mac(tiles)
+    configs_figure(tiles)
 
 
 # does the FIFO a register block needs depend on the MAC cost? mulacc_cost is
@@ -187,6 +188,70 @@ def register_blocks(tiles: list) -> None:
     axes[0].set_ylabel("slowdown vs an unlimited FIFO")
     legend_above(axes[0], ncols=len(REG))
     print(save(fig, "hardware/h3_fifo_size", NAME + "_registers_small"))
+
+
+# hw_fifo_configs: the report's configuration table as a figure (the user asked,
+# 2026-10-21): worst slowdown over REG_GC against the FIFO capacity, one panel
+# per changed parameter. All from the cached runs above; each line is compared
+# with an unlimited FIFO on its own configuration. The default (4 x 4, 180
+# cycles) has the same colour in the first two panels, and 16 x 16 with a free
+# MAC in the first and the last.
+def configs_figure(tiles: list) -> None:
+    def worst(t: dict, key, caps: list) -> list:
+        best = {(cap, gc): min(t[key(cap, gc, tl)] for tl in tiles) for cap in caps for gc in REG_GC}
+        return [100 * (max(best[(cap, gc)] / best[(REF, gc)] for gc in REG_GC) - 1) for cap in caps]
+
+    def cycles(params: list, file: str) -> dict:
+        return {p: s["Simulation: Total cycles"] / MNK
+                for p, s in zip(params, run_many(params, out_dir(NAME) / file))}
+
+    base = Params(l1_assoc=-1)
+    reg = cycles([replace(base, reg_dim=r, fifo_capacity=cap, tile_h=tm, tile_w=tn, gen_cost=gc)
+                  for r in REG for cap in CAP for gc in REG_GC for tm, tn in tiles],
+                 "results_regdim_small.json")
+    mem = cycles([replace(base, mem_cycles=lat, fifo_capacity=cap, tile_h=tm, tile_w=tn, gen_cost=gc)
+                  for lat in (90, 360) for cap in CAP for gc in REG_GC for tm, tn in tiles],
+                 "results_configs_small.json")
+    mac_caps = [16, 64, 256, 1024, 4096, 16384]
+    mac = cycles([replace(base, reg_dim=16, mulacc_cost=int(m * 16 ** 3), fifo_capacity=cap,
+                          tile_h=tm, tile_w=tn, gen_cost=gc)
+                  for m in MAC_PER_MAC.values() for cap in mac_caps for gc in REG_GC
+                  for tm, tn in tiles], "results_regmac_small.json")
+    tile = lambda tl: dict(tile_h=tl[0], tile_w=tl[1])
+
+    fig, axes = plt.subplots(1, 3, figsize=(7.0, 3.0), sharey=True)
+    panels = [
+        ("register block", [(rf"${r} \times {r}$" + (" (default)" if r == 4 else ""), i,
+                             worst(reg, lambda cap, gc, tl, r=r: replace(
+                                 base, reg_dim=r, fifo_capacity=cap, gen_cost=gc, **tile(tl)), CAP), CAP)
+                            for i, r in enumerate(REG)]),
+        (r"memory latency ($4 \times 4$)",
+         [("90 cycles", 4, worst(mem, lambda cap, gc, tl: replace(
+             base, mem_cycles=90, fifo_capacity=cap, gen_cost=gc, **tile(tl)), CAP), CAP),
+          ("180 (default)", 1, worst(reg, lambda cap, gc, tl: replace(
+              base, reg_dim=4, fifo_capacity=cap, gen_cost=gc, **tile(tl)), CAP), CAP),
+          ("360 cycles", 5, worst(mem, lambda cap, gc, tl: replace(
+              base, mem_cycles=360, fifo_capacity=cap, gen_cost=gc, **tile(tl)), CAP), CAP)]),
+        (r"MAC cost ($16 \times 16$)",
+         [(f"{name}" + (" cycle" if name != "free" else ""), i, worst(mac, lambda cap, gc, tl, m=m: replace(
+             base, reg_dim=16, mulacc_cost=int(m * 16 ** 3), fifo_capacity=cap, gen_cost=gc,
+             **tile(tl)), mac_caps), mac_caps)
+          for (name, m), i in zip(MAC_PER_MAC.items(), (3, 6, 7))]),
+    ]
+    for ax, (title, lines) in zip(axes, panels):
+        for label, i, ys, caps in lines:
+            ax.plot(caps, ys, label=label, **series(i))
+        ax.set_title(title, fontsize=10)
+        ax.set_xscale("log", base=2)
+        ax.set_xticks([16, 256, 4096])
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
+        ax.legend(loc="upper right", fontsize=8, frameon=False)
+    axes[1].set_xlabel("FIFO capacity (elements of $B$)")
+    axes[0].yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}%"))
+    axes[0].set_ylabel("worst slowdown vs\nan unlimited FIFO")
+    axes[0].set_ylim(0, 118)              # room for the legends above the lines
+    axes[0].set_yticks(range(0, 81, 20))
+    print(save(fig, "hardware/h3_fifo_size", "hw_fifo_configs"))
 
 
 if __name__ == "__main__":

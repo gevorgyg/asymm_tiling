@@ -23,14 +23,14 @@ run:  .venv/bin/python experiments/rewrite/hw_policy.py
 from dataclasses import replace
 
 from harness import Params, out_dir, run_many
-from plot_style import legend_above, plt, save, series
+from plot_style import INK_2, SERIES, legend_above, plt, save, series
 
 NAME = "hw_policy"
 SMALL = True
 M, K, N = 192, 256, 256
 MNK = M * K * N
 POLICIES = ["lru", "fifo", "mru", "random"]
-SHOWN = ["lru", "fifo", "random"]   # in the figures: MRU (about 32 cycles/MAC everywhere) is left out
+SHOWN = ["lru", "random"]   # in the figures: MRU (about 32 cycles/MAC everywhere) is left out, and FIFO (the user, 2026-10-21: not relevant there)
 if SMALL:
     TM = [4, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192]
     TN = [4, 8, 16, 32, 64, 128, 256]
@@ -40,6 +40,8 @@ else:
     TN = [4, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256]
     GC = [0, 2, 5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200]
 ALPHA_TN = 16
+ALPHA_M = 384                       # hw_policy_alpha only: 384 x 256 x 256
+ALPHA_TM = list(range(4, ALPHA_M + 1, 4))
 
 
 def main() -> None:
@@ -51,10 +53,16 @@ def main() -> None:
          for p, s in zip(params, stats)}
     best = {(pol, gc): min((t[(pol, gc, *tl)], tl) for tl in tiles) for pol in POLICIES for gc in GC}
 
-    # alpha against T_M, one line per policy
+    # alpha against T_M, one line per policy, on a taller matrix so the tiles
+    # go past T_M = 200 (the user asked, 2026-10-21: "show some past T_M 200")
+    params = [replace(Params(l1_assoc=-1), m=ALPHA_M, policy=pol, tile_h=tm, tile_w=ALPHA_TN, gen_cost=0)
+              for pol in SHOWN for tm in ALPHA_TM]
+    ta = {(p.policy, p.tile_h): s["Simulation: Total cycles"] / (ALPHA_M * K * N)
+          for p, s in zip(params, run_many(params, out_dir(NAME) / "results_alpha_tall.json"))}
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, pol in enumerate(SHOWN):
-        ax.plot(TM, [t[(pol, 0, tm, ALPHA_TN)] for tm in TM], label=pol.upper() if pol != "random" else "random", **series(i))
+        ax.plot(ALPHA_TM, [ta[(pol, tm)] for tm in ALPHA_TM], markevery=4,
+                label=pol.upper() if pol != "random" else "random", **series(i))
     ax.set_xlabel("$T_M$")
     ax.set_ylabel(r"$\alpha$ (cycles / MAC)")
     ax.set_yscale("log")
@@ -144,6 +152,52 @@ def set_associative() -> None:
     print(report)
 
 
+# slow generators (the user asked, 2026-10-21: past the cliff random is better,
+# does it ever win?): the best tile with random against the best with LRU, for
+# g_c up to 6400. Random can only win once a tile past the cliff is needed,
+# i.e. when even the tallest tile below the cliff is generation-bound.
+GC_SLOW = [300, 400, 600, 800, 1000, 1200, 1400, 1600, 2000, 2400, 2800, 3200, 4000, 4800, 6400]
+CLIFF_TM = 128                      # 2 tiles of C (T_M lines each at T_N <= 16) fill the 256 lines
+
+
+def slow_generators() -> None:
+    tiles = [(tm, tn) for tm in TM for tn in TN]
+    gcs = [gc for gc in GC if gc > 0] + GC_SLOW
+    params = [replace(Params(l1_assoc=-1), policy=pol, tile_h=tm, tile_w=tn, gen_cost=gc)
+              for pol in SHOWN for gc in gcs for tm, tn in tiles]
+    stats = run_many(params, out_dir(NAME) / f"results{'_small' if SMALL else ''}.json")
+    t = {(p.policy, p.gen_cost, p.tile_h, p.tile_w): s["Simulation: Total cycles"] / MNK
+         for p, s in zip(params, stats)}
+    best = {(pol, gc): min((t[(pol, gc, *tl)], tl) for tl in tiles) for pol in SHOWN for gc in gcs}
+    diff = [100 * (best[("random", gc)][0] / best[("lru", gc)][0] - 1) for gc in gcs]
+    past = [best[("random", gc)][1][0] > CLIFF_TM for gc in gcs]
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.6))
+    ax.axhline(0, color=INK_2, linewidth=0.8, zorder=1)
+    ax.plot(gcs, diff, color=SERIES[1], linewidth=2, zorder=2)
+    for flag, label, i in ((False, rf"best random tile fits ($T_M \leq {CLIFF_TM}$)", 0),
+                           (True, rf"best random tile past the cliff ($T_M = {M}$)", 3)):
+        xs = [gc for gc, p in zip(gcs, past) if p == flag]
+        ys = [d for d, p in zip(diff, past) if p == flag]
+        ax.plot(xs, ys, label=label, zorder=3, **(series(i) | {"linestyle": "none"}))
+    ax.set_xscale("log", base=2)
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:+g}%" if v else "0%"))
+    ax.set_xlabel("$g_c$ (cycles / element)")
+    ax.set_ylabel("best runtime with random\nvs with LRU")
+    legend_above(ax, ncols=2)
+    print(save(fig, "hardware/h8_policy", NAME + "_slow" + ("_small" if SMALL else "")))
+
+    lines = ["| gc | LRU | random | random vs LRU |", "|---|---|---|---|"]
+    for gc, d in zip(gcs, diff):
+        lines.append(f"| {gc} | {best[('lru', gc)][0]:.2f} {best[('lru', gc)][1]} | "
+                     f"{best[('random', gc)][0]:.2f} {best[('random', gc)][1]} | {d:+.0f}% |")
+    report = (f"# {NAME} (slow generators): best tile, random vs LRU\n\n" + "\n".join(lines) + "\n")
+    (out_dir(NAME) / f"README_slow{'_small' if SMALL else ''}.md").write_text(report)
+    print(report)
+
+
 if __name__ == "__main__":
     main()
     set_associative()
+    slow_generators()
