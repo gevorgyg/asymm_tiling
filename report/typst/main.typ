@@ -993,6 +993,130 @@ that is, as long as memory and arithmetic together still take less time than gen
 
 // TODO: replace the figure with the full-grid run (hw_mac_cost, SMALL = False) at the end
 
+== gem5 Simulation <sec-gem5>
+
+=== Configuration
+
+Our simulator charges every cache miss in full before the next access can start, while the generator keeps working in the
+background. This favors the FIFO. On real hardware several misses are in flight at once and a prefetcher fetches ahead, so reading
+$B$ from memory costs less than our simulator says. To see how much of the FIFO's advantage is left on more realistic hardware, we
+repeated the main experiment in gem5 @lowepower2020gem5.
+
+We modeled the system on the C7x DSP core of TI's J722S (the C7524), taking its clock and cache sizes @ti-j722s-sdk and its 256-bit
+vectors @ti-spruiv4. gem5 has no C7x model, so the core is an in-order Arm core with SVE vectors of the same width. The FIFO is a
+new gem5 component that sits between the core and the $L_1$ data cache. Reads inside its address window are answered by the
+generator, and all other accesses pass through to the cache.
+
+#figure(
+  table(
+    columns: 3,
+    align: (left, left, left),
+    table.header([*Parameter*], [*gem5 setting*], [*C7524*]),
+    [Core], [in-order Arm (`MinorCPU`), 4-wide issue, 2 vector FP units with 4-cycle latency], [],
+    [Vector width], [256 bits (SVE)], [256 bits],
+    [Clock], [1 GHz], [1 GHz],
+    [$L_1$ instruction cache], [32 KB, 4-way], [32 KB],
+    [$L_1$ data cache], [32 KB, 8-way, 64-byte lines, 2-cycle tag and data, 8 MSHRs], [32 KB],
+    [$L_2$ cache], [64 KB, 8-way, 6-cycle tag and data, 16 MSHRs], [64 KB],
+    [Prefetcher], [stride, degree 4 on $L_1$D and 8 on $L_2$, on or off per run], [],
+    [Memory], [DDR4-2400], [],
+    [Memory accesses in flight from the core], [2 (gem5 default for this core)], [],
+    [Branch predictor], [tournament (gem5 default)], [],
+  ),
+  caption: [The simulated system. The C7524 column lists the values we matched; the empty cells are our own choices.],
+) <tab-gem5-system>
+
+Two things in gem5 change the comparison: first, memory work overlaps with computation. The caches keep serving hits while misses
+are outstanding, the core can have two memory accesses in flight, the prefetcher fetches ahead, and DRAM is has bandwidth instead of a
+fixed latency. Reading $B$ from memory now overlaps too, where our simulator only let the FIFO overlap.
+
+Second, the core predicts branches. After a mispredicted branch it runs ahead on the wrong path and throws that work away when the branch resolves, but a
+read it sent to the FIFO on that path has already advanced the FIFO.
+
+The kernel is written with SVE intrinsics and computes $C = C + A B$, with $A$ and $C$ in fp32 and $B$ in int8, converted to fp32
+when it is loaded. From the outside in, its loops run over row bands of $T_M$ rows, tiles of $T_N$ columns. Each $8 times 8$ block of $B$ is loaded into registers once and
+used by all $T_M slash 8$ row blocks, which is the $B$-stationary dataflow of @sec-dataflow.
+
+#figure(
+  table(
+    columns: 2,
+    align: (left, left),
+    table.header([*Parameter*], [*Value*]),
+    [Matrices $M times K times N$], [$192 times 128 times 512$ (12.6 M MACs)],
+    [Element types], [$A$ and $C$ fp32, $B$ int8],
+    [Tiles], [$T_M in {8, 16, 32, 48, 64, 96, 192}$, $T_N in {8, 16, 32, 64, 128}$ (35 tiles)],
+    [Source of $B$], [memory, seeded FIFO or counter FIFO (@sec-gem5-fifo)],
+    [Settings], [no padding with prefetcher, padding without prefetcher, padding with prefetcher (@sec-gem5-pad)],
+    [FIFO capacity], [2 KB],
+    [FIFO read latency], [1 cycle],
+    [Generation cost $g_c$], [0 (free) in all the results below],
+  ),
+  caption: [Workload and FIFO parameters of the gem5 runs.],
+) <tab-gem5-kernel>
+
+==== Row padding <sec-gem5-pad>
+
+Our gem5 caches are 8-way, so there are set conflicats similar to @sec-hw-assoc. A row of $C$ is 512 floats, 2048 bytes or 32 lines, so
+all the rows of a column of $C$ land in 2 of the 64 sets of $L_1$ and 4 of the 128 sets of $L_2$. That leaves room for 16 rows in
+$L_1$ and 32 in $L_2$. Padding every row of $A$ and $C$ with 16 floats (64 bytes) makes a row of $C$ 33 lines long, an odd number,
+and the rows spread over all the sets. We ran every tile with and without padding.
+
+==== Seeded and counter FIFO <sec-gem5-fifo>
+
+The seeded FIFO is the FIFO of our simulator. Before each tile the kernel writes the tile's seed to the FIFO, which empties it and
+restarts the generator from that seed. The tile then reads $B$ in order from the start of the FIFO's window.
+
+The counter FIFO has no seed. Each element of $B$ is computed from its own index, so the kernel reads $B$ at its address in a fixed
+window, and the address is the index. 
+
+Our experiments didn't notice much difference in both of these approaches, but we present the experiments with counter FIFO for simplicity.
+
+=== Experiment Results
+
+All the runs below use a free generator ($g_c=0$), so they measure the cost of everything except generation.
+
+#figure(
+  image("./figures/gem5_cycles.svg", width: 100%),
+  caption: [Cycles per MAC with a free generator for every tile. Top row: $B$ from memory, bottom row: counter FIFO. Lower is better.],
+) <fig-gem5-cycles>
+
+Without padding, cache conflicts influence performancy greatly. With padding, the runtime is not monotonic in $T_N$, due to the fact that growing $T_N$
+forces two opposite phenomena to occur: on one hand, it reduces reloads of $A$ (as $A$ row band has $N/ T_N $ tiles), but on the other hand it grows the C tile,
+which pushes $A$ out of cache, and later does not fit on it's own.
+
+#figure(
+  image("./figures/gem5_misses.svg", width: 100%),
+  caption: [$L_1$ data cache misses (left) and $L_2$ misses (right) against $T_M$, at $T_N = 16$ with the prefetcher on.],
+) <fig-gem5-misses>
+
+
+The steps are capacity limits. At $T_M = 48$ the 24 KB $A$ strip nearly fills $L_1$, and from $T_M = 64$ it doesn't fit, so $A$ is
+read again for every tile. $L_2$ has the same step at $T_M = 192$, where the 96 KB $A$ strip is larger
+than $L_2$. Without padding, the conflicts occur even for smaller tiles.
+
+#figure(
+  image("./figures/gem5_speedup.svg", width: 100%),
+  caption: [Speedup of the counter FIFO over memory $B$ on the same tile: cycles with memory $B$ divided by cycles with the FIFO. Blue means the FIFO is faster.],
+) <fig-gem5-speedup>
+
+Without the prefetcher, the speedup follows the traffic of $B$. With the prefetcher, memory $B$ is nearly free.
+
+#figure(
+  image("./figures/gem5_mispredict.svg", width: 90%),
+  caption: [Branch mispredictions per k-step with the counter FIFO, padding and prefetcher. A k-step is one pass of the loop over the $T_N slash 8$ column blocks of a tile. Left: all mispredicted branches, from gem5's counter. Right: reads of $B$ issued on a wrong path, measured as extra FIFO reads. The left panel is the same, within 3 mispredictions per run, for memory $B$, the seeded FIFO and the other two settings.],
+) <fig-gem5-mispredict>
+
+gem5's tournament predictor keeps 11 bits of history per branch. That is enough to predict the exit of a loop of up to 12
+iterations, and the exit of a longer loop is mispredicted every time.
+
+ The right panel counts only the mispredictions that send a read to the FIFO. When the column-block loop of a k-step ends,
+ the predictor sometimes guesses that it runs once more. The core then starts that extra column block, which begins by loading the next block of $B$,
+ and the first of these loads reaches the FIFO before the core finds out the guess was wrong.
+ The core throws the loaded data away, but the FIFO has already handed it out, and the next k-step reads the same address again.
+
+With a free generator these reads cost nothing, but with a slow generator
+they would be expensive. 
+
 = Discussion
 
 // TODO: what spans several experiments:
