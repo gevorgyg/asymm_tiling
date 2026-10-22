@@ -119,7 +119,7 @@ while approximately preserving most of its geometry. Sketching underlies fast al
 In all of these algorithms the random matrix $B$ carries no information of its own, making it much cheaper to provide than the
 data it multiplies, in a couple of ways.
 
-Firstly, it can afford to have lower precision. An element of $B$ can be stored in a single bit or byte, while $A$ and $C$ keep full precision. This is an asymmetric-precision matrix multiplication, which reduces cache traffic, as shown in the original analysis @notes-random-tiling @notes-asym-cost and in our experiments (@reproduce).
+Firstly, it can afford to have lower precision. An element of $B$ can be stored in a single bit or byte @achlioptas2003, while $A$ and $C$ keep full precision. This is an asymmetric-precision matrix multiplication, which reduces cache traffic, as shown in the original analysis @notes-random-tiling @notes-asym-cost and in our experiments (@reproduce).
 
 Secondly, the matrix can have no storage at all. $B$ can be generated on the fly from a small seed by a pseudo-random number
 generator (PRNG), as the computation consumes it. $B$ then causes no memory traffic at all, only generation time. The only thing
@@ -301,9 +301,9 @@ Unless stated otherwise, every experiment uses the configuration in @tab-params,
     [Element size], [4 bytes for $A$, $B$ and $C$ ($B$ varies in the paper reproduction)], [FP32 / INT32 are the most commonly used types.],
     [Register tile $R_M times R_N$], [$4 times 4$], [Modest and realistic choice],
     [$L_1$ cache], [16 KB, 64-byte lines, fully associative, LRU, write-back, write-allocate], [It's a common setup, in addition fully associative cache mimics a software-managed scratchpad.],
-    [$L_1$ hit latency], [4 cycles], [Realistic $L_1$ latency @hennessy2017],
+    [$L_1$ hit latency], [4 cycles], [Realistic $L_1$ latency],
     [$L_2$ cache], [none], [Easier to analyze results because of less degrees of freedom.],
-    [Memory latency], [180 cycles], [Realistic DRAM latency @hennessy2017],
+    [Memory latency], [180 cycles], [Realistic DRAM latency],
     [PRNG generation cost $g_c$], [swept, 0 to 600 cycles per element], [from a fast dedicated generator to a slow or shared one],
     [FIFO capacity], [16384 elements], [large enough not to limit the overlap],
     [FIFO access], [2 cycles per register block],[comparable to an $L_1$ access and should be fast],
@@ -729,7 +729,7 @@ it's *never* worse. And the following figure shows it.
   caption: [Time saved by the best tile height over the square tile $T_M = T_N$, for four fixed tile widths $T_N$ (solid), and by the overall best tile over the best square tile of any size (dashed).],
 ) <fig-vs-square>
 
-Square tiles are optimal when all matrices cost the same @hongkung1981. @fig-vs-square fixes the width $T_N$, and compares the best height $T_M$ with the square tile $T_M = T_N$. The gain is the time saved, $(T_"square" - T_"best") slash T_"square"$. We can observe the following:
+Square tiles are optimal when all matrices cost the same. @fig-vs-square fixes the width $T_N$, and compares the best height $T_M$ with the square tile $T_M = T_N$. The gain is the time saved, $(T_"square" - T_"best") slash T_"square"$. We can observe the following:
 
 - *Small $g_c$:* The generation cost is hardly a factor so $T_M$ can afford to be quite low and the limiting factor is the memory,
   therefore the gain is proportional to how *badly* the square tile fits in $L_1$. A $64 times 64$ tile thrashes the $L_1$ cache
@@ -813,8 +813,8 @@ cache miss, and lets the core catch up when it runs on hits. So the size it need
 are, and how many elements it takes at once. We repeated the same experiment with one change at a time:
 
 - A faster and a slower memory.
-- A MAC cost of a quarter of a cycle and of one cycle.
-- Register blocks from $2 times 2$ to $16 times 16$, also together with these MAC costs.
+- A MAC cost of a quarter of a cycle and of one cycle, with $16 times 16$ blocks.
+- Register blocks from $2 times 2$ to $16 times 16$.
 
 For each, @fig-fifo-configs shows the worst slowdown over all $g_c$ against the size of the FIFO.
 
@@ -835,10 +835,9 @@ much faster than the generator again, and quickly uses it up and stalling. There
 data, so the FIFO needs to grow roughly in proportion to the latency. about 128 elements with 90 cycles, 256 with
 180, and 512 to 1024 with 360.
 
-For our $4 times 4$ blocks a quarter of a cycle per MAC changes little, but larger blocks make the core faster, and there the
-speed of the compute unit matters. With $2 times 2$ blocks no FIFO is needed at any MAC cost. 
+Large blocks make the core fast, and there the speed of the compute unit matters.
 A slower compute unit needs a smaller FIFO. The time spent on arithmetic slows the pace at which the core takes elements from the
-FIFO, so it runs ahead of the generator less. With one cycle per MAC, 1 KB is enough for every register block up to $16 times 16$.
+FIFO, so it runs ahead of the generator less. With one cycle per MAC, 1 KB is enough even for $16 times 16$ blocks.
 What the FIFO has to cover is therefore not the register block alone, but how fast the core consumes $B$. large register blocks with fast arithmetic need the largest FIFO.
 
 Our suggestion, size the FIFO by how fast the core is. With a slow compute unit, about one cycle per MAC, 1 KB is enough for any
@@ -1027,7 +1026,7 @@ generator, and all other accesses pass through to the cache.
 ) <tab-gem5-system>
 
 Two things in gem5 change the comparison: first, memory work overlaps with computation. The caches keep serving hits while misses
-are outstanding, the core can have two memory accesses in flight, the prefetcher fetches ahead, and DRAM is has bandwidth instead of a
+are outstanding, the core can have two memory accesses in flight, the prefetcher fetches ahead, and DRAM has bandwidth instead of a
 fixed latency. Reading $B$ from memory now overlaps too, where our simulator only let the FIFO overlap.
 
 Second, the core predicts branches. After a mispredicted branch it runs ahead on the wrong path and throws that work away when the branch resolves, but a
@@ -1056,7 +1055,7 @@ used by all $T_M slash 8$ row blocks, which is the $B$-stationary dataflow of @s
 
 ==== Row padding <sec-gem5-pad>
 
-Our gem5 caches are 8-way, so there are set conflicats similar to @sec-hw-assoc. A row of $C$ is 512 floats, 2048 bytes or 32 lines, so
+Our gem5 caches are 8-way, so there are set conflicts similar to @sec-hw-assoc. A row of $C$ is 512 floats, 2048 bytes or 32 lines, so
 all the rows of a column of $C$ land in 2 of the 64 sets of $L_1$ and 4 of the 128 sets of $L_2$. That leaves room for 16 rows in
 $L_1$ and 32 in $L_2$. Padding every row of $A$ and $C$ with 16 floats (64 bytes) makes a row of $C$ 33 lines long, an odd number,
 and the rows spread over all the sets. We ran every tile with and without padding.
@@ -1069,7 +1068,7 @@ restarts the generator from that seed. The tile then reads $B$ in order from the
 The counter FIFO has no seed. Each element of $B$ is computed from its own index, so the kernel reads $B$ at its address in a fixed
 window, and the address is the index. 
 
-Our experiments didn't notice much difference in both of these approaches, but we present the experiments with counter FIFO for simplicity.
+Our experiments didn't show much difference between these two approaches, but we present the experiments with counter FIFO for simplicity.
 
 === Experiment Results
 
@@ -1080,9 +1079,9 @@ All the runs below use a free generator ($g_c=0$), so they measure the cost of e
   caption: [Cycles per MAC with a free generator for every tile. Top row: $B$ from memory, bottom row: counter FIFO. Lower is better.],
 ) <fig-gem5-cycles>
 
-Without padding, cache conflicts influence performancy greatly. With padding, the runtime is not monotonic in $T_N$, due to the fact that growing $T_N$
+Without padding, cache conflicts influence performance greatly. With padding, the runtime is not monotonic in $T_N$, due to the fact that growing $T_N$
 forces two opposite phenomena to occur: on one hand, it reduces reloads of $A$ (as $A$ row band has $N/ T_N $ tiles), but on the other hand it grows the C tile,
-which pushes $A$ out of cache, and later does not fit on it's own.
+which pushes $A$ out of cache, and later does not fit on its own.
 
 #figure(
   image("./figures/gem5_misses.svg", width: 100%),
@@ -1119,12 +1118,50 @@ they would be expensive.
 
 = Discussion
 
-// TODO: what spans several experiments:
-// - the three regimes: memory-bound (small tile that fits), balanced (T_M up, T_N down), generation-bound (fewest rows of tiles)
-// - what an engineer should do: autotune alpha once at g_c = 0, then pick the tile per g_c with the model
-// - limitations: simulator, not hardware; one matrix shape in most figures; partial overlap on thrashing tiles
+Across all the experiments, the runtime of a tile comes down to two costs that pull its height in opposite directions. Memory
+wants the tile of $A$ to stay in $L_1$, which keeps $T_M$ small, and generation wants every element of $B$ to be shared by as
+many rows as possible, which pushes $T_M$ up. Which of the two wins depends on $g_c$, and this gives three regimes. When
+generation is cheap, the tile is memory bound and the best tile is short and wide, as in the original analysis. As $g_c$ grows,
+the tile gets taller to keep generation hidden, and narrower so that it still fits in $L_1$. When generation is so slow that no
+tile can hide it, only the number of rows of tiles matters, and the best tile is as tall as the matrix allows.
+
+The model follows the same picture. A table of $alpha$, measured once with free generation, together with the larger of memory and
+generation for every row of tiles, predicts the runtime well enough to choose the tile, and with the fit test of refinement 4 it
+does so for other matrices too. It misses mostly where memory and generation are about equal, because there they don't overlap
+perfectly, and it can't predict rows that are not whole cache lines, which padding fixes.
+
+The hardware questions come back to $alpha$ as well. The generator only has to be fast enough for the tallest tile that fits, the
+FIFO only has to cover the memory latency of the register blocks in flight, and every byte beyond that is better spent on the
+cache. Associativity and the replacement policy matter mostly for tiles past a cliff, which a good choice of tile avoids anyway,
+and the compute unit only has to keep up with the generator.
+
+The gem5 runs (@sec-gem5) show how much of this carries over to a more realistic core. There, misses overlap and a prefetcher
+fetches ahead, so with a free generator $B$ from memory is almost free, and the FIFO gains only a few percent once the prefetcher
+is on. The capacity cliffs and the need for padding show up in gem5 too, at the sizes of its own caches. gem5 also shows a cost
+that our simulator has no notion of, a core that speculates can read from the FIFO on a wrong path, and with a slow generator
+those reads cost generation time.
+
+Our results have some limits. Our simulator charges every miss in full and has no prefetcher, which favors the FIFO. Most of the
+figures use one matrix and one cache size, so the exact thresholds move with them, even though the reasons behind them don't.
+The model has to be calibrated again for every new hardware. And the gem5 runs use only a free generator, so the trade-off between
+memory and generation, which is the center of this report, is still untested on a realistic core. Running gem5 with a slow
+generator, and a FIFO that only advances on reads that commit, are the natural next steps.
 
 = Conclusion
+
+We built a cycle-level simulator of a core with a cache hierarchy and a PRNG-FIFO, and checked that it reproduces the original
+analysis, where the best tile stretches along the cheap matrix by $1 slash rho$. With a generator, $B$ costs time instead of
+traffic, and the tiling changes. The $B$-stationary dataflow is the one to use unless generation costs only a few cycles, and the
+best tile is decided by both the cache and the generator. Its height follows generation and its width follows the cache.
+
+A simple model, built from a table of $alpha$ measured with free generation and refined until it matches the simulator, explains
+these tiles and chooses one within 1% of the best in almost every case we tested, from only two calibrations.
+
+For a software engineer, this means padding the rows of the matrices to whole cache lines, calibrating the model twice, and
+letting it choose the tile instead of defaulting to a square, which can cost up to half of the runtime. For a hardware engineer,
+it means a generator just fast enough for the tallest tile that fits in $L_1$, a FIFO about as large as the memory latency
+requires, with the rest of the memory spent on the cache, and an ordinary set-associative LRU cache, as long as the software pads
+its matrices.
 
 #bibliography("refs.bib", title: "Bibliography", style: "ieee")
 
