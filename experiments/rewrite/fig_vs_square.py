@@ -56,7 +56,8 @@ def main() -> None:
     for i, tn in enumerate(TN):
         ax.plot(GC, [gain[(gc, tn)] for gc in GC], label=f"$T_N = {tn}$", **series(i))
     ax.plot(GC, [100 * (best_square[gc] - overall[gc]) / best_square[gc] for gc in GC],
-            color=INK, linestyle="--", linewidth=2.0, zorder=5, label="best of any size")
+            color=INK, linestyle="--", linewidth=2.0, zorder=5, label="best of any size",
+            marker="o", markersize=4, markeredgewidth=0)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g} %"))
     ax.set_ylim(0, 100)
     ax.set_ylabel("time saved vs square tile")

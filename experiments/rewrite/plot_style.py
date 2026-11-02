@@ -61,6 +61,13 @@ def series(i: int) -> dict:
             "markeredgecolor": SURFACE, "markeredgewidth": 0.8}
 
 
+def dense(i: int) -> dict:
+    """series(i) for a line sampled so densely (every integer gc, every 4 rows)
+    that full markers would merge: a small solid marker on every point, so the
+    reader still sees which points were simulated."""
+    return series(i) | {"markersize": 3.5, "markeredgewidth": 0}
+
+
 def legend_above(ax, ncols: int) -> None:
     """Compact one-row legend above the plot area, so it never covers data.
     Figures carry no titles or annotations; the report caption explains them."""

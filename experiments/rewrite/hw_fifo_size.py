@@ -83,7 +83,7 @@ def main() -> None:
 # does the FIFO a register block needs depend on the MAC cost? mulacc_cost is
 # charged per register-block multiply (R^3 MACs), so it is scaled by R^3 to
 # keep the cost per MAC the same for every R
-MAC_PER_MAC = {"free": 0, "1/4": 0.25, "1": 1}
+MAC_PER_MAC = {"free": 0, "4 MACs / cycle": 0.25, "1 MAC / cycle": 1}   # name: throughput
 
 
 def register_blocks_mac(tiles: list) -> None:
@@ -232,8 +232,8 @@ def configs_figure(tiles: list) -> None:
               base, reg_dim=4, fifo_capacity=cap, gen_cost=gc, **tile(tl)), CAP), CAP),
           ("360 cycles", 5, worst(mem, lambda cap, gc, tl: replace(
               base, mem_cycles=360, fifo_capacity=cap, gen_cost=gc, **tile(tl)), CAP), CAP)]),
-        (r"MAC cost ($16 \times 16$)",
-         [(f"{name}" + (" cycle" if name != "free" else ""), i, worst(mac, lambda cap, gc, tl, m=m: replace(
+        (r"compute unit ($16 \times 16$)",
+         [(name, i, worst(mac, lambda cap, gc, tl, m=m: replace(
              base, reg_dim=16, mulacc_cost=int(m * 16 ** 3), fifo_capacity=cap, gen_cost=gc,
              **tile(tl)), mac_caps), mac_caps)
           for (name, m), i in zip(MAC_PER_MAC.items(), (3, 6, 7))]),

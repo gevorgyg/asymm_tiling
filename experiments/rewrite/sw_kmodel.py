@@ -31,7 +31,7 @@ import statistics
 
 import sw_templates as S
 from harness import Params, out_dir
-from plot_style import SERIES, INK_2, legend_above, plt, save, series
+from plot_style import SERIES, INK_2, dense, legend_above, plt, save, series
 
 NAME = "sw_kmodel"
 L1_LINES = 16384 // 64
@@ -222,7 +222,7 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, k in enumerate(ALPHA_K):
         ax.plot(tms, [tt[(S.TEMPLATE_M, k, S.TEMPLATE_N, 0, tm, ALPHA_TN)] for tm in tms],
-                markevery=2, label=f"$K = {k}$", **series(i))
+                label=f"$K = {k}$", **dense(i))
         cliff = next(tm for tm in range(1, 200) if not fits(tm, ALPHA_TN, k))
         ax.axvline(cliff, color=SERIES[i], linestyle=":", linewidth=1.0)
     ax.set_xlabel("$T_M$")

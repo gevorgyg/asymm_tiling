@@ -94,10 +94,11 @@ def main() -> None:
     # decreasing width, dashed on top of each other; 32-way fits 32 rows
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     ax.plot(GC, extra(256, 2), label="4-way", **series(0))
+    # hollow, larger markers so every simulated point of all three stays visible
     ax.plot(GC, extra(256, 3), color=SERIES[1], linestyle="--", linewidth=1.6, zorder=4,
-            label="8-way")
+            marker="s", markersize=8, markerfacecolor="none", label="8-way")
     ax.plot(GC, extra(256, 4), color=SERIES[2], linestyle=":", linewidth=1.6, zorder=5,
-            label="16-way")
+            marker="D", markersize=11, markerfacecolor="none", label="16-way")
     ax.plot(GC, extra(256, 5), label="32-way", **series(3))
     finish(ax, NAME + "_unpadded", 4)
 

@@ -23,7 +23,7 @@ run:  .venv/bin/python experiments/rewrite/hw_policy.py
 from dataclasses import replace
 
 from harness import Params, out_dir, run_many
-from plot_style import INK_2, SERIES, legend_above, plt, save, series
+from plot_style import INK_2, SERIES, dense, legend_above, plt, save, series
 
 NAME = "hw_policy"
 SMALL = True
@@ -61,8 +61,8 @@ def main() -> None:
           for p, s in zip(params, run_many(params, out_dir(NAME) / "results_alpha_tall.json"))}
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, pol in enumerate(SHOWN):
-        ax.plot(ALPHA_TM, [ta[(pol, tm)] for tm in ALPHA_TM], markevery=4,
-                label=pol.upper() if pol != "random" else "random", **series(i))
+        ax.plot(ALPHA_TM, [ta[(pol, tm)] for tm in ALPHA_TM],
+                label=pol.upper() if pol != "random" else "random", **dense(i))
     ax.set_xlabel("$T_M$")
     ax.set_ylabel(r"$\alpha$ (cycles / MAC)")
     ax.set_yscale("log")

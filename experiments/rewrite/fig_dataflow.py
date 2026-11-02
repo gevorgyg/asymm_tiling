@@ -21,7 +21,7 @@ run:  .venv/bin/python experiments/rewrite/fig_dataflow.py
 from dataclasses import replace
 
 from harness import Params, out_dir, run_many
-from plot_style import INK_2, legend_above, plt, save, series
+from plot_style import INK_2, dense, legend_above, plt, save
 
 NAME = "fig_dataflow"
 SMALL = False
@@ -39,12 +39,6 @@ BEST_TN = [4, 8, 16, 32, 64]
 BEST_GC = list(range(0, 31)) + list(range(35, 101, 5))
 
 
-def marks(gcs: list) -> list:
-    """the same marker positions for both lines: every 2 cycles up to gc = 30
-    (where C-stationary is still on the plot), then every 10 (the user asked)."""
-    return [j for j, gc in enumerate(gcs) if (gc <= 30 and gc % 2 == 0) or gc % 10 == 0]
-
-
 def main() -> None:
     base = Params(tile_h=TM, tile_w=TN, l1_assoc=-1)
     params = [replace(base, orientation=o, gen_cost=gc) for o in FLOWS.values() for gc in GC]
@@ -59,13 +53,13 @@ def main() -> None:
     }
 
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
-    dense = [g / 4 for g in range(0, 4 * GC[-1] + 1)]
+    fine = [g / 4 for g in range(0, 4 * GC[-1] + 1)]
     for i, (name, o) in enumerate(FLOWS.items()):
-        ax.plot(GC, [t[(o, gc)] for gc in GC], label=name, markevery=marks(GC), **series(i))
+        ax.plot(GC, [t[(o, gc)] for gc in GC], label=name, **dense(i))
     # the model coincides with the measurements; drawn only if MODEL_LINES (the
     # report's dataflow section comes before the model, so it shows data only)
     for j, o in enumerate(FLOWS.values() if MODEL_LINES else []):
-        ax.plot(dense, [model[o](g) for g in dense], color=INK_2, linestyle="--",
+        ax.plot(fine, [model[o](g) for g in fine], color=INK_2, linestyle="--",
                 linewidth=1.0, zorder=5, label="model" if j == 0 else None)
 
     ax.set_xlabel("$g_c$ (cycles / element)")
@@ -102,7 +96,7 @@ def best_vs_best() -> None:
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, (name, o) in enumerate(FLOWS.items()):
         ax.plot(BEST_GC, [best[(o, gc)][0] for gc in BEST_GC], label=name + ", best tile",
-                markevery=marks(BEST_GC), **series(i))
+                **dense(i))
     ax.set_xlabel("$g_c$ (cycles / element)")
     ax.set_ylabel("cycles / MAC")
     ax.set_xlim(0, BEST_GC[-1])

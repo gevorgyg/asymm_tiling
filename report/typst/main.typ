@@ -119,7 +119,7 @@ while approximately preserving most of its geometry. Sketching underlies fast al
 In all of these algorithms the random matrix $B$ carries no information of its own, making it much cheaper to provide than the
 data it multiplies, in a couple of ways.
 
-Firstly, it can afford to have lower precision. An element of $B$ can be stored in a single bit or byte @achlioptas2003, while $A$ and $C$ keep full precision. This is an asymmetric-precision matrix multiplication, which reduces cache traffic, as shown in the original analysis @notes-random-tiling @notes-asym-cost and in our experiments (@reproduce).
+Firstly, it can afford to have lower precision. An element of $B$ can be stored in a single bit or byte @achlioptas2003, while $A$ and $C$ keep full precision. This is an asymmetric-precision matrix multiplication, which reduces cache traffic, as shown by Bharadwaj and Demmel @notes-random-tiling @notes-asym-cost and in our experiments (@reproduce).
 
 Secondly, the matrix can have no storage at all. $B$ can be generated on the fly from a small seed by a pseudo-random number
 generator (PRNG), as the computation consumes it. $B$ then causes no memory traffic at all, only generation time. The only thing
@@ -127,9 +127,30 @@ we need to store are negligibly sized seeds.
 
 Either way, accessing $B$ costs much less than accessing $A$ and $C$, which is the asymmetric-access-cost that this project studies.
 
+== Hardware Background: Matrix Multiply Accelerators And PRNGs <sec-hw-background>
+
+Matrix multiplication dominates machine learning and much of scientific computing, so many processors add special hardware dedicated to
+it specifically. Google's TPU multiplies matrices on a $256 times 256$ systolic array of MAC units, fed from a large on-chip memory
+@jouppi2017tpu, and NVIDIA's tensor cores multiply small blocks of matrices in hardware @markidis2018tensor.
+
+These designs share a hierarchy that feeds a fast compute unit. A small block of each matrix sits in registers next to the MAC
+units, larger tiles sit in a cache or a scratchpad, and the full matrices sit in DRAM. The compute unit is so fast that
+performance is decided by moving data through this hierarchy, and a common way to describe a design is by which matrix stays in
+place while the others stream past its dataflow @chen2016eyeriss.
+
+A PRNG produces a long sequence of numbers that looks random from a short seed. Most classic generators keep a state and update it
+for every number. A linear feedback shift register (LFSR) shifts its state by one bit and feeds back an XOR of a few of its bits
+@golomb1967shift, which in hardware costs only a register and a few gates. Xorshift generators @marsaglia2003xorshift apply the
+same idea with shifts and XORs of whole words, and the Mersenne Twister @matsumoto1998mt keeps a much larger state for a longer
+period and better statistics. On FPGAs, generators built from shift registers and XORs produce a new number every cycle, with a
+quality comparable to good software generators @thomas2013lutsr. All of these produce their numbers in a fixed order, so the
+$i$-th number can only be reached by producing every number before it. Either kind of generator can sit next to the core and feed it it's $B$ matrix.
+A stateful generator fits a FIFO that the core reads in order, restarted from a seed for every tile. For the tiling, what matters is not which generator is used,
+but how many cycles it needs for each element of $B$, which we call the generation cost $g_c$.
+
 = Research Goals And Outline <sec-goals>
 
-Earlier analyses of a similar question to our project count the data moved between memory and the cache, and show that the best
+Earlier work on a similar question by Bharadwaj and Demmel counts the data moved between memory and the cache, and shows that the best
 tile is no longer square. Instead it stretches along the cheap matrix @notes-random-tiling @notes-asym-cost. With a hardware PRNG,
 however, $B$ costs time rather than traffic, and its generation runs in parallel with the work on $A$ and $C$. Our goal is to
 understand how this changes the way a matrix multiplication should be tiled, and to turn that understanding into something a
@@ -138,10 +159,10 @@ hardware and software engineer can use to their advantage.
 To get there, we:
 
 + Build a cycle-level simulator of a core with a cache hierarchy and a PRNG-FIFO.
-+ Check that it reproduces the results of the original analysis (@reproduce).
++ Check that it reproduces the previous results of Bharadwaj and Demmel (@reproduce).
 + Choose the dataflow that suits a PRNG-FIFO best (@sec-dataflow).
 + Find the best tile by simulation, and follow how its shape changes with the cost of generation (@sec-tile).
-+ Develop a simple model that explains these tiles and predicts the runtime of a tile when $B$ is created by FIFO generation,
++ Develop a simple model that explains these tiles and predicts the runtime of a tile when $B$ is generated by the PRNG-FIFO,
   and refine it until it matches the simulator (@sec-simple-model).
 + Answer practical design questions: which tile a software engineer should choose, and how a hardware engineer should balance the cache, the FIFO and the generator.
 
@@ -158,7 +179,7 @@ first appears.
     table.cell(colspan: 3)[_Matrices and tiles_],
     [$A, B, C$], [$C = A dot B$, where $B$ is the random matrix], [],
     [$M, K, N$], [$A$ is $M times K$, $B$ is $K times N$, $C$ is $M times N$], [$192 times 256 times 256$],
-    [MAC], [one multiply-accumulate; the whole product takes $M N K$ of them], [],
+    [MAC], [one multiply-accumulate, the whole product takes $M N K$ of them], [],
     [$T_M, T_N$], [tile height and width: a tile computes $T_M times T_N$ elements of $C$, over all of $K$], [elements],
     [row of tiles], [the tiles that share the same $T_M$ rows of $A$, computed one after the other along $N$], [],
     [$r$], [the height of a row of tiles: $T_M$, or $e$ for the short last row], [elements],
@@ -168,11 +189,11 @@ first appears.
     [$L_1, L_2$], [the first and second cache levels], [16 KB $L_1$, no $L_2$],
     [$E$], [elements in one cache line: line size divided by element size], [$64 slash 4 = 16$],
     [$L_"mem"$], [memory (DRAM) latency], [180 cycles],
-    [$g_c$], [generation cost: the time the PRNG takes to produce one element of $B$], [cycles per element],
-    [$c$], [the cost of one MAC], [0 cycles],
-    [$rho$], [in the reproduction of the paper only: the cost of bringing an element of $B$ into the cache, relative to one of $A$], [],
+    [$g_c$], [generation cost: the time the generator takes to produce one element of $B$], [cycles per element],
+    [$c$], [the cost of one MAC: the inverse of the compute unit's throughput], [cycles per MAC (default 0)],
+    [$rho$], [in the reproduction of the Bharadwaj model only: the cost of bringing an element of $B$ into the cache, relative to one of $A$], [],
     table.cell(colspan: 3)[_Model_],
-    [$T$], [runtime; $T slash (M N K)$ is the runtime per MAC], [cycles],
+    [$T$], [runtime, and $T slash (M N K)$ is the runtime per MAC], [cycles],
     [$alpha$], [memory cost: the runtime per MAC when generation is free ($g_c = 0$)], [cycles per MAC],
     [$overline(alpha)$], [the average $alpha$ over a row of tiles whose last tile is narrower], [cycles per MAC],
     [$alpha_"fits", alpha_"no fit"$], [the two levels of $alpha$: the strip of $A$ of a row of tiles stays in $L_1$ or not], [cycles per MAC],
@@ -181,54 +202,98 @@ first appears.
   caption: [The symbols used throughout the report.],
 ) <tab-notation>
 
-= Methodology
+= The Hardware System <sec-system>
 
-== `asymm_tiling` Simulator
-
-To evaluate matrix multiplication under asymmetric data access costs, we designed and implemented `asymm_tiling`, a modular, cycle-accurate architectural simulator written in C++20. The simulator models the execution of general matrix multiply operations across configurable multi-level cache hierarchies, comparing conventional DRAM-backed dataflows against hardware-accelerated on-the-fly streaming.
-
-@fig-system shows the system we simulate. $A$ and $C$ live in memory and reach the core through the cache hierarchy, while $B$ is
-never stored, instead a PRNG generator produces it from a seed, one element every $g_c$ cycles, into a FIFO from which the core pops
-one register block at a time.
+The system we study is a single core that computes $C = C + A dot B$ (@fig-system). $A$ and $C$ are ordinary data. They live in
+DRAM and reach the core through a cache hierarchy, an $L_1$ data cache and possibly an $L_2$. $B$ is never stored. A PRNG next to
+the core, the generator, produces it from a seed, one element every $g_c$ cycles, into a FIFO, and the core reads $B$ only from
+this FIFO.
 
 #let box-fill = rgb("#eef3fa")
 #let gen-fill = rgb("#fbf1e6")
 #let small(it) = text(size: 7.5pt, fill: rgb("#444444"), it)
+// a numbered step of the flow of a tile, as in the list below the figure
+#let step(n) = box(baseline: 25%, circle(radius: 4.2pt, stroke: 0.5pt, inset: 0pt,
+  align(center + horizon, text(size: 6pt, fill: black, str(n)))))
+#let ctrl = (dash: "dashed", thickness: 0.6pt)
 
 #figure(
   {
   set par(justify: false)
   set text(size: 9pt, hyphenate: false)
   diagram(
-    spacing: (8mm, 10mm),
+    spacing: (10mm, 12mm),
     node-stroke: 0.6pt,
     node-corner-radius: 3pt,
     node-inset: 6pt,
     edge-stroke: 0.7pt,
     // memory hierarchy: A and C live here, B never does
-    node((0, 0), [*DRAM* \ #small[$A$, $C$, seeds of $B$] \ #small[180 cycles]], name: <dram>, fill: box-fill, width: 27mm),
-    node((1, 0), [*$L_2$* \ #small[optional]], name: <l2>, fill: box-fill, stroke: (dash: "dashed", thickness: 0.6pt), width: 16mm),
-    node((2, 0), [*$L_1$ data cache* \ #small[16 KB, 64-byte lines] \ #small[LRU, write-back, 4 cycles]], name: <l1>, fill: box-fill, width: 36mm),
+    node((0, 0), [*DRAM* \ #small[$A$, $C$, seeds of $B$]], name: <dram>, fill: box-fill, width: 25mm),
+    node((1.2, 0), [*$L_2$* \ #small[optional]], name: <l2>, fill: box-fill, stroke: (dash: "dashed", thickness: 0.6pt), width: 16mm),
+    node((2.4, 0), [*$L_1$ data cache*], name: <l1>, fill: box-fill, width: 27mm),
     // the core
-    node((3.4, 0.5), [*Registers* \ #small[blocks of $A$, $B$, $C$] \ #small[$R_M times R_N$ each]], name: <regs>, fill: white, width: 29mm),
-    node((3.4, 1.5), [*MAC unit* \ #small[one block multiply:] \ #small[$R_M R_N R_K$ MACs]], name: <mac>, fill: white, width: 29mm),
-    node(enclose: (<regs>, <mac>), name: <core>, fill: box-fill, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
-    node((3.4, 2.15), small[*Core*], stroke: none, fill: none),
-    // B: generated on the fly, never stored
-    node((1, 1), [*PRNG generator* \ #small[one element of $B$] \ #small[every $g_c$ cycles]], name: <prng>, fill: gen-fill, width: 32mm),
-    node((2, 1), [*FIFO* \ #small[capacity in elements] \ #small[pop $R_M R_N$: 2 cycles]], name: <fifo>, fill: gen-fill, width: 36mm),
-    // data paths
+    node((4, 0), [*Load/store unit*], name: <lsu>, fill: white, width: 24mm),
+    node((4, 1.2), [*Register file* \ #small[blocks of $A$, $B$, $C$]], name: <regs>, fill: white, width: 28mm),
+    node((5.2, 1.2), [*MAC unit*], name: <mac>, fill: white, width: 16mm),
+    node(enclose: (<lsu>, <regs>, <mac>), name: <core>, fill: box-fill, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
+    node((5.2, 0), [*Core*], stroke: none, fill: none),
+    // the PRNG-FIFO: B is generated on the fly, never stored
+    node((1.2, 1.2), [*Generator* \ #small[one element of $B$] \ #small[every $g_c$ cycles]], name: <gen>, fill: gen-fill, width: 27mm),
+    node((2.4, 1.2), [*FIFO*], name: <fifo>, fill: gen-fill, width: 16mm),
+    node((1.2, 2.2), [*Seed register*], name: <seed>, fill: gen-fill, width: 27mm),
+    node(enclose: (<gen>, <fifo>, <seed>), name: <pf>, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
+    node((2.3, 2.2), [*PRNG-FIFO*], stroke: none, fill: none),
+    // data paths, numbered by the step of a tile that uses them
     edge(<dram>, <l2>, "<|-|>"),
     edge(<l2>, <l1>, "<|-|>"),
-    edge(<l1>, <regs>, "<|-|>", small[$A$, $C$], label-side: left),
-    edge(<prng>, <fifo>, "-|>", small[$B$]),
-    edge(<fifo>, <regs>, "-|>", small[$B$], label-side: right),
-    edge(<regs>, <mac>, "<|-|>"),
-    edge(<l1>, <prng>, "-|>", small[seed, once per tile], label-side: right, stroke: (dash: "dashed", thickness: 0.7pt)),
+    edge(<l1>, <lsu>, "<|-|>", [#step(1) #step(3) #step(5)], label-side: left, label-pos: 0.4),
+    edge(<lsu>, <regs>, "<|-|>"),
+    edge(<regs>, (4, 2.75), (1.2, 2.75), <seed>, "-|>", [#step(1) #small[seed]], label-side: left, label-pos: 0.45),
+    edge(<seed>, <gen>, "-|>"),
+    edge(<gen>, <fifo>, "-|>", small[$B$], label-side: left),
+    edge(<fifo>, <regs>, "-|>", [#step(2) #small[pop $B$]], label-side: right),
+    edge(<regs>, <mac>, "<|-|>", step(4), label-side: left),
+    // control signals
+    edge(<fifo>, <gen>, "-|>", small[full: pause], bend: -50deg, stroke: ctrl, label-side: right),
+    edge(<fifo>, <regs>, "-|>", small[empty: stall], bend: 40deg, stroke: ctrl, label-side: left),
   )
   },
-  caption: [The simulated system with its default parameters (@tab-params). $A$ and $C$ come from memory through the cache hierarchy; $B$ is generated on the fly into the FIFO, from a seed that is read once per tile.],
+  caption: [The hardware system we study. $A$ and $C$ come from memory through the cache hierarchy, and $B$ is generated on the fly into the FIFO, from a seed that is loaded once per tile. The numbers are the steps of a tile listed below, and the dashed arrows are control signals. The sizes and latencies we simulate are in @tab-params.],
 ) <fig-system>
+
+The core works on register blocks. It holds a block of each matrix in its registers, $R_M times R_K$ of $A$, $R_K times R_N$ of
+$B$ and $R_M times R_N$ of $C$, and its MAC unit multiplies the blocks of $A$ and $B$ and adds the result into the block of $C$,
+$R_M R_N R_K$ MACs in all.
+
+The computation is tiled. A tile computes $T_M times T_N$ elements of $C$ over the whole inner dimension $K$, and the tiles are
+computed one row of tiles at a time, from left to right. Inside a tile, the core keeps a block of $B$ in its registers and uses it
+for every row block of the tile before it moves on, which is the $B$-stationary dataflow (@sec-dataflow explains this choice). A
+tile runs as follows:
+
++ At the start of the tile, the core reads the tile's seed through the cache and loads it into the generator. The generator
+  restarts from this seed with an empty FIFO. The tiles below it use the same seed, so $B$ is generated again for every row of
+  tiles.
++ For every step of $R_K$ along $K$ and every column block of the tile, the core pops the next block of $B$ from the FIFO, which
+  takes 2 cycles. If the FIFO holds less than a block, the core waits until the generator has produced the rest.
++ For every row block of the tile, the core loads the block of $A$ and the block of $C$ from $L_1$. A row of a block that is in
+  $L_1$ takes 4 cycles, and one that misses also pays the latency of the next level, 180 more cycles when it comes from memory.
++ The MAC unit multiplies the blocks of $A$ and $B$ and adds the result into the block of $C$, at $c$ cycles per MAC, which is
+  free by default.
++ The core stores the block of $C$ back to $L_1$.
+
+The core is in order. It waits for every access to finish before it starts the next one, and the only thing that works in
+parallel with it is the generator, which keeps producing elements while the FIFO has room and pauses when it is full. Over the
+whole tile the runtime is therefore set by the slower of the two, the core's accesses to $A$ and $C$, or the generator producing
+$B$. The rest of this report studies this trade-off: which tile balances the two best, and how a hardware engineer should split
+the hardware between the generator, the FIFO and the cache.
+
+= Methodology
+
+== `asymm_tiling` Simulator
+
+To evaluate matrix multiplication under asymmetric data access costs, we designed and implemented `asymm_tiling`, a modular, cycle-accurate architectural simulator written in C++20. The simulator models the execution of general matrix multiply operations across configurable multi-level cache hierarchies, comparing conventional DRAM-backed dataflows against hardware-accelerated on-the-fly streaming.
+
+It simulates the system of @sec-system cycle by cycle, following the flow described there.
 
 === Architecture
 
@@ -298,30 +363,34 @@ Unless stated otherwise, every experiment uses the configuration in @tab-params,
     align: (left, left, left),
     table.header([*Parameter*], [*Value*], [*Reasoning*]),
     [Matrices $M times K times N$], [$192 times 256 times 256$], [This size allowed us to run thousands of experiments quickly, while also being large enough so that it won't fit in $L_1$.],
-    [Element size], [4 bytes for $A$, $B$ and $C$ ($B$ varies in the paper reproduction)], [FP32 / INT32 are the most commonly used types.],
+    [Element size], [4 bytes for $A$, $B$ and $C$ ($B$ varies in the reproduction of the Bharadwaj model)], [FP32 / INT32 are the most commonly used types.],
     [Register tile $R_M times R_N$], [$4 times 4$], [Modest and realistic choice],
     [$L_1$ cache], [16 KB, 64-byte lines, fully associative, LRU, write-back, write-allocate], [It's a common setup, in addition fully associative cache mimics a software-managed scratchpad.],
     [$L_1$ hit latency], [4 cycles], [Realistic $L_1$ latency],
     [$L_2$ cache], [none], [Easier to analyze results because of less degrees of freedom.],
     [Memory latency], [180 cycles], [Realistic DRAM latency],
-    [PRNG generation cost $g_c$], [swept, 0 to 600 cycles per element], [from a fast dedicated generator to a slow or shared one],
+    [Generation cost $g_c$], [swept, 0 to 600 cycles per element], [from a fast dedicated generator to a slow or shared one],
     [FIFO capacity], [16384 elements], [large enough not to limit the overlap],
     [FIFO access], [2 cycles per register block],[comparable to an $L_1$ access and should be fast],
-    [MAC cost], [0], [we assume negligible MAC cost],
+    [Compute unit], [free (MAC cost $c = 0$)], [we assume negligible MAC cost],
   ),
   caption: [Default simulation parameters.],
 ) <tab-params>
 
-= Experiments And Results
-== Reproducing The Original Paper <reproduce>
+In all the line plots of this report, every marker is a simulated point, and the line between two markers only connects them.
+Nothing between two markers was simulated. Lines without markers are either computed from a formula or mark a reference level,
+and their captions say which.
 
-Our project starts from an earlier analysis of tiling for multiplication by a random matrix @notes-random-tiling @notes-asym-cost.
-It asks how to tile $C = A dot B$ when $B$ is cheaper to access than $A$, for example because it is stored in a lower precision,
+= Experiments And Results
+== Previous Results By Bharadwaj And Demmel <reproduce>
+
+Our project starts from earlier, unpublished work by Bharadwaj and Demmel on tiling for multiplication by a random matrix
+@notes-random-tiling @notes-asym-cost. We call its model of the cost of a tile the Bharadwaj model. It asks how to tile $C = A dot B$ when $B$ is cheaper to access than $A$, for example because it is stored in a lower precision,
 and it measures the cost of a tile by its traffic. For every step of $K$, a tile of $C$ of $T_M times T_N$ elements needs $T_M$
 elements of $A$ and $T_N$ elements of $B$, while the tile of $C$ itself stays in the cache for the whole of the inner dimension
 $K$, and it does $T_M T_N$ MACs with them. When all elements cost the same, this traffic is smallest for a square tile. But when $B$ is cheaper, the best tile is no longer square.
 
-Before adding a generator, we check that our simulator reproduces the original analysis @notes-random-tiling @notes-asym-cost, where $B$ is still a stored matrix, only in a lower precision. There, an element of $B$ costs a fraction $rho$ of an element of $A$ to bring into the cache. With a tile of $C$ of $T_M times T_N$ elements, the traffic per MAC is $1 slash T_N$ for $A$ and $rho slash T_M$ for $B$, so for a fixed tile area the traffic is smallest when
+Before adding a generator, we check that our simulator reproduces the Bharadwaj model, where $B$ is still a stored matrix, only in a lower precision. There, an element of $B$ costs a fraction $rho$ of an element of $A$ to bring into the cache. With a tile of $C$ of $T_M times T_N$ elements, the traffic per MAC is $1 slash T_N$ for $A$ and $rho slash T_M$ for $B$, so for a fixed tile area the traffic is smallest when
 $ T_N / T_M = 1 / rho. $
 The cheaper $B$ is, the more the best tile stretches along it, and the more it saves compared with a square tile.
 
@@ -332,14 +401,14 @@ To reproduce this, $A$ and $C$ use 8 bytes per element and $B$ uses a varying 8,
   caption: [$L_1$ read traffic against the aspect ratio of the tile, for tiles of 512 (left) and 1024 (right) elements, relative to the lowest traffic of each line. The dashed lines are the theory, $1 slash T_N + rho slash T_M$.],
 ) <fig-paper>
 
-@fig-paper reproduces the main result of the paper. We can clearly see that as $B$ gets cheaper, the minimum moves to wider tiles
+@fig-paper reproduces the main result of the Bharadwaj model. We can clearly see that as $B$ gets cheaper, the minimum moves to wider tiles
 (larger $T_N$), from a square tile at $rho = 1$ to tiles 8 times wider at $rho = 1 slash 8$. The measured minimum is at $1 slash
 rho$ or one step away from it, where the values are almost equal. In addition the savings against the square tile are 18% and 36%
 at $rho = 1 slash 4$ and $1 slash 8$ respectively, very close to the predicted 20% and 37%.
 
 == $B$-Stationary Against $C$-Stationary <sec-dataflow>
 
-For the upcoming experiments, we want to decide on which data flow we should use when the FIFO is involved. The main reason being,
+For the upcoming experiments, we want to decide on which data flow we should use when $B$ comes from the PRNG-FIFO. The main reason being,
 that the two dataflows differ in how often they pop the queue to receive elements of $B$. The weight-stationary ($B$-stationary)
 dataflow pops $B$ once per row of tiles, so each element is reused by $T_M$ rows of matrix $A$, meaning one pop from the FIFO is amortized across $T_M$ rows. 
 
@@ -348,7 +417,7 @@ is popped again and again for every register block of $R_M$ rows, meaning it is 
 
 #figure(
   image("./figures/fig_dataflow.svg", width: 100%),
-  caption: [Runtime of the two dataflows against $g_c$ on the tile $64 times 32$. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
+  caption: [Runtime of the two dataflows against $g_c$ on the tile $64 times 32$, simulated at every integer $g_c$.],
 ) <fig-dataflow>
 
 From the figure we can learn a couple of things. *$C$-stationary is faster only when generation is almost free.* At $g_c <= 2$ it
@@ -370,7 +439,7 @@ the store for the end of the loop. This gives $C$-stationary a clear edge when $
 
 #figure(
   image("./figures/fig_dataflow_ratio.svg", width: 100%),
-  caption: [Runtime of $C$-stationary divided by the runtime of $B$-stationary against $g_c$, for $T_N = 32$ and six tile heights. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
+  caption: [Runtime of $C$-stationary divided by the runtime of $B$-stationary against $g_c$, for $T_N = 32$ and six tile heights, simulated at every integer $g_c$.],
 ) <fig-dataflow-ratio>
 
 @fig-dataflow-ratio repeats the comparison for six tile heights ($T_M = 4, 8, 16, 32, 64, 128$) at $T_N = 32$, for every integer $g_c$ from 0 to 100. It can be clearly seen that for each configuration, every line follows the same pattern:
@@ -381,7 +450,7 @@ the store for the end of the loop. This gives $C$-stationary a clear edge when $
   generated element in $B$-stationary than in $C$-stationary: $T_M slash R_M$.
 
 One last thing is, we can see that for a tile height of $T_M = 4$, the performance is the same for both dataflows for all $g_c$
-values seen in the figure. This makes sense because it's the same height as the register files, meaning the amoretization for
+values seen in the figure. This makes sense because it's the same height as the register files, meaning the amortization for
 $B$-stationary is the same as for $C$-stationary.
 
 === A more fair comparison
@@ -390,14 +459,14 @@ the same picture, $C$-stationary is faster only while $g_c <= 3$, and from there
 
 #figure(
   image("./figures/fig_dataflow_best.svg", width: 100%),
-  caption: [Runtime of each dataflow at its own best tile against $g_c$. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
+  caption: [Runtime of each dataflow at its own best tile against $g_c$.],
 ) <fig-dataflow-best>
 
 === Does this depend on the hardware?
 $C$-stationary pays $g_c slash R_M$ per MAC for generation, while $B$-stationary pays $g_c slash T_M$ or just the memory access
-time if the generation time is hidden by a large $T_m$. Lets call the $B$-stationary cost with free generation $T_B$. This means $C$-stationary stays faster only while: $ g_c < R_M dot T_B, $
+time if the generation time is hidden by a large $T_M$. Let's call the $B$-stationary cost with free generation $T_B$. This means $C$-stationary stays faster only while: $ g_c < R_M dot T_B, $
 For our $64 times 32$ tile, $T_B approx 1.15$ and
-$R_M = 4$, so the crossover is at $g_c approx 4.6$, matching the crossover in @fig-dataflow. To check that this holds on other hardware, we repeated the comparison with other register blocks and with a MAC cost of one cycle:
+$R_M = 4$, so the crossover is at $g_c approx 4.6$, matching the crossover in @fig-dataflow. To check that this holds on other hardware, we repeated the comparison with other register blocks and with a compute unit of one MAC per cycle:
 
 #align(center, table(
   columns: 3,
@@ -436,17 +505,17 @@ Finding these tiles took a simulation of every tile at every $g_c$. To explain t
 such a sweep, we need a model of the runtime, which the next section develops.
 
 == Developing our Mathematical Model
-=== Moving From The Paper's Model To Ours <sec-simple-model>
+=== Moving From The Bharadwaj Model To Ours <sec-simple-model>
 
-The paper's model @notes-random-tiling @notes-asym-cost counts traffic for matrix multiplication where both matrices require
+The Bharadwaj model counts traffic for matrix multiplication where both matrices require
 memory storage. Our $B$ is never moved nor stored, it is generated, so we have to turn this count into time. We do it in three steps.
 
 *1. Moving from traffic to performance in cycles:* In a real cache, the performance of $A$ and $C$ is not directly proportional to the traffic. It depends on hits, misses and whether the tile fits in $L_1$. Modeling all of that can prove to be quite difficult, therefore instead of doing that, we define it as $alpha(T_M, T_N)$. This replaces the $1 slash T_N$ term.
 
-*2. Moving From precision to generation cost for $B$:* $B$ lives in memory. With a PRNG, it completely bypasses memory. Instead it costs $g_c$ cycles to generate, and each generated element is reused by the $T_M$ rows of its tile (@sec-dataflow), so the $B$ term becomes $g_c slash T_M$.
+*2. Moving From precision to generation cost for $B$:* $B$ lives in memory. With the PRNG-FIFO, it completely bypasses memory. Instead it costs $g_c$ cycles to generate, and each generated element is reused by the $T_M$ rows of its tile (@sec-dataflow), so the $B$ term becomes $g_c slash T_M$.
 
-*3. Replacing the Sum with a Max:* The paper adds the two costs, because both are serial loads from memory. Our FIFO on the other
-hand, is asynchronous. The PRNG keeps generating in the background while the core works on $A$ and $C$. The two overlap, so only the slower one sets the runtime:
+*3. Replacing the Sum with a Max:* The Bharadwaj model adds the two costs, because both are serial loads from memory. Our PRNG-FIFO on the other
+hand, is asynchronous. The generator keeps generating in the background while the core works on $A$ and $C$. The two overlap, so only the slower one sets the runtime:
 
 $ T / (M N K) = max(alpha(T_M, T_N), g_c / T_M) $
 
@@ -483,11 +552,11 @@ convenient and it allows us to analyze and study the behaviour of $alpha(T_M, T_
   divide the matrix dimensions. Those tiles, include a residual tile that is smaller than the full one, causing *less* thrashing
   of the $L_1$ cache when the $C$ tile overflows. On the other hand, those tiles that *do divide* the matrix, have no residual
   tile, therefore reaching maximal thrashing.
-+ The narrow tiles have a "sawtooth" shape: small dips at some points. The reason is simillar to the previous point. After the
++ The narrow tiles have a "sawtooth" shape: small dips at some points. The reason is similar to the previous point. After the
   first step, these heights leave a very short residual row of tiles, short enough for its tile of $A$ to fit in $L_1$, so it is
   cheap and pulls the *average* $alpha$ down.
 
-=== Analyzing the Fromula with different $g_c$ values <sec-mem-vs-gen>
+=== Analyzing the Formula with different $g_c$ values <sec-mem-vs-gen>
 
 At the moment that generating $B$ costs time, the simple model predicts the runtime as the larger of two costs, which pull the tile height in opposite directions:
 
@@ -515,7 +584,7 @@ height of the matrix ($M = 192$), such as $T_M = 48$ and $64$. In addition, we c
 Here we try to refine the model to address the points that miss the model previously. For that, three refinements are needed, and a fourth adds $K$ to the model.
 
 *1. $B$ is generated once per row of tiles:* The flat steps come from how often $B$ is generated. The core finishes a whole row of
-tiles before moving down (a whole row tile of matirx A), and every row of tiles the entire matrix $B$. Meaning $B$ is generated
+tiles before moving down (a whole row tile of matrix A), and every row of tiles needs the entire matrix $B$. Meaning $B$ is generated
 once per row of tiles, or $ceil(M slash T_M)$ times total, giving it a cost per MAC of: $ g_c dot ceil(M slash T_M) / M. $
 
 Interestingly when $T_M$ divides $M$ this is exactly $g_c slash T_M$, which is why the measurements touched the simple curve only there.
@@ -536,9 +605,9 @@ large tiles, but its effect grows with the number of tiles.
 *3. The max is taken per row of tiles:* A few heights are still slower than both curves. The reason for this is the extra row that
 appears when the tile height does not divide the matrix height. Each row of tiles generates all of $B$, but the short residual row
 has a lot less memory work to hide behind (because its $T_M$ is smaller). This causes an effect such that the full rows wait for memory, the short row waits for
-generation, and since the rows run one after the other, these waits add up. The simple model affectively takes the max of the
+generation, and since the rows run one after the other, these waits add up. The simple model effectively takes the max of the
 averages because it doesn't really differentiate between the two. That lets the full row's spare memory time "hide" the short
-row's generation explaining why the models predictions predcit faster performance then the reality. The simple fix is to account
+row's generation explaining why the model's predictions predict faster performance than the reality. The simple fix is to account
 for this effect, and to take the max for each row of tiles and add the residual row separately:
 
 $ T / (M N K) = 1 / M (floor(M / T_M) dot max(T_M dot overline(alpha)(T_M, T_N) + s, g_c) + max(e dot overline(alpha)(e, T_N) + s, g_c)), $
@@ -546,10 +615,10 @@ $ T / (M N K) = 1 / M (floor(M / T_M) dot max(T_M dot overline(alpha)(T_M, T_N) 
 $ e = M mod T_M, quad s = (g_c dot R_M R_N dot ceil(N slash T_N)) / (K N) $
 
 The first term is the $floor(M slash T_M)$ full rows of tiles, and the second is the short last row of height $e$, which
-disappears when $T_M$ divides $M$. $overline(alpha)(r, T_N)$ is the $alpha$ of a row of tiles of height $r$ (below); when $T_N$ divides $N$ it is simply
+disappears when $T_M$ divides $M$. $overline(alpha)(r, T_N)$ is the $alpha$ of a row of tiles of height $r$ (below). When $T_N$ divides $N$ it is simply
 $alpha(r, T_N)$, measured for a tile of height $r$ and width $T_N$ in the same $g_c = 0$ runs.
 
-The same affect holds along the width. If $T_N$ does not divide $N$, every row of tiles ends with a narrower tile of width
+The same effect holds along the width. If $T_N$ does not divide $N$, every row of tiles ends with a narrower tile of width
 $e_N = N mod T_N$, which has its own $alpha$, so $overline(alpha)$ is the average over the row, weighted by width:
 $ overline(alpha)(r, T_N) = (floor(N slash T_N) dot T_N dot alpha(r, T_N) + e_N dot alpha(r, e_N)) / N. $
 
@@ -570,15 +639,15 @@ startup added to the memory cost.
 ) <fig-model-refined>
 
 *4. $K$ and the strip of $A$:* So far $alpha$ was measured on one matrix with the same $M N K$ dimensions. $M$ and $N$ are already
-part of the model, but $K$ isn't, with this refinement we aim to also introduce $K$ into to model. A different $K$ changes $alpha$
-in one way, it changes the the max height of the tile at which a strip of $A$ can stay in cache. The strip of $A$ that a row of
+part of the model, but $K$ isn't, with this refinement we aim to also introduce $K$ into the model. A different $K$ changes $alpha$
+in one way, it changes the max height of the tile at which a strip of $A$ can stay in cache. The strip of $A$ that a row of
 tiles needs is $T_M times K$ elements, so $K$ decides whether it stays in $L_1$ from one tile to the next in the GEMM operation.
 @fig-kmodel-alpha shows this, for every $K$, $alpha$ takes the same two levels, and only the height at which it jumps
 from one to the other moves.
 
 #figure(
   image("./figures/sw_kmodel_alpha.svg", width: 100%),
-  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$, $192 times K times 256$) for four values of $K$, with the first cliff predicted for each $K$ (dotted). For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
+  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$, $192 times K times 256$) for four values of $K$, with the first cliff predicted for each $K$ (dotted).],
 ) <fig-kmodel-alpha>
 
 Because of the operation structure of the $B$-stationary dataflow, the strip of $A$ stays in $L_1$ while it fits next to the tile
@@ -591,7 +660,7 @@ $A$. $r$ rows of $K$ elements, $ceil(K slash E)$ lines each. The term $2 ceil(T_
 of $ceil(T_N slash E)$ lines. There are two because a line of $A$ is used at some step of one tile, and again at the same step of
 the next tile. In between, the core touches the rest of the strip of $A$, *all* of the current tile of $C$, and *all*
 of the next tile of $C$. LRU keeps the line of $A$ only if all of this fits in $L_1$. The dotted lines in @fig-kmodel-alpha are
-exactly this prediction. This creates two levels, a level in which the $A$ strip still fits, and one in which it doesn't, and this refinment takes this distinction into account.
+exactly this prediction. This creates two levels, a level in which the $A$ strip still fits, and one in which it doesn't, and this refinement takes this distinction into account.
 
 This is not all though, within each of these two levels, $alpha$ still drifts a little with $K$ because of $C$ itself. Every
 element of $C$ is loaded from memory once, a line for every $E$ elements, and that cost is shared by the $K$ MACs of the element.
@@ -607,11 +676,11 @@ $ alpha(r, T_N, K) & = cases(
 with $Delta = r dot (ceil(K slash E) + 2 ceil(T_N slash E)) - |L_(1 "lines")|$, and $H(Delta) = 1$ if $Delta >= 0$ and $0$
 otherwise.
 
-$alpha_"fits"$ and $alpha_"no fit"$ are the celibrated $alpha$'s of the two different levels, each has a table of it's own,
+$alpha_"fits"$ and $alpha_"no fit"$ are the calibrated $alpha$'s of the two different levels, each has a table of its own,
 generated at $g_c = 0$, meaning we need a total of two calibrations. $alpha_"fits"$ is calibrated on a matrix with a small enough
 $K$, where the $A$ strip fits in with the $C$ tile, and $alpha_"no fit"$ is calibrated on a matrix with a large $K$ where it
 doesn't fit. Each calibration table computation needs to also subtract its own $L_"mem" slash (E K)$. This $alpha$ is what the
-formula of refinement 3 uses. This allows for accurate performace predictions for matrices of any size with $K$ values even
+formula of refinement 3 uses. This allows for accurate performance predictions for matrices of any size with $K$ values even
 outside the range of the $K$ used for creating the table.
 
 == Software Focused Design Questions <sec-sw>
@@ -667,12 +736,12 @@ $M$, $N$ and $K$ in the model (refinements 3 and 4 of @sec-refine), two calibrat
 
 Before this can work, there is one condition. Every row of $C$ has to start at the beginning of a cache line, which means
 that the length of a row, $N$, has to be a multiple of the number of elements in one cache line in the configuration that is used.
-Let's assume that it does not, then a row of a tile of $C$ will start in the middle of a line and therefore touche one more line
+Let's assume that it does not, then a row of a tile of $C$ will start in the middle of a line and therefore touch one more line
 than it actually needs. The tile then takes more of the cache, and starts to thrash at a smaller height. @fig-sw-alignment shows three matrices that differ only in $N$: with $N = 300$, which is 18.75 lines per row, $alpha$ starts to climb at $T_M approx 80$ instead of 128.
 
 #figure(
   image("./figures/sw_alignment.svg", width: 100%),
-  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for $200 times 200 times N$ with $N = 288$, 300 and 304. The lines of 288 and 304, whole numbers of cache lines per row, coincide. Above $T_M = 128$ all three thrash completely. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
+  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for $200 times 200 times N$ with $N = 288$, 300 and 304. The lines of 288 and 304, whole numbers of cache lines per row, coincide. Above $T_M = 128$ all three thrash completely.],
 ) <fig-sw-alignment>
 
 No calibration can predict this, because the model doesn't take this effect into account. The fix is the same as in @sec-hw-assoc,
@@ -687,7 +756,7 @@ of them.
 
 #figure(
   image("./figures/sw_kmodel.svg", width: 100%),
-  caption: [How close the chosen tile is to the best tile, over 130 matrices and six values of $g_c$ (780 cases): the share of the cases within 1%, between 1% and 5%, and more than 5% slower, and the worst case. "K model" uses the two calibrations and refinement 4; "own table" calibrates every matrix itself; "one table" uses the calibration of $192 times 256 times 256$ for all.],
+  caption: [How close the chosen tile is to the best tile, over 130 matrices and six values of $g_c$ (780 cases): the share of the cases within 1%, between 1% and 5%, and more than 5% slower, and the worst case. "K model" uses the two calibrations and refinement 4, "own table" calibrates every matrix itself, and "one table" uses the calibration of $192 times 256 times 256$ for all.],
 ) <fig-sw-kmodel>
 
 With $K$ in the model, the two calibrations choose a tile within 1% of the best one in 96% of the cases, and within 5% in all but
@@ -714,13 +783,13 @@ that is a lot of runs, so we want to check if a smaller set of candidates can do
 
 @fig-sw-autotune shows that most of the gain comes cheaply. Not tuning at all can be six times slower than the best tile, and square tiles alone can be twice as slow. But a few dozen well-chosen candidates, such as heights that divide $M$ with power-of-two widths, already come within about 10% of the best tile, and usually find it exactly. The full grid only polishes the last few percent. The candidates should include tall and narrow tiles, which a set of square tiles misses entirely.
 
-Our suggestion is to always tune, but start small. Calibrate the heights that divide $M$ with power-of-two widths first. for our
+Our suggestion is to always tune, but start small. Calibrate the heights that divide $M$ with power-of-two widths first. For our
 runs the tile it picks is within about 10% of the best at every $g_c$, and within 1% at most of them. If the last few percent
 matter, add every width for the same heights. And only when even the last few tenths of a percent matter the full grid calibration needs to be done.
 
 === Does The Choice Of Tile Matter? <sec-sw-choice>
 
-Finally, we wanted to check how much does the choice actaully matter. Is using the best tile shape actually better than just using
+Finally, we wanted to check how much does the choice actually matter. Is using the best tile shape actually better than just using
 the convenient square? We found out that it depends. That sometimes it's significantly better and sometimes it's just as good, but
 it's *never* worse. And the following figure shows it.
 
@@ -757,9 +826,9 @@ So far the hardware was fixed. A hardware engineer designing such a system has t
 generator must be, how large the cache and the FIFO should be, and so on. We answer each question the same way: for every
 configuration and every $g_c$, we simulate all the tiles and keep the fastest one, comparing configurations by their best tile.
 
-=== How Fast Must The PRNG Be? <sec-hw-prng>
+=== How Fast Must The Generator Be? <sec-hw-prng>
 
-A faster PRNG costs area and power, so the engineer wants the slowest generator that does not slow the computation down. To find it, we take the best runtime at every $g_c$ and divide it by the best runtime with free generation ($g_c = 0$): this is the slowdown caused by the generator. We repeat this for four $L_1$ sizes, 8 to 64 KB, with the default configuration otherwise (@tab-params).
+A faster generator costs area and power, so the engineer wants the slowest generator that does not slow the computation down. To find it, we take the best runtime at every $g_c$ and divide it by the best runtime with free generation ($g_c = 0$): this is the slowdown caused by the generator. We repeat this for four $L_1$ sizes, 8 to 64 KB, with the default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/hw_prng_budget.svg", width: 100%),
@@ -768,7 +837,7 @@ A faster PRNG costs area and power, so the engineer wants the slowest generator 
 
 @fig-hw-prng shows that all lines start at the same place, that makes sense, at those low $g_c$ values the generator is just fast
 enough. At some $g_c$ the line starts climbing in steps, and a clear pattern can be seen, the bigger the cache, the longer it
-takes for generation to be the limiting factor.
+takes for generation to be the limiting factor. The $g_c$ at which a line starts to climb roughly doubles with every
 doubling of $L_1$.
 
 A bigger cache allows the use of bigger tiles while also allowing for no thrashing of the cache. A taller tile (bigger $T_M$)
@@ -782,7 +851,7 @@ $alpha$ cycles per MAC. So the generator is free up to: $ g_c approx T_M dot alp
 where $T_M$ is the tallest tile whose tile of $A$ still fits in $L_1$, and $alpha$ is the runtime per MAC with free generation.
 This explains the doubling. A cache twice as large fits a tile of $A$ that is twice as tall. 
 
-Lets look at a numerical example, in our default setup, $T_M = 12$ and $alpha approx 0.85$, so $g_c approx 10$, and for 8, 32 and 64 KB the rule gives about 3.5, 20 and 40, those are exactly the points in which lines of @fig-hw-prng start to climb.
+Let's look at a numerical example, in our default setup, $T_M = 12$ and $alpha approx 0.85$, so $g_c approx 10$, and for 8, 32 and 64 KB the rule gives about 3.5, 20 and 40, those are exactly the points in which lines of @fig-hw-prng start to climb.
 
 Our suggestion, measure $alpha$ once with free generation, find the tallest tile whose tile of $A$ fits in $L_1$, and choose the
 slowest generator with $g_c$ below $T_M dot alpha$. A generator slower than that is not catastrophic, *up to* about twice this $g_c$
@@ -813,14 +882,14 @@ cache miss, and lets the core catch up when it runs on hits. So the size it need
 are, and how many elements it takes at once. We repeated the same experiment with one change at a time:
 
 - A faster and a slower memory.
-- A MAC cost of a quarter of a cycle and of one cycle, with $16 times 16$ blocks.
+- A compute unit of 4 MACs and of one MAC per cycle, with $16 times 16$ blocks.
 - Register blocks from $2 times 2$ to $16 times 16$.
 
 For each, @fig-fifo-configs shows the worst slowdown over all $g_c$ against the size of the FIFO.
 
 #figure(
   image("./figures/hw_fifo_configs.svg", width: 100%),
-  caption: [The worst slowdown over $g_c = 5, 10, 20, 60, 200$ caused by a FIFO of a given size, compared with an unlimited FIFO, changing one parameter of the default configuration at a time: the register block (left), the memory latency (middle), and the MAC cost per MAC with $16 times 16$ blocks (right).],
+  caption: [The worst slowdown over $g_c = 5, 10, 20, 60, 200$ caused by a FIFO of a given size, compared with an unlimited FIFO, changing one parameter of the default configuration at a time: the register block (left), the memory latency (middle), and the throughput of the compute unit with $16 times 16$ blocks (right).],
 ) <fig-fifo-configs>
 
 The register block matters most by far. Every pop takes a whole register block of $R_M R_N$ size elements at once. With $2 times
@@ -830,20 +899,20 @@ relatively large 4 KB capacity.
 The memory latency is next in importance. The outcome it gives seems backwards, a slower memory makes the core slower, that goes
 against intuition, because it should give the generator more time. The extra latency hardly changes $alpha$, but every miss now
 stalls it twice as long, while between the misses, the hits run almost as fast as with the lower memory latency. During a stall
-the generator keeps working, and on a miss, everything it produces has waits in the queue. Right after the miss, the core runs
-much faster than the generator again, and quickly uses it up and stalling. Therefore A longer stall means we need more space to store more
-data, so the FIFO needs to grow roughly in proportion to the latency. about 128 elements with 90 cycles, 256 with
+the generator keeps working, and on a miss, everything it produces waits in the queue. Right after the miss, the core runs
+much faster than the generator again, and quickly uses it up and stalling. Therefore a longer stall means we need more space to store more
+data, so the FIFO needs to grow roughly in proportion to the latency. About 128 elements with 90 cycles, 256 with
 180, and 512 to 1024 with 360.
 
 Large blocks make the core fast, and there the speed of the compute unit matters.
 A slower compute unit needs a smaller FIFO. The time spent on arithmetic slows the pace at which the core takes elements from the
-FIFO, so it runs ahead of the generator less. With one cycle per MAC, 1 KB is enough even for $16 times 16$ blocks.
-What the FIFO has to cover is therefore not the register block alone, but how fast the core consumes $B$. large register blocks with fast arithmetic need the largest FIFO.
+FIFO, so it runs ahead of the generator less. With one MAC per cycle, 1 KB is enough even for $16 times 16$ blocks.
+What the FIFO has to cover is therefore not the register block alone, but how fast the core consumes $B$. Large register blocks with fast arithmetic need the largest FIFO.
 
-Our suggestion, size the FIFO by how fast the core is. With a slow compute unit, about one cycle per MAC, 1 KB is enough for any
+Our suggestion, size the FIFO by how fast the core is. With a slow compute unit, about one MAC per cycle, 1 KB is enough for any
 register block. With a fast one, the FIFO has to grow with the register block. About 1 KB for our $4 times 4$ blocks, 2 KB for $8
 times 8$ blocks, and more than 16 KB for $16 times 16$ blocks. The FIFO also grows roughly in proportion to the memory latency.
-Twice the latency needs about twice the FIFO. A larger FIFO that that gains almost nothing, and as the next section shows, it can
+Twice the latency needs about twice the FIFO. A larger FIFO than that gains almost nothing, and as the next section shows, it can
 even reduce performance because of the memory it takes away from the cache.
 
 === Should I use a bigger cache or a bigger FIFO? <sec-hw-split>
@@ -851,7 +920,7 @@ When we have a certain SRAM budget, we need to decide how much should go to the 
 
 #figure(
   image("./figures/hw_sram_split.svg", width: 100%),
-  caption: [Best runtime when a fixed on-chip budget is split between the FIFO and the $L_1$ cache, one line per $g_c$. The horizontal axis is the FIFO's share of the budget, stretched at both ends; the cache gets the rest. Both axes are logarithmic.],
+  caption: [Best runtime when a fixed on-chip budget is split between the FIFO and the $L_1$ cache, one line per $g_c$. The horizontal axis is the FIFO's share of the budget, stretched at both ends, and the cache gets the rest. Both axes are logarithmic.],
 ) <fig-hw-split>
 
 @fig-hw-split shows that with a FIFO that is too small, the generator cannot work ahead, and the computation slows down. But a
@@ -868,17 +937,17 @@ allocation. We wanted to test how much performance we need to pay if we decide t
 
 #figure(
   image("./figures/hw_assoc_unpadded.svg", width: 100%),
-  caption: [Extra time of the best tile on a 4-, 8-, 16- and 32-way $L_1$ over the best tile on a fully associative $L_1$ (16 KB, our $192 times 256 times 256$ matrix). The 4-, 8- and 16-way lines coincide.],
+  caption: [Extra time of the best tile on a 4-, 8-, 16- and 32-way $L_1$ over the best tile on a fully associative $L_1$ (16 KB, our $192 times 256 times 256$ matrix). The 4-, 8- and 16-way lines coincide, so their markers are drawn one around the other.],
 ) <fig-hw-assoc>
 
 @fig-hw-assoc shows that the price of going set-associative is very high. As long as generation is not almost free, the
 performance becomes two to six times worse with a set-associative cache. Adding ways barely helps: the 4-, 8- and 16-way caches
 give exactly the same results, and only the 32-way cache does better but in a negligible amount.
 
-A set-associative cache decides where a line goes by its address. line number $l$ can only go to set $l(mod S)$, where $S$ is the
+A set-associative cache decides where a line goes by its address. Line number $l$ can only go to set $l(mod S)$, where $S$ is the
 number of sets, and each set holds only a few lines. Along a row, consecutive lines go to consecutive sets, $0, 1, 2, dots$. But a
 tile does not strictly walk along a row. For our setup, at every step of the inner loop, the core needs the *same* column from
-every row of the tile. In out case a row is 256 elements of 4 bytes, meaning 16 cache lines, so going down by one row down adds 16
+every row of the tile. In our case a row is 256 elements of 4 bytes, meaning 16 cache lines, so going down by one row adds 16
 to the line number, we can see the effect in the table below:
 
 #align(center, table(
@@ -894,8 +963,8 @@ rows, so any tile taller than that thrashes the cache, even though there's still
 
 Fortunately, there's a fix. The problem is not the cache, but the fact that the length of a row and the number of sets are both
 powers of two. Therefore if we can just pad the matrix with a few extra elements to every row, it will change how far apart the
-rows are, without affectively changing the matrix. Specifically if we make the matrix hold rows with an *odd* number of cache
-lines, that will allow the rows spread over all the sets. For example, with rows of 272 elements, 17 lines, the rows start at sets $0, 17, 2, 19, 4, dots$, and only repeat after all 32 sets have been used. In addition, the padding does not have to be read, so it only costs a little extra memory.
+rows are, without effectively changing the matrix. Specifically if we make the matrix hold rows with an *odd* number of cache
+lines, that will allow the rows to spread over all the sets. For example, with rows of 272 elements, 17 lines, the rows start at sets $0, 17, 2, 19, 4, dots$, and only repeat after all 32 sets have been used. In addition, the padding does not have to be read, so it only costs a little extra memory.
 
 #figure(
   image("./figures/hw_assoc_padded.svg", width: 100%),
@@ -910,7 +979,7 @@ lines.
 
 The small peak of the 17-line rows around $g_c = 15$ to $20$ comes from the best tile there, $24 times 128$. It nearly fills the
 cache, and padding spreads its rows well but not perfectly evenly, so one set has to hold 9 lines instead of the max of 8 for that
-set. Our simulator missed a better option of because it is not part of our grid of tile size options.
+set. Our simulator missed a better option because it is not part of our grid of tile size options.
 
 Our suggestion, a fully associative cache or a scratchpad mostly protects against unpadded data, and making a set-associative
 cache more associative or replacing it with a scratchpad is an expensive fix. Padding is nearly free. We therefore suggest an ordinary 8-way or even 4-way cache, together with software that pads the rows of its matrices to an odd number of cache lines.
@@ -921,18 +990,29 @@ So far the cache always evicted the least recently used line (LRU). In our case 
 we will use in the future, causing the misses that cause the first cliff we see in the $alpha$ analysis. Our thought was, a random
 replacement policy will not do that to the same extent. Instead it evicts a random line, so part of the loop can survive by
 chance, and the hit rate should fall gradually instead of collapsing. Random replacement could therefore make tall tiles usable past
-a the cliff, just where hiding a slow generator needs those tall tiles most. To check, we compare LRU and random replacement on the default 16 KB fully associative $L_1$, with the default configuration otherwise (@tab-params).
+the cliff, just where hiding a slow generator needs those tall tiles most. To check, we compare LRU and random replacement on the default 16 KB fully associative $L_1$, with the default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/hw_policy_alpha.svg", width: 100%),
-  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for two replacement policies of a 16 KB fully associative $L_1$, on a taller $384 times 256 times 256$ matrix so that the tiles can grow past $T_M = 200$. The vertical axis is logarithmic. For clarity, markers are drawn on only some of the simulated points; the lines pass through all of them.],
+  caption: [The memory cost $alpha$ against $T_M$ ($T_N = 16$) for two replacement policies of a 16 KB fully associative $L_1$, on a taller $384 times 256 times 256$ matrix so that the tiles can grow past $T_M = 200$. The vertical axis is logarithmic.],
 ) <fig-hw-policy-alpha>
 
 @fig-hw-policy-alpha shows that random replacement does exactly that, it smooths out the cliffs, in addition, just past a cliff it
-is cheaper than LRU, this can be seen at the just past the first cliff in the figure. At $T_M = 16$ the strip of $A$ just
-misses fitting in $L_1$, LRU loses all of it, while random keeps most of it. Interestingly above $T_M = 128$ the same phanomenon
-happends but Random Replacement keeps winning past the cliff as well, showing that when trashing is inevitable, random replacement
+is cheaper than LRU, this can be seen just past the first cliff in the figure. At $T_M = 16$ the strip of $A$ just
+misses fitting in $L_1$, LRU loses all of it, while random keeps most of it. Interestingly above $T_M = 128$ the same phenomenon
+happens but Random Replacement keeps winning past the cliff as well, showing that when thrashing is inevitable, random replacement
 might just be a better choice. Everywhere else though, as intuition would hold, random is more expensive, because it sometimes evicts a line that is still needed, where LRU keeps everything.
+
+Why does random keep its advantage for so long past the second cliff? Past $T_M = 128$, every step along $K$ walks over the
+same lines of $A$ and $C$ in the same order, and there are more of them than $L_1$ can hold. LRU always evicts the line that was
+used longest ago, which in a loop is exactly the line that is needed next. So as soon as the loop is even slightly too long, LRU
+misses on every access. Random replacement has no such bad luck. It evicts lines by chance, so many lines survive until the loop
+comes back to them. The longer the loop, the more misses happen before a line is needed again, and the smaller its chance to
+survive, but this chance shrinks slowly. With a loop one and a half times the size of the cache, almost half of the accesses still
+hit, and only with a loop about three times the cache, at $T_M = 384$, does almost every access miss, which is where the two curves
+finally meet. The flat stretch from $T_M = 192$ to 252 is caused by the short last row of @sec-refine, there the matrix has a taller row of
+tiles and a shorter one, both past the cliff, and their average hardly changes. At $T_M = 260$ the short row fits again, which is
+also why LRU drops there.
 
 Whether random replacement is worth it therefore depends on whether the best tile is past a cliff. @fig-hw-policy-slow compares
 the best tile over all tiles with each policy, from fast to extremely slow generators ($g_c$ from 5 to 6400), on the default
@@ -952,7 +1032,7 @@ We can see that it splits to three ranges:
 + From $g_c = 1400$ to 4000, random is faster, by up to 37% at $g_c = 2400$. Here even the 96 tall tile waits too long for
   generation, and the only way to generate $B$ fewer times is a tile as tall as the matrix, $T_M = M = 192$. That tile is past the
   second cliff, but the random policy manages to keep some of the needed memory cached while the LRU policy always gets rid of it
-  and threshes. Only once generation is slow enough to hide even that effect, from $g_c approx 4800$, both policies are the same again.
+  and thrashes. Only once generation is slow enough to hide even that effect, from $g_c approx 4800$, both policies are the same again.
 
 So random only wins when the generator is extremely slow, here about 1400 to 4000 cycles per element, far slower than in the rest
 of our experiments. The range moves with the size of the matrix and of the cache, but the reason stays the same, random can only
@@ -964,18 +1044,18 @@ and for any realistic generator random replacement costs up to 28% more cycles. 
 === How Fast Must The Compute Unit Be? <sec-hw-mac>
 
 The last part of the hardware is the compute unit that does the MACs. A fast compute unit costs area and power, so how fast
-does it really need to be? To check, we give every register block multiply ($R_M R_N$ elements over $R_M$ steps of $K$, 64 MACs)
-a cost, from $1 slash 16$ of a cycle per MAC, roughly a 16-wide vector unit, up to one cycle per MAC, roughly a scalar core. At
-every $g_c$ we compare the best runtime with the best runtime of a free MAC, with the default configuration otherwise
-(@tab-params).
+does it really need to be? To check, we give the compute unit a throughput, from 16 MACs per cycle, roughly a 16-wide vector
+unit, down to one MAC per cycle, roughly a scalar core. A register block multiply ($R_M R_N$ elements over $R_K$ steps of $K$, 64
+MACs) then takes from 4 to 64 cycles. At every $g_c$ we compare the best runtime with the best runtime of a free MAC, with the
+default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/hw_compute_speed.svg", width: 100%),
-  caption: [Slowdown caused by the compute unit: the best runtime with a MAC cost divided by the best runtime with a free MAC, for three costs of a MAC.],
+  caption: [Slowdown caused by the compute unit: the best runtime with a compute unit of the given throughput divided by the best runtime with a free MAC.],
 ) <fig-hw-mac>
 
 When generation is cheap, every cycle counts. At a small $g_c$, the core does its arithmetic right after the memory access, and
-since there is no wait for generation to hide it in, the cost of a MAC is simply added to the memory cost. A scalar unit can make the computation more than twice as slow, and even a quarter of a cycle per MAC costs almost 30% more.
+since there is no wait for generation to hide it in, the cost of a MAC is simply added to the memory cost. A scalar unit can make the computation more than twice as slow, and even 4 MACs per cycle cost almost 30% more.
 
 On the other hand when generation is expensive, a slow compute unit has almost no effect. The generator keeps working in the
 background while the core computes, so the time spent on arithmetic fills time in which the core would otherwise stall anyway. As long as memory plus arithmetic still take less time than generation, the arithmetic is hidden completely.
@@ -985,7 +1065,9 @@ area and power with a slower compute unit, almost for free, so in that case no n
 around also holds. If you have a fast generator it must also come with a fast compute unit, or the performance would suffer immensely.
 
 We can also predict how much slower the model will run, the model of @sec-refine provides the answer to this. The core does its
-memory accesses and its arithmetic one after the other, so a MAC cost $c$ is simply added to the memory cost. Every tile now costs $alpha + c$ per MAC instead of $alpha$, and the rest of the model stays the same. With this one change, the model predicts the best runtime of every MAC cost and $g_c$ we simulated within 0.3%, and picks the best tile every time. For a single tile, the arithmetic is free as long as
+memory accesses and its arithmetic one after the other. In the model we describe the compute unit by the inverse of its
+throughput, the cost of a MAC $c$ in cycles per MAC, so 16 MACs per cycle is $c = 1 slash 16$. Every other term of the model is
+already in cycles per MAC, so $c$ is simply added to the memory cost. Every tile now costs $alpha + c$ per MAC instead of $alpha$, and the rest of the model stays the same. With this one change, the model predicts the best runtime of every MAC cost and $g_c$ we simulated within 0.3%, and picks the best tile every time. For a single tile, the arithmetic is free as long as
 $ alpha + c <= g_c dot ceil(M slash T_M) / M, $
 
 that is, as long as memory and arithmetic together still take less time than generation. So the engineer can calibrate $alpha$ once with a free MAC, and then evaluate any compute unit by adding its cost per MAC to the table and letting the model of @sec-test-model choose again.
@@ -997,12 +1079,12 @@ that is, as long as memory and arithmetic together still take less time than gen
 === Configuration
 
 Our simulator charges every cache miss in full before the next access can start, while the generator keeps working in the
-background. This favors the FIFO. On real hardware several misses are in flight at once and a prefetcher fetches ahead, so reading
-$B$ from memory costs less than our simulator says. To see how much of the FIFO's advantage is left on more realistic hardware, we
+background. This favors the PRNG-FIFO. On real hardware several misses are in flight at once and a prefetcher fetches ahead, so reading
+$B$ from memory costs less than our simulator says. To see how much of the PRNG-FIFO's advantage is left on more realistic hardware, we
 repeated the main experiment in gem5 @lowepower2020gem5.
 
 We modeled the system on the C7x DSP core of TI's J722S (the C7524), taking its clock and cache sizes @ti-j722s-sdk and its 256-bit
-vectors @ti-spruiv4. gem5 has no C7x model, so the core is an in-order Arm core with SVE vectors of the same width. The FIFO is a
+vectors @ti-spruiv4. gem5 has no C7x model, so the core is an in-order Arm core with SVE vectors of the same width. The PRNG-FIFO is a
 new gem5 component that sits between the core and the $L_1$ data cache. Reads inside its address window are answered by the
 generator, and all other accesses pass through to the cache.
 
@@ -1062,7 +1144,7 @@ and the rows spread over all the sets. We ran every tile with and without paddin
 
 ==== Seeded and counter FIFO <sec-gem5-fifo>
 
-The seeded FIFO is the FIFO of our simulator. Before each tile the kernel writes the tile's seed to the FIFO, which empties it and
+The seeded FIFO is the PRNG-FIFO of our simulator. Before each tile the kernel writes the tile's seed to the FIFO, which empties it and
 restarts the generator from that seed. The tile then reads $B$ in order from the start of the FIFO's window.
 
 The counter FIFO has no seed. Each element of $B$ is computed from its own index, so the kernel reads $B$ at its address in a fixed
@@ -1121,7 +1203,7 @@ they would be expensive.
 Across all the experiments, the runtime of a tile comes down to two costs that pull its height in opposite directions. Memory
 wants the tile of $A$ to stay in $L_1$, which keeps $T_M$ small, and generation wants every element of $B$ to be shared by as
 many rows as possible, which pushes $T_M$ up. Which of the two wins depends on $g_c$, and this gives three regimes. When
-generation is cheap, the tile is memory bound and the best tile is short and wide, as in the original analysis. As $g_c$ grows,
+generation is cheap, the tile is memory bound and the best tile is short and wide, as in the Bharadwaj model. As $g_c$ grows,
 the tile gets taller to keep generation hidden, and narrower so that it still fits in $L_1$. When generation is so slow that no
 tile can hide it, only the number of rows of tiles matters, and the best tile is as tall as the matrix allows.
 
@@ -1136,12 +1218,12 @@ cache. Associativity and the replacement policy matter mostly for tiles past a c
 and the compute unit only has to keep up with the generator.
 
 The gem5 runs (@sec-gem5) show how much of this carries over to a more realistic core. There, misses overlap and a prefetcher
-fetches ahead, so with a free generator $B$ from memory is almost free, and the FIFO gains only a few percent once the prefetcher
+fetches ahead, so with a free generator $B$ from memory is almost free, and the PRNG-FIFO gains only a few percent once the prefetcher
 is on. The capacity cliffs and the need for padding show up in gem5 too, at the sizes of its own caches. gem5 also shows a cost
 that our simulator has no notion of, a core that speculates can read from the FIFO on a wrong path, and with a slow generator
 those reads cost generation time.
 
-Our results have some limits. Our simulator charges every miss in full and has no prefetcher, which favors the FIFO. Most of the
+Our results have some limits. Our simulator charges every miss in full and has no prefetcher, which favors the PRNG-FIFO. Most of the
 figures use one matrix and one cache size, so the exact thresholds move with them, even though the reasons behind them don't.
 The model has to be calibrated again for every new hardware. And the gem5 runs use only a free generator, so the trade-off between
 memory and generation, which is the center of this report, is still untested on a realistic core. Running gem5 with a slow
@@ -1149,13 +1231,21 @@ generator, and a FIFO that only advances on reads that commit, are the natural n
 
 = Conclusion
 
-We built a cycle-level simulator of a core with a cache hierarchy and a PRNG-FIFO, and checked that it reproduces the original
-analysis, where the best tile stretches along the cheap matrix by $1 slash rho$. With a generator, $B$ costs time instead of
-traffic, and the tiling changes. The $B$-stationary dataflow is the one to use unless generation costs only a few cycles, and the
-best tile is decided by both the cache and the generator. Its height follows generation and its width follows the cache.
+This project asked how to tile a multiplication by a random matrix when the random matrix is not stored at all, but generated
+next to the core by a PRNG-FIFO. $B$ then costs time instead of memory traffic, and its generation overlaps with the work on $A$
+and $C$. When $B$ is only cheaper to load, the Bharadwaj model shows that the best tile stretches along $B$. We asked what
+changes when $B$ is generated, and how the cache, the FIFO and the generator around it should be balanced. We studied this on a
+cycle-level simulator of such a system, after checking that it reproduces the Bharadwaj model.
 
-A simple model, built from a table of $alpha$ measured with free generation and refined until it matches the simulator, explains
-these tiles and chooses one within 1% of the best in almost every case we tested, from only two calibrations.
+The main conclusion is that the best tile is a balance between two costs that pull its height in opposite directions. Memory
+wants the tile of $A$ to stay in the cache, which keeps the tile short, and generation wants every element of $B$ to be shared by
+as many rows as possible, which makes it tall. The height of the best tile follows the generator and its width follows the cache.
+For this to work, $B$ must stay in the registers while the rows of the tile pass by it, so the $B$-stationary dataflow is the one
+to use, unless generation costs only a few cycles.
+
+The runtime of a tile is well described by the larger of the two costs. The memory cost, measured once with free generation,
+and the generation cost of each row of tiles. A model built on this explains the best tiles we found, and chooses a tile within
+1% of the best in almost every case we tested, from only two calibrations.
 
 For a software engineer, this means padding the rows of the matrices to whole cache lines, calibrating the model twice, and
 letting it choose the tile instead of defaulting to a square, which can cost up to half of the runtime. For a hardware engineer,

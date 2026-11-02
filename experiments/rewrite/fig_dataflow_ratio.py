@@ -21,7 +21,7 @@ run:  .venv/bin/python experiments/rewrite/fig_dataflow_ratio.py
 from dataclasses import replace
 
 from harness import Params, out_dir, run_many
-from plot_style import GRID, INK_2, legend_above, plt, save, series
+from plot_style import GRID, INK_2, dense, legend_above, plt, save
 
 NAME = "fig_dataflow_ratio"
 SMALL = False
@@ -43,8 +43,7 @@ def main() -> None:
     ax.axhline(1, color=INK_2, linewidth=1.0, zorder=1)
     for i, tm in enumerate(TM):
         ratio = [t[("output", tm, gc)] / t[("weight", tm, gc)] for gc in GC]
-        ax.plot(GC, ratio, label=f"$T_M = {tm}$",
-                markevery=1 if SMALL else 5, **series(i))
+        ax.plot(GC, ratio, label=f"$T_M = {tm}$", **dense(i))
 
     ax.set_yscale("log", base=2)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}"))

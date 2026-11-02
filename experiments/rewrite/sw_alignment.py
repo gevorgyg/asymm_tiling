@@ -13,7 +13,7 @@ run:  .venv/bin/python experiments/rewrite/sw_alignment.py
 from dataclasses import replace
 
 from harness import Params, out_dir, run_many
-from plot_style import legend_above, plt, save, series
+from plot_style import dense, legend_above, plt, save
 
 NAME = "sw_alignment"
 M, K, TN = 200, 200, 16
@@ -31,10 +31,10 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     for i, n in enumerate(NS):
         lines = n * 4 / 64
-        style = series(i)
+        style = dense(i)
         if n == NS[-1]:   # identical to N = 288: drawn dashed on top so both stay visible
             style |= {"linestyle": "--", "zorder": 5}
-        ax.plot(TM, [t[(n, tm)] for tm in TM], markevery=4,
+        ax.plot(TM, [t[(n, tm)] for tm in TM],
                 label=f"$N = {n}$ ({lines:g} lines per row)", **style)
     ax.set_xlabel("$T_M$")
     ax.set_ylabel(r"$\alpha$ (cycles / MAC)")

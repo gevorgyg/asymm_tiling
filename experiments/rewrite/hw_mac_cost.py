@@ -38,6 +38,15 @@ else:
     GC = [0, 2, 5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200]
 
 
+def throughput(c: int) -> str:
+    """legend label of a block cost c: the compute unit's throughput, 64 / c
+    MACs per cycle (the supervisor asked for MACs per cycle, not 1/16 cycle per MAC)."""
+    if c == 0:
+        return "free"
+    macs = 64 // c
+    return f"{macs} MAC{'s' if macs > 1 else ''} / cycle"
+
+
 def main() -> None:
     tiles = [(tm, tn) for tm in TM for tn in TN]
     params = [replace(Params(l1_assoc=-1), mulacc_cost=c, tile_h=tm, tile_w=tn, gen_cost=gc)
@@ -51,7 +60,7 @@ def main() -> None:
     ax.axhline(1.05, color=INK_2, linewidth=0.8, linestyle=":", zorder=1)
     for i, c in enumerate(MAC):
         ax.plot(GC, [best[(c, gc)][0] / best[(c, 0)][0] for gc in GC],
-                label=f"{c / 64:g} cycle / MAC", **series(i))
+                label=throughput(c), **series(i))
     ax.set_xlabel("$g_c$ (cycles / element)")
     ax.set_ylabel("slowdown vs free generation")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}×"))
@@ -65,9 +74,8 @@ def main() -> None:
     for i, c in enumerate(MAC):
         if c == 0:
             continue
-        per_mac = "1" if c == 64 else f"1/{64 // c}"
         ax.plot(GC, [best[(c, gc)][0] / best[(0, gc)][0] for gc in GC],
-                label=f"{per_mac} cycle / MAC", **series(i))
+                label=throughput(c), **series(i))
     ax.set_xlabel("$g_c$ (cycles / element)")
     ax.set_ylabel("slowdown vs a free MAC")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:g}×"))
