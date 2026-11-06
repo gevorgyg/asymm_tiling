@@ -1122,47 +1122,61 @@ that is, as long as memory and arithmetic together still take less time than gen
 
 == gem5 Simulation <sec-gem5>
 
+Our simulator charges every cache miss in full before the next access can start, while the generator keeps working in the
+background. This favors the PRNG-FIFO. On real hardware several misses are in flight at once and the core overlaps them with
+computation, so reading $B$ from memory costs less than our simulator says. To see how much of the PRNG-FIFO's advantage is left on
+a more realistic core, we repeated the main experiment in gem5 @lowepower2020gem5, a cycle-level simulator of real cores and memory
+systems.
+
 === Configuration
 
-Our simulator charges every cache miss in full before the next access can start, while the generator keeps working in the
-background. This favors the PRNG-FIFO. On real hardware several misses are in flight at once and a prefetcher fetches ahead, so reading
-$B$ from memory costs less than our simulator says. To see how much of the PRNG-FIFO's advantage is left on more realistic hardware, we
-repeated the main experiment in gem5 @lowepower2020gem5.
+Every gem5 run compares two sources of $B$. The baseline is the conventional system of @reproduce: $B$ is a stored matrix in
+DRAM, in int8, and the core reads it through the caches like $A$ and $C$. We call this "$B$ in memory". Against it we run the
+same kernel with $B$ coming from the PRNG-FIFO, which takes the place of memory as the source of $B$. In both cases $B$ is int8
+because that is its stored precision in the asymmetric-precision setting of @sec-importance. The time to generate an element is
+a separate parameter, $g_c$, which is zero until @sec-gem5-gencost.
 
-We modeled the system on the C7x DSP core of TI's J722S (the C7524), taking its clock and cache sizes @ti-j722s-sdk and its 256-bit
-vectors @ti-spruiv4. gem5 has no C7x model, so the core is an in-order Arm core with SVE vectors of the same width. The PRNG-FIFO is a
-new gem5 component that sits between the core and the $L_1$ data cache. Reads inside its address window are answered by the
-generator, and all other accesses pass through to the cache.
+To model an accelerated system that is somewhat close to reality, we chose the C7x DSP accelerator of TI's J722S, the C7524,
+and took the sizes of the system from it: a 1 GHz clock, a 32 KB $L_1$ data cache and a 64 KB $L_2$ @ti-j722s-sdk, and 256-bit
+vectors @ti-spruiv4. gem5 has no model of the C7x itself, so the core that runs with these sizes is gem5's in-order Arm core,
+`MinorCPU`, with SVE vectors of the same width. The results therefore describe an in-order core with the C7524's memory sizes.
+
+The PRNG-FIFO is a new gem5 component that sits between the core's data port and the $L_1$ data cache, where @fig-system puts
+it. It owns a window of addresses. A read inside the window is answered by the generator and never reaches the cache, and every
+other access passes through to the cache unchanged. The kernel therefore reads $B$ with ordinary load instructions, and the
+core treats them like any other load: it can issue them early, and it can issue them on a mispredicted path, which matters in
+@sec-gem5-branch.
 
 #figure(
   table(
     columns: 3,
     align: (left, left, left),
     table.header([*Parameter*], [*gem5 setting*], [*C7524*]),
-    [Core], [in-order Arm (`MinorCPU`), 4-wide issue, 2 vector FP units with 4-cycle latency], [],
+    [Core], [in-order Arm (`MinorCPU`), 4-wide issue, 2 vector FP units with 4-cycle latency], [C7x, in-order],
     [Vector width], [256 bits (SVE)], [256 bits],
     [Clock], [1 GHz], [1 GHz],
     [$L_1$ instruction cache], [32 KB, 4-way], [32 KB],
     [$L_1$ data cache], [32 KB, 8-way, 64-byte lines, 2-cycle tag and data, 8 MSHRs], [32 KB],
     [$L_2$ cache], [64 KB, 8-way, 6-cycle tag and data, 16 MSHRs], [64 KB],
-    [Prefetcher], [stride, degree 4 on $L_1$D and 8 on $L_2$, on or off per run], [],
-    [Memory], [DDR4-2400], [],
-    [Memory accesses in flight from the core], [2 (gem5 default for this core)], [],
-    [Branch predictor], [tournament (gem5 default)], [],
+    [Prefetcher], [stride, degree 4 on $L_1$D and 8 on $L_2$, on or off per run], [our choice],
+    [Memory], [DDR4-2400, 66 cycles per $L_2$ miss on average], [our choice],
+    [Memory accesses in flight from the core], [2 (gem5 default for this core)], [our choice],
+    [Branch predictor], [tournament (gem5 default)], [our choice],
   ),
-  caption: [The simulated system. The C7524 column lists the values we matched; the empty cells are our own choices.],
+  caption: [The simulated system. The right column lists what we matched to the C7524 and what we chose ourselves.],
 ) <tab-gem5-system>
 
-Two things in gem5 change the comparison: first, memory work overlaps with computation. The caches keep serving hits while misses
-are outstanding, the core can have two memory accesses in flight, the prefetcher fetches ahead, and DRAM has bandwidth instead of a
-fixed latency. Reading $B$ from memory now overlaps too, where our simulator only let the FIFO overlap.
+Two things in gem5 change the comparison. First, memory work overlaps with computation. The caches keep serving hits while misses
+are outstanding, the core can have two memory accesses in flight, the prefetcher fetches ahead, and DRAM has a bandwidth instead
+of a fixed latency. Reading $B$ from memory now overlaps too, where our simulator only let the generator overlap. Second, the core
+predicts branches. After a mispredicted branch it runs ahead on the wrong path and throws that work away when the branch
+resolves, but a read it sent to the FIFO on that path has already advanced the FIFO.
 
-Second, the core predicts branches. After a mispredicted branch it runs ahead on the wrong path and throws that work away when the branch resolves, but a
-read it sent to the FIFO on that path has already advanced the FIFO.
-
-The kernel is written with SVE intrinsics and computes $C = C + A B$, with $A$ and $C$ in fp32 and $B$ in int8, converted to fp32
-when it is loaded. From the outside in, its loops run over row bands of $T_M$ rows, tiles of $T_N$ columns. Each $8 times 8$ block of $B$ is loaded into registers once and
-used by all $T_M slash 8$ row blocks, which is the $B$-stationary dataflow of @sec-dataflow.
+The kernel is written with SVE intrinsics and computes $C = C + A B$, with $A$ and $C$ in fp32 and $B$ in int8, converted to
+fp32 when it is loaded. From the outside in, its loops run over row bands of $T_M$ rows, tiles of $T_N$ columns, steps of 8 along
+$K$ (we call one such step a k-step), the $T_N slash 8$ column blocks of the tile, and the $T_M slash 8$ row blocks. Each
+$8 times 8$ block of $B$ is loaded into registers once and used by all the row blocks, which is the $B$-stationary dataflow of
+@sec-dataflow; a row block updates an $8 times 8$ block of $C$ held in eight registers.
 
 #figure(
   table(
@@ -1172,77 +1186,174 @@ used by all $T_M slash 8$ row blocks, which is the $B$-stationary dataflow of @s
     [Matrices $M times K times N$], [$192 times 128 times 512$ (12.6 M MACs)],
     [Element types], [$A$ and $C$ fp32, $B$ int8],
     [Tiles], [$T_M in {8, 16, 32, 48, 64, 96, 192}$, $T_N in {8, 16, 32, 64, 128}$ (35 tiles)],
-    [Source of $B$], [memory, seeded FIFO or counter FIFO (@sec-gem5-fifo)],
+    [Source of $B$], [memory, seeded PRNG-FIFO or counter PRNG-FIFO (@sec-gem5-fifo)],
     [Settings], [no padding with prefetcher, padding without prefetcher, padding with prefetcher (@sec-gem5-pad)],
     [FIFO capacity], [2 KB],
     [FIFO read latency], [1 cycle],
-    [Generation cost $g_c$], [0 (free) in all the results below],
+    [Generation cost $g_c$], [0 in @sec-gem5-results and @sec-gem5-branch, 1 to 128 in @sec-gem5-gencost],
   ),
   caption: [Workload and FIFO parameters of the gem5 runs.],
 ) <tab-gem5-kernel>
 
 ==== Row padding <sec-gem5-pad>
 
-Our gem5 caches are 8-way, so there are set conflicts similar to @sec-hw-assoc. A row of $C$ is 512 floats, 2048 bytes or 32 lines, so
-all the rows of a column of $C$ land in 2 of the 64 sets of $L_1$ and 4 of the 128 sets of $L_2$. That leaves room for 16 rows in
-$L_1$ and 32 in $L_2$. Padding every row of $A$ and $C$ with 16 floats (64 bytes) makes a row of $C$ 33 lines long, an odd number,
-and the rows spread over all the sets. We ran every tile with and without padding.
+Our gem5 caches are 8-way, so there are set conflicts like those of @sec-hw-assoc. A row of $C$ is 512 floats, 2048 bytes or 32
+lines, so all the rows of a column of $C$ land in 2 of the 64 sets of $L_1$ and 4 of the 128 sets of $L_2$. That leaves room for
+16 rows in $L_1$ and 32 in $L_2$. Padding every row of $A$ and $C$ with 16 floats (64 bytes) makes a row of $C$ 33 lines long, an
+odd number, and the rows spread over all the sets. We ran every tile with and without padding.
 
-==== Seeded and counter FIFO <sec-gem5-fifo>
+==== Seeded and counter PRNG-FIFO <sec-gem5-fifo>
 
-The seeded FIFO is the PRNG-FIFO of our simulator. Before each tile the kernel writes the tile's seed to the FIFO, which empties it and
-restarts the generator from that seed. The tile then reads $B$ in order from the start of the FIFO's window.
+The seeded PRNG-FIFO is the one of @sec-system. Before each tile the kernel writes the tile's seed to the FIFO, which empties it
+and restarts the generator from that seed, and the tile then reads $B$ as a stream, in order, from the start of the FIFO's window.
+A read returns the next elements of the stream, whatever its address.
 
-The counter FIFO has no seed. Each element of $B$ is computed from its own index, so the kernel reads $B$ at its address in a fixed
-window, and the address is the index. 
+The counter PRNG-FIFO has no seed. Each element of $B$ is a function of its own index, and the kernel reads $B$ at its address in
+a fixed window. It is the same component with the same timing; only what a read returns differs.
 
-Our experiments didn't show much difference between these two approaches, but we present the experiments with counter FIFO for simplicity.
+The two run in the same number of cycles, within 0.1% on every tile, so the figures below show the counter PRNG-FIFO. The seeded
+one appears only in @sec-gem5-branch, where the two differ in what the core computes.
 
-=== Experiment Results
-
-All the runs below use a free generator ($g_c=0$), so they measure the cost of everything except generation.
+=== Results with a free generator <sec-gem5-results>
 
 #figure(
   image("./figures/gem5_cycles.svg", width: 100%),
-  caption: [Cycles per MAC with a free generator for every tile. Top row: $B$ from memory, bottom row: counter FIFO. Lower is better.],
+  caption: [Cycles per MAC for every tile with a free generator ($g_c = 0$). Top row: $B$ in memory. Bottom row: counter PRNG-FIFO. Columns: the three settings. The box marks the best tile of each panel. Lower is better.],
 ) <fig-gem5-cycles>
 
-Without padding, cache conflicts influence performance greatly. With padding, the runtime is not monotonic in $T_N$, due to the fact that growing $T_N$
-forces two opposite phenomena to occur: on one hand, it reduces reloads of $A$ (as $A$ row band has $N/ T_N $ tiles), but on the other hand it grows the C tile,
-which pushes $A$ out of cache, and later does not fit on its own.
+With padding, both sources of $B$ have the same best tile, $64 times 64$, at 0.44 cycles per MAC with $B$ in memory and 0.41
+with the PRNG-FIFO. The shape of the grid is the one our simulator gave. Going down a column, the runtime falls while the strip
+of $A$ ($T_M times K$ floats, 4 KB per 8 rows) fits in $L_1$, and climbs once it does not, from $T_M = 64$ (32 KB) and again at
+$T_M = 192$, where the 96 KB strip is larger than $L_2$. Going right along a row, the runtime falls because a wider tile reloads
+$A$ fewer times (a row band has $N slash T_N$ tiles), until the tile of $C$ pushes $A$ out of the cache, at $T_N = 128$.
+
+Without padding the grid is ruled by set conflicts (@sec-gem5-pad). Every tile with $T_M >= 32$ runs at 0.65 to 2 cycles per
+MAC with either source of $B$, and the best tiles are the short ones. The PRNG-FIFO changes little here, since the conflicts are
+between rows of $A$ and $C$.
 
 #figure(
   image("./figures/gem5_misses.svg", width: 100%),
-  caption: [$L_1$ data cache misses (left) and $L_2$ misses (right) against $T_M$, at $T_N = 16$ with the prefetcher on.],
+  caption: [$L_1$ data cache misses (left) and $L_2$ misses (right) against $T_M$, at $T_N = 16$ with padding. Solid lines: prefetcher off. Dashed: counter PRNG-FIFO with the prefetcher on. With $B$ in memory the prefetcher also changes the misses only at $T_M = 8$ (not drawn).],
 ) <fig-gem5-misses>
 
+The steps in @fig-gem5-misses are the capacity limits. The strip of $A$ is 24 KB at $T_M = 48$ and 32 KB at $T_M = 64$, where
+it no longer fits in $L_1$ next to the tile of $C$, so $A$ is read again for every tile and the $L_1$ misses jump sevenfold.
+$L_2$ has the same step at $T_M = 192$. With $B$ in memory the $L_1$ misses first fall as $T_M$ grows, because every row band
+reads all of $B$ and there are $M slash T_M$ row bands, and then climb the same step.
 
-The steps are capacity limits. At $T_M = 48$ the 24 KB $A$ strip nearly fills $L_1$, and from $T_M = 64$ it doesn't fit, so $A$ is
-read again for every tile. $L_2$ has the same step at $T_M = 192$, where the 96 KB $A$ strip is larger
-than $L_2$. Without padding, the conflicts occur even for smaller tiles.
+The prefetcher only does something at $T_M = 8$, where it removes 95% of the $L_1$ misses. There, a tile has one row block, and
+every load instruction of the kernel walks memory with one fixed stride of 32 bytes. In a taller tile, each load instruction
+steps from one row block to the next, 4.6 KB along $A$ and 16.9 KB along $C$ with padding, which is past the end of the 4 KB
+page, and gem5's stride prefetcher does not prefetch across pages: at $T_M = 64$ it identifies 221 thousand candidates and
+issues none. For every tile with $T_M >= 16$ the runs with and without the prefetcher agree within 0.1%. What makes memory
+cheaper here than in our simulator is the overlap of misses with computation and with each other, and the prefetcher has
+almost no part in it.
 
 #figure(
   image("./figures/gem5_speedup.svg", width: 100%),
-  caption: [Speedup of the counter FIFO over memory $B$ on the same tile: cycles with memory $B$ divided by cycles with the FIFO. Blue means the FIFO is faster.],
+  caption: [Speedup of the counter PRNG-FIFO over $B$ in memory on the same tile: cycles with $B$ in memory divided by cycles with the PRNG-FIFO. Blue means the PRNG-FIFO is faster.],
 ) <fig-gem5-speedup>
 
-Without the prefetcher, the speedup follows the traffic of $B$. With the prefetcher, memory $B$ is nearly free.
+On the same tile the PRNG-FIFO is faster everywhere, from 1.00 at $T_M = 192$ to 1.96 at $8 times 8$, and the gain follows the
+traffic of $B$. With $B$ in memory every row band reads all of $B$, so the traffic of $B$ per MAC is proportional to $1 slash
+T_M$, and the PRNG-FIFO removes exactly this traffic. The prefetcher does not move the ratio; the conflicts of the unpadded runs
+shrink it on the tall tiles, where both sources of $B$ wait on the same conflict misses. The best tile with $B$ in memory is
+already tall, though, so best against best the gain is 8% (0.44 against 0.41 cycles per MAC), and 28% without padding (0.56
+against 0.44), where the conflicts rule out the tall tiles for $B$ in memory.
+
+=== Branch prediction and the FIFO <sec-gem5-branch>
+
+The core of our simulator is in order and never speculates, so every read of the FIFO belongs to the computation. gem5's core
+predicts branches and runs ahead on the predicted path. When the prediction turns out wrong it throws that work away, but a
+load it issued on the wrong path has already gone to memory. For a cache this is harmless, since reading a line changes
+nothing, but a read advances a FIFO.
+
+The loops of our kernel are predictable, so the predictor is only wrong at loop exits. When it misses the exit of the loop over
+the column blocks of a tile, the core starts a column block that does not exist. A column block begins by loading its block of
+$B$, and that load reaches the FIFO before the branch resolves. We see these wrong-path reads in gem5 as FIFO reads beyond what
+the kernel needs.
+
+In the counter PRNG-FIFO the data is a function of the address, so a wrong-path read only takes elements that the core throws
+away. With a free generator this costs nothing, and with a slow one it costs generation time. In the seeded PRNG-FIFO a read
+returns the next elements of the stream, so a wrong-path read shifts the stream, and every later read of the tile gets the
+wrong elements of $B$ until the next seed. In our runs the tiles where this happens compute a wrong $C$.
+
+A FIFO that is read as a stream therefore cannot sit behind a speculating core as it is. Either the data must depend on the
+address, as in the counter PRNG-FIFO, or the FIFO must advance only on reads that commit, which the core has to tell it. The
+compiler causes the same problem on a smaller scale. The loads of a block of $B$ must stay in order for a stream, and gcc
+reordered them in our kernel until we put a barrier between them, in all modes.
+
+=== A slow generator <sec-gem5-gencost>
+
+Everything above has $g_c = 0$, so it measures the cost of everything except generation. The trade-off at the center of this
+report is between memory and generation, so we ran the counter PRNG-FIFO with $g_c$ from 1 to 128 cycles per element, with
+padding and the prefetcher on.
 
 #figure(
-  image("./figures/gem5_mispredict.svg", width: 90%),
-  caption: [Branch mispredictions per k-step with the counter FIFO, padding and prefetcher. A k-step is one pass of the loop over the $T_N slash 8$ column blocks of a tile. Left: all mispredicted branches, from gem5's counter. Right: reads of $B$ issued on a wrong path, measured as extra FIFO reads. The left panel is the same, within 3 mispredictions per run, for memory $B$, the seeded FIFO and the other two settings.],
-) <fig-gem5-mispredict>
+  image("./figures/gem5_gencost_tiles.svg", width: 100%),
+  caption: [Cycles per MAC of the counter PRNG-FIFO for every tile, one panel per $g_c$. The panels of $g_c = 1$ to 16 are the same as $g_c = 0$ and are left out. The box marks the best tile.],
+) <fig-gem5-gencost>
 
-gem5's tournament predictor keeps 11 bits of history per branch. That is enough to predict the exit of a loop of up to 12
-iterations, and the exit of a longer loop is mispredicted every time.
+Up to $g_c = 16$ the grid does not change. Each element of $B$ is used by the $T_M$ rows of its tile, so generation costs
+$g_c slash T_M$ cycles per MAC, and at $g_c = 16$ that is 0.25 for the $64 times 64$ tile, below its memory cost of 0.41. From
+$g_c = 32$ the short tiles are generation bound at exactly $g_c slash T_M$ (1.0, 2.0 and 4.0 cycles per MAC at $T_M = 32$, 16
+and 8), and the best tile moves up: $96 times 16$ at $g_c = 32$, $192 times 64$ at 64, $192 times 16$ at 128. This is the
+picture of @sec-mem-vs-gen and @sec-hw-prng on a real core: the best tile grows taller with the generation cost.
 
- The right panel counts only the mispredictions that send a read to the FIFO. When the column-block loop of a k-step ends,
- the predictor sometimes guesses that it runs once more. The core then starts that extra column block, which begins by loading the next block of $B$,
- and the first of these loads reaches the FIFO before the core finds out the guess was wrong.
- The core throws the loaded data away, but the FIFO has already handed it out, and the next k-step reads the same address again.
+#figure(
+  image("./figures/gem5_gencost_speedup.svg", width: 70%),
+  caption: [Speedup of the counter PRNG-FIFO over the best tile with $B$ in memory ($64 times 64$, 0.44 cycles per MAC) as $g_c$ grows. Blue: the best tile for each $g_c$. Orange: the best tile of $g_c = 0$, $64 times 64$, kept for every $g_c$. Above the dashed line the PRNG-FIFO is faster.],
+) <fig-gem5-gencost-speedup>
 
-With a free generator these reads cost nothing, but with a slow generator
-they would be expensive. 
+Against the best tile with $B$ in memory, the PRNG-FIFO breaks even at about $g_c = 32$ on this core, if the tile is chosen
+again for each $g_c$. Keeping the tile of $g_c = 0$ instead costs three times the runtime at $g_c = 128$ (0.22 against 0.68 of
+the runtime with $B$ in memory), which is the point of @sec-sw-choice on a real core.
+
+The model of @sec-refine holds as well. With $alpha$ the cycles per MAC of a tile at $g_c = 0$, taken from gem5 itself,
+$max(alpha, g_c slash T_M)$ is within 3% of every gem5 run, and the tile it ranks best is gem5's best tile at all nine values
+of $g_c$. gem5 is a little faster than the model at large $g_c$, because the counter FIFO starts full (a head start of $2048
+g_c$ cycles) and because the core's reads wait for the generator while the caches keep working, so memory and generation
+overlap more completely than in our simulator.
+
+=== gem5 against our simulator <sec-gem5-vs-sim>
+
+Finally, we ran our simulator on the gem5 setup: the same matrices and element sizes, a 32 KB $L_1$ and a 64 KB $L_2$ with
+gem5's latencies (2 and 6 cycles, and 60 more for a miss to memory, gem5's average), $8 times 8$ register blocks, a 2 KB FIFO
+read in one cycle, and fully associative caches, since the padded gem5 runs have no conflicts. @tab-gem5-vs-sim compares, for
+every $g_c$, the tile each simulator ranks best and how much the tile our simulator picks loses in gem5.
+
+#figure(
+  table(
+    columns: 4,
+    align: (right, center, center, right),
+    table.header([*$g_c$*], [*gem5 best*], [*our simulator's best*], [*its loss in gem5*]),
+    [0], [$64 times 64$], [$48 times 16$], [0.5%],
+    [1], [$64 times 64$], [$32 times 32$], [0.6%],
+    [2], [$64 times 64$], [$32 times 32$], [0.6%],
+    [4], [$64 times 64$], [$32 times 32$], [0.6%],
+    [8], [$64 times 64$], [$64 times 64$], [0.0%],
+    [16], [$64 times 64$], [$96 times 16$], [6.7%],
+    [32], [$96 times 16$], [$192 times 64$], [18.6%],
+    [64], [$192 times 64$], [$192 times 64$], [0.0%],
+    [128], [$192 times 16$], [$192 times 64$], [0.2%],
+  ),
+  caption: [The tile each simulator ranks best for every $g_c$ (counter PRNG-FIFO, padding, prefetcher on), and the runtime our simulator's choice costs in gem5 over gem5's own best tile.],
+) <tab-gem5-vs-sim>
+
+The two agree on the shape: the tile our simulator picks costs less than 1% in gem5 at seven of the nine values of $g_c$. The exceptions are $g_c = 16$ and
+32, where memory and generation are about equal and the two simulators place the crossover at a different $T_M$: ours charges
+every miss in full, so it finds memory more expensive and moves to tall tiles sooner. The absolute cycle counts differ, since
+our simulator has no compute cost and a simpler cache; what it is built to do is rank tiles.
+
+=== Takeaway <sec-gem5-takeaway>
+
+On an in-order core whose misses overlap, with a free generator, the PRNG-FIFO removes the traffic of $B$ and gains 8% at the
+best tile and up to 2$times$ on short tiles that read $B$ many times. Padding is as necessary as in @sec-hw-assoc, and the
+prefetcher is nearly irrelevant to tiled code on this core. With a slow generator the picture of the report repeats on gem5:
+the best tile grows taller with $g_c$, the PRNG-FIFO pays off up to about $g_c = 32$ on this cache, and the model of
+@sec-refine, calibrated once at $g_c = 0$, predicts gem5's runtime within 3% and chooses its best tile. gem5 also shows one
+thing our simulator cannot: a speculating core reads the FIFO on the wrong path, which a stream FIFO does not survive, so the
+generator must be addressable by the core, or the FIFO must pop only on reads that commit.
 
 = Discussion
 
@@ -1263,17 +1374,19 @@ FIFO only has to cover the memory latency of the register blocks in flight, and 
 cache. Associativity and the replacement policy matter mostly for tiles past a cliff, which a good choice of tile avoids anyway,
 and the compute unit only has to keep up with the generator.
 
-The gem5 runs (@sec-gem5) show how much of this carries over to a more realistic core. There, misses overlap and a prefetcher
-fetches ahead, so with a free generator $B$ from memory is almost free, and the PRNG-FIFO gains only a few percent once the prefetcher
-is on. The capacity cliffs and the need for padding show up in gem5 too, at the sizes of its own caches. gem5 also shows a cost
-that our simulator has no notion of, a core that speculates can read from the FIFO on a wrong path, and with a slow generator
-those reads cost generation time.
+The gem5 runs (@sec-gem5) show how much of this carries over to a more realistic core. There, misses overlap with computation,
+so with a free generator the PRNG-FIFO gains 8% at the best tile, and up to 2$times$ on short tiles that read $B$ many times.
+With a slow generator the best tile grows taller, the PRNG-FIFO breaks even with $B$ in memory at about $g_c = 32$ on that
+cache, and the model, calibrated once in gem5 at $g_c = 0$, predicts gem5's runtime within 3% and picks its best tile. The
+capacity cliffs and the need for padding show up in gem5 too, at the sizes of its own caches, and the prefetcher does nearly
+nothing for tiled code. gem5 also shows a cost that our simulator has no notion of: a core that speculates reads the FIFO on a
+wrong path, which costs generation time with a counter PRNG-FIFO and corrupts $B$ with a seeded one.
 
 Our results have some limits. Our simulator charges every miss in full and has no prefetcher, which favors the PRNG-FIFO. Most of the
 figures use one matrix and one cache size, so the exact thresholds move with them, even though the reasons behind them don't.
-The model has to be calibrated again for every new hardware. And the gem5 runs use only a free generator, so the trade-off between
-memory and generation, which is the center of this report, is still untested on a realistic core. Running gem5 with a slow
-generator, and a FIFO that only advances on reads that commit, are the natural next steps.
+The model has to be calibrated again for every new hardware. The gem5 runs cover one core and one matrix, and their PRNG-FIFO
+pops on every read that reaches it. A FIFO that only advances on reads that commit, which a speculating core needs for a seeded
+generator, is the natural next step.
 
 = Conclusion
 

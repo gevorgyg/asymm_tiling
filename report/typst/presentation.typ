@@ -897,40 +897,86 @@
 #section("gem5 Simulation")
 
 #slide("gem5 Setup")[
-  - Modeled on TI's C7x DSP (C7524): 1 GHz, 32 KB $L_1$D, 64 KB $L_2$, 256-bit vectors
-  - In-order Arm core with SVE
-  - PRNG-FIFO as a new component between the core and $L_1$
-  - Overlapping misses, prefetcher, branch prediction
-  - $192 times 128 times 512$, free generator
+  - Our simulator charges every miss in full. On a real core misses overlap
+  - gem5: the sizes of TI's C7x DSP (C7524), 1 GHz, 32 KB $L_1$D, 64 KB $L_2$, 256-bit vectors
+  - gem5's in-order Arm core (`MinorCPU`) with SVE
+  - Two sources of $B$ (int8): *$B$ in memory*, or the *PRNG-FIFO* between the core and $L_1$
+  - $192 times 128 times 512$, 35 tiles, $g_c = 0$ first, then 1 to 128
 ]
 
-#wide-slide("gem5: Cycles Per MAC", "gem5_cycles", height: 76%, [
-  - Without padding, set conflicts dominate. With padding, the best tile is $48$–$64 times 64$
+#wide-slide([gem5: Cycles Per MAC ($g_c = 0$)], "gem5_cycles", height: 66%, [
+  - With padding: best tile $64 times 64$ for both, 0.44 ($B$ in memory) and 0.41 (PRNG-FIFO) cycles per MAC
+  - Without padding: set conflicts rule, only short tiles are good
 ])
 
-#wide-slide("gem5: Cache Misses", "gem5_misses", height: 64%, [
-  - The steps are capacity limits
-  - $T_M = 64$: the strip of $A$ no longer fits in $L_1$ (24 KB at $T_M = 48$)
-  - $T_M = 192$: the strip of $A$ (96 KB) no longer fits in $L_2$
+#wide-slide("gem5: Cache Misses", "gem5_misses", height: 60%, [
+  - The steps are capacity limits: the strip of $A$ stops fitting in $L_1$ at $T_M = 64$, in $L_2$ at $T_M = 192$
+  - The prefetcher only helps at $T_M = 8$: it does not prefetch across 4 KB pages
 ])
 
-#wide-slide("gem5: Speedup Of The PRNG-FIFO", "gem5_speedup", height: 62%, [
-  - No prefetcher: up to 1.33$times$
-  - With prefetcher: memory $B$ is almost free
+#wide-slide("gem5: Speedup Of The PRNG-FIFO", "gem5_speedup", height: 60%, [
+  - Same tile: 1.00$times$ to 1.96$times$, it follows the traffic of $B$ ($prop 1 slash T_M$)
+  - Best tile against best tile: 8%, and 28% without padding
 ])
 
-#fig-slide("gem5: Wrong-Path Reads", "gem5_mispredict", [
-  - Mispredicted loop exits read the FIFO
-  - Free with a free generator
-  - Costly with a slow one
-], ratio: (1fr, 1.6fr))
+#slide("gem5: Branch Prediction And The FIFO")[
+  - The core runs ahead after a mispredicted loop exit
+  - A load of $B$ on that wrong path reaches the FIFO before the branch resolves
+  - Counter PRNG-FIFO: the extra elements are thrown away, costs only generation time
+  - Seeded PRNG-FIFO: the stream shifts, the rest of the tile gets the *wrong* $B$
+  #key[The generator must be addressable, or the FIFO must pop only on reads that commit]
+]
+
+#wide-slide("gem5: A Slow Generator", "gem5_gencost_tiles", height: 58%, [
+  - Up to $g_c = 16$ nothing changes: generation is hidden
+  - From $g_c = 32$ the best tile grows taller: $96 times 16$, then $192 times 64$, then $192 times 16$
+])
+
+#fig-slide("gem5: Is The PRNG-FIFO Worth It?", "gem5_gencost_speedup", [
+  - Against the best tile with $B$ in memory
+  - Breaks even at $g_c approx 32$
+  - Keeping the tile of $g_c = 0$: 3$times$ slower at $g_c = 128$
+  - Our model $max(alpha, g_c slash T_M)$: within 3% of gem5, picks its best tile
+], ratio: (1fr, 1.3fr))
+
+#slide("gem5 Against Our Simulator")[
+  #grid(
+    columns: (1fr, auto),
+    gutter: 1cm,
+    align(horizon)[
+      - Our simulator run on the gem5 setup
+      - Its tile loses less than 1% in gem5 at 7 of 9 values of $g_c$
+      - Off only at $g_c = 16$ and 32, where memory and generation are equal: ours charges misses in full, so it goes tall sooner
+    ],
+    align(horizon, {
+      set text(size: 14pt)
+      table(
+        columns: 4,
+        stroke: none,
+        inset: (x: 8pt, y: 4pt),
+        align: (right, center, center, right),
+        table.hline(stroke: 0.6pt),
+        [*$g_c$*], [*gem5 best*], [*ours*], [*loss*],
+        table.hline(stroke: 0.4pt),
+        [0], [$64 times 64$], [$48 times 16$], [0.5%],
+        [1–4], [$64 times 64$], [$32 times 32$], [0.6%],
+        [8], [$64 times 64$], [$64 times 64$], [0.0%],
+        [16], [$64 times 64$], [$96 times 16$], [6.7%],
+        [32], [$96 times 16$], [$192 times 64$], [18.6%],
+        [64], [$192 times 64$], [$192 times 64$], [0.0%],
+        [128], [$192 times 16$], [$192 times 64$], [0.2%],
+        table.hline(stroke: 0.6pt),
+      )
+    }),
+  )
+]
 
 // ---------------- Discussion and conclusion ----------------
 #slide("Future Studies")[
   #section-name.update("Future Studies")
-  - gem5 with a slow generator: the memory vs generation trade-off on a realistic core
-  - A FIFO that only advances on reads that commit, so wrong-path reads cost nothing
-  - Overlapping misses and a prefetcher in our simulator
+  - A FIFO that only advances on reads that commit, so a seeded generator works behind a speculating core
+  - gem5 on other cores and other matrices
+  - Overlapping misses in our simulator
   - More matrices and cache sizes, to see how the thresholds move
   - Predict $alpha$ from the cache parameters instead of calibrating it for every new hardware
   - A software-managed scratchpad that keeps the strip of $A$ on purpose
