@@ -11,6 +11,9 @@
 - Free compute (c = 0): isolates the memor
   y and generation costs (compute speed tested separately).
 
+# Why the platou shape in the dataflow graph?
+- when they both become generation bound.
+
 # Why isn't the best tile just the one such that the tile fits into the cache?
 - because as soon as gc is not 0 -> we need something to amoretize the cost.
 
@@ -31,6 +34,9 @@
 
 # The added constant because of C to the final model?
 - It's because every element of C is loaded once, and also it's amoretized by the the number of elements in one cache line and by the number of macs each element is used in, which is K. 
+
+# Why does N cause earlier threshing?
+- Becuase it's not aligned with the cache lines -> causing it to touch more then one -> causing more cache usage and earlier threshing.
 
 # Tall and short or Short and wide tiles:
 - Tall and short are obviously because we amoratize the gc value.

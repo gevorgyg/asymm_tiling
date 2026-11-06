@@ -4,6 +4,7 @@
 // ==========================================================
 
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
+#import "@preview/cetz:0.3.4"
 
 #let title = "Evaluating Matrix Tiling Multiplication For Asymmetric Data Cost"
 #let author = "Regev Ginzburg, Areg Mkhitaryan"
@@ -140,36 +141,157 @@
   - an *asymmetric access cost*: $B$ is much cheaper than $A$ and $C$
 ]
 
-#slide("Previous Results By Bharadwaj And Demmel")[
-  - Tiling keeps tiles in the cache so every loaded element is reused
-  - All matrices cost the same $=>$ square tiles are optimal
-  - $B$ cheaper to load (a fraction $rho$ of $A$) $=>$ the tile stretches along $B$:
-    $ T_N / T_M = 1 / rho $
-  #key(bold: false)[*Our question:* with a PRNG, $B$ costs *time*, not traffic, and it overlaps with the work on $A$ and $C$.
-    How should we tile now, and how should the hardware be balanced?]
-]
+// ---------------- Animations: how tiling works, how a PRNG works ----------------
+// Every frame of a sequence has the same title and layout, only the colors change,
+// so paging through the frames looks like an animation.
+#let an-a = rgb("#cfe0f5")
+#let an-a2 = rgb("#6fa3e0")
+#let an-b = rgb("#d3efe2")
+#let an-b2 = rgb("#5dbb8d")
+#let an-c = rgb("#f6d7b0")
+#let an-c2 = rgb("#e39a4a")
+#let an-done = rgb("#e2ddd5")
+#let an-gen = rgb("#fbf1e6")
+#let an-grid = rgb("#9aa7b6")
 
-#slide("Hardware Background")[
-  #grid(
-    columns: (1fr, 1fr),
-    gutter: 1.2cm,
-    [
-      *Matrix multiply accelerators*
-      - TPU: $256 times 256$ systolic array
-      - Tensor cores: small blocks in hardware
-      - Registers $->$ cache $->$ DRAM
-      - Dataflow: which matrix stays in place
-    ],
-    [
-      *PRNGs*
-      - Stateful: LFSR, xorshift, Mersenne Twister
-        - cheap, but a fixed order
-      - Counter-based: Philox
-        - any element, any order, more work
-      - For tiling only one number matters: $g_c$, cycles per element
-    ],
-  )
-]
+// a matrix of rows x cols cells; thick lines every tr rows / tc columns
+#let an-mat(rows, cols, fill, tr: none, tc: none, s: 0.6cm) = grid(
+  columns: (s,) * cols,
+  rows: (s,) * rows,
+  fill: fill,
+  stroke: (x, y) => (
+    left: if tc != none and calc.rem(x, tc) == 0 or x == 0 { 1.2pt + black } else { 0.4pt + an-grid },
+    top: if tr != none and calc.rem(y, tr) == 0 or y == 0 { 1.2pt + black } else { 0.4pt + an-grid },
+    right: if x == cols - 1 { 1.2pt + black } else { 0.4pt + an-grid },
+    bottom: if y == rows - 1 { 1.2pt + black } else { 0.4pt + an-grid },
+  ),
+  ..range(rows * cols).map(_ => []),
+)
+
+// the list of steps on the left, the current one highlighted
+#let an-steps(steps, cur) = {
+  set text(size: 17pt)
+  for (i, s) in steps.enumerate() {
+    let now = i == cur
+    block(above: 0.55em, below: 0em, grid(
+      columns: (0.9em, 1fr),
+      align: top,
+      text(fill: if now { accent } else { rgb("#c0c7d0") }, weight: "bold", if now [▶] else [•]),
+      text(fill: if i <= cur { black } else { rgb("#b5bcc5") }, weight: if now { "bold" } else { "regular" }, s),
+    ))
+  }
+}
+
+// C = A B with M = 8, K = 6, N = 8 and tiles of 4 x 4
+#let tiling-steps = (
+  [One element of $C$ = a row of $A$ × a column of $B$],
+  [Tiling: compute $C$ one tile ($T_M times T_N$) at a time],
+  [A tile needs a strip of $A$ and a panel of $B$],
+  [Step $k$: a column of $A$ × a row of $B$ updates the whole tile],
+  [Next step],
+  [... until the last step, the tile is done],
+  [Next tile: the *same* strip of $A$, a new panel of $B$],
+  [Next row of tiles: a new strip of $A$, $B$ again from the left],
+)
+#let tiling-frame(n) = {
+  let T = 4
+  // what each frame shows
+  let elem = if n == 0 { (1, 2) } else { none }
+  let tile = (none, (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 1), (1, 0)).at(n)
+  let done = ((), (), (), (), (), (), ((0, 0),), ((0, 0), (0, 1))).at(n)
+  let strip = n >= 2
+  let k = (none, none, none, 0, 1, 5, none, none).at(n)
+  let in-tile(t, r, c) = t != none and calc.quo(r, T) == t.at(0) and calc.quo(c, T) == t.at(1)
+  let a-fill(x, y) = {   // A: rows y, columns x (= k)
+    if elem != none { if y == elem.at(0) { an-a2 } else { white } }
+    else if strip and calc.quo(y, T) == tile.at(0) { if k != none and x == k { an-a2 } else { an-a } }
+    else { white }
+  }
+  let b-fill(x, y) = {   // B: rows y (= k), columns x
+    if elem != none { if x == elem.at(1) { an-b2 } else { white } }
+    else if strip and calc.quo(x, T) == tile.at(1) { if k != none and y == k { an-b2 } else { an-b } }
+    else { white }
+  }
+  let c-fill(x, y) = {
+    if elem != none { if (y, x) == elem { an-c2 } else { white } }
+    else if in-tile(tile, y, x) { if k != none { an-c2 } else { an-c } }
+    else if done.any(t => in-tile(t, y, x)) { an-done }
+    else { white }
+  }
+  slide("How Tiling Works", grid(
+    columns: (1fr, auto),
+    gutter: 1cm,
+    align(horizon, an-steps(tiling-steps, n)),
+    align(horizon, grid(
+      columns: (auto, auto, auto),
+      column-gutter: 0.25cm,
+      row-gutter: 0.25cm,
+      align: center + horizon,
+      [], [], [*B* #h(0.3em) #text(size: 13pt, fill: muted)[$K times N$]],
+      [], [], an-mat(6, 8, b-fill, tc: if n >= 1 { T } else { none }),
+      [*A* \ #text(size: 13pt, fill: muted)[$M times K$]], an-mat(8, 6, a-fill, tr: if n >= 1 { T } else { none }),
+      an-mat(8, 8, c-fill, tr: if n >= 1 { T } else { none }, tc: if n >= 1 { T } else { none }),
+      [], [], [*C* #h(0.3em) #text(size: 13pt, fill: muted)[$M times N$]],
+    )),
+  ))
+}
+#for n in range(tiling-steps.len()) { tiling-frame(n) }
+
+// a PRNG: a seed, a state that is updated every step, one number of B out per step
+#let prng-values = (-0.99, 0.32, -0.78, 0.7, 0.75, -0.33, 0.73, 0.13, 0.45, -0.5, 0.39, 0.57,
+  0.42, -0.48, -0.09, -0.49, -0.75, -0.98, 0.62, 0.26, 0.51, 0.13, 0.12, 0.14)   // xorshift32, seed 42
+#let prng-steps = (
+  [Load a seed],
+  [Each step updates the state and gives one number of $B$, $g_c$ cycles],
+  [The numbers fill $B$ in the order the core uses it],
+  [The whole panel of $B$, nothing read from memory],
+  [Same seed $=>$ same numbers: $B$ is made again for every row of tiles],
+)
+#let prng-frame(n) = {
+  let shown = (0, 1, 8, 24, 24).at(n)
+  let again = n == 4
+  let hot = n == 0 or again
+  let num(v) = box(width: 1.25cm, height: 0.62cm, stroke: 0.5pt + an-grid, fill: an-b,
+    align(center + horizon, text(size: 11pt, str(v))))
+  slide("How A PRNG Works", grid(
+    columns: (1fr, auto),
+    gutter: 1cm,
+    align(horizon, an-steps(prng-steps, n)),
+    align(horizon + center, {
+      set text(size: 13pt)
+      // seed -> generator
+      grid(
+        columns: (auto, auto, auto),
+        column-gutter: 0.35cm,
+        align: horizon,
+        box(stroke: if hot { 1.6pt + accent } else { 0.7pt }, fill: an-gen, inset: 8pt, radius: 3pt)[*Seed* \ 42],
+        text(size: 18pt)[→],
+        box(stroke: 0.7pt, fill: an-gen, inset: 8pt, radius: 3pt, align(left)[
+          *Generator* (xorshift) \
+          #text(font: "Noto Sans Mono", size: 10pt)[x ^= x << 13 \ x ^= x >> 17 \ x ^= x << 5]
+        ]),
+      )
+      v(0.3cm)
+      text(size: 18pt)[↓]
+      v(0.1cm)
+      // the panel of B, filled row by row
+      grid(
+        columns: (1.25cm,) * 4,
+        rows: (0.62cm,) * 6,
+        ..range(24).map(i => if i < shown { num(prng-values.at(i)) } else {
+          box(width: 1.25cm, height: 0.62cm, stroke: 0.5pt + an-grid)
+        }),
+      )
+      v(0.15cm)
+      text(fill: muted)[a panel of $B$ ($K times T_N$)]
+      linebreak()
+      // always takes its line, so the frames don't move
+      let note = text(fill: accent, weight: "bold")[again, the same numbers]
+      if again { note } else { hide(note) }
+    }),
+  ))
+}
+#for n in range(prng-steps.len()) { prng-frame(n) }
 
 // ---------------- The hardware system ----------------
 #let box-fill = rgb("#eef3fa")
@@ -182,40 +304,92 @@
 #let ctrl = (dash: "dashed", thickness: 0.6pt)
 
 #slide("The Hardware System")[
-  #align(center, scale(132%, reflow: true, {
-      set text(size: 9pt, hyphenate: false)
-      diagram(
-        spacing: (10mm, 12mm),
-        node-stroke: 0.6pt,
-        node-corner-radius: 3pt,
-        node-inset: 6pt,
-        edge-stroke: 0.7pt,
-        node((0, 0), [*DRAM* \ #small[$A$, $C$, seeds of $B$]], name: <dram>, fill: box-fill, width: 25mm),
-        node((1.2, 0), [*$L_2$* \ #small[optional]], name: <l2>, fill: box-fill, stroke: (dash: "dashed", thickness: 0.6pt), width: 16mm),
-        node((2.4, 0), [*$L_1$ data cache*], name: <l1>, fill: box-fill, width: 27mm),
-        node((4, 0), [*Load/store unit*], name: <lsu>, fill: white, width: 24mm),
-        node((4, 1.2), [*Register file* \ #small[blocks of $A$, $B$, $C$]], name: <regs>, fill: white, width: 28mm),
-        node((5.2, 1.2), [*MAC unit*], name: <mac>, fill: white, width: 16mm),
-        node(enclose: (<lsu>, <regs>, <mac>), name: <core>, fill: box-fill, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
-        node((5.2, 0), [*Core*], stroke: none, fill: none),
-        node((1.2, 1.2), [*Generator* \ #small[one element of $B$] \ #small[every $g_c$ cycles]], name: <gen>, fill: gen-fill, width: 27mm),
-        node((2.4, 1.2), [*FIFO*], name: <fifo>, fill: gen-fill, width: 16mm),
-        node((1.2, 2.2), [*Seed register*], name: <seed>, fill: gen-fill, width: 27mm),
-        node(enclose: (<gen>, <fifo>, <seed>), name: <pf>, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
-        node((2.3, 2.2), [*PRNG-FIFO*], stroke: none, fill: none),
-        edge(<dram>, <l2>, "<|-|>"),
-        edge(<l2>, <l1>, "<|-|>"),
-        edge(<l1>, <lsu>, "<|-|>", [#step(1) #step(3) #step(5)], label-side: left, label-pos: 0.4),
-        edge(<lsu>, <regs>, "<|-|>"),
-        edge(<regs>, (4, 2.75), (1.2, 2.75), <seed>, "-|>", [#step(1) #small[seed]], label-side: left, label-pos: 0.45),
-        edge(<seed>, <gen>, "-|>"),
-        edge(<gen>, <fifo>, "-|>", small[$B$], label-side: left),
-        edge(<fifo>, <regs>, "-|>", [#step(2) #small[pop $B$]], label-side: right),
-        edge(<regs>, <mac>, "<|-|>", step(4), label-side: left),
-        edge(<fifo>, <gen>, "-|>", small[full: pause], bend: -50deg, stroke: ctrl, label-side: right),
-        edge(<fifo>, <regs>, "-|>", small[empty: stall], bend: 40deg, stroke: ctrl, label-side: left, label-pos: 0.35),
-      )
-    }))
+  // a datapath-style block diagram: square boxes, hollow block arrows for data buses,
+  // thin lines for single signals, dashed lines for control, the MAC drawn as an ALU,
+  // the FIFO as a queue of slots (the head, on the left, is popped first)
+  #align(center, cetz.canvas(length: 1.2cm, {
+    import cetz.draw: *
+    let lbl(it) = text(size: 9pt, tracking: 0.04em, upper(it))
+    let sub(it) = text(size: 7pt, fill: rgb("#555555"), it)
+    let blk(a, b, name, extra: none, dash: false) = {
+      rect(a, b, fill: white, stroke: if dash { (thickness: 0.8pt, dash: "dashed") } else { 0.8pt })
+      let c = ((a.at(0) + b.at(0)) / 2, (a.at(1) + b.at(1)) / 2)
+      content(c, align(center, stack(dir: ttb, spacing: 4pt, lbl(name), ..if extra != none { (sub(extra),) })))
+    }
+    // a hollow block arrow from a to b (axis aligned), with a head at one or both ends
+    let barrow(a, b, both: false, w: 0.15, hw: 0.32, hl: 0.26) = {
+      let (x1, y1) = a
+      let (x2, y2) = b
+      let L = calc.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
+      let (ux, uy) = ((x2 - x1) / L, (y2 - y1) / L)
+      let P(t, s) = (x1 + ux * t - uy * s, y1 + uy * t + ux * s)
+      let pts = if both {
+        (P(0, 0), P(hl, hw), P(hl, w), P(L - hl, w), P(L - hl, hw), P(L, 0),
+         P(L - hl, -hw), P(L - hl, -w), P(hl, -w), P(hl, -hw))
+      } else {
+        (P(0, w), P(L - hl, w), P(L - hl, hw), P(L, 0), P(L - hl, -hw), P(L - hl, -w), P(0, -w))
+      }
+      line(..pts, close: true, fill: white, stroke: 0.7pt)
+    }
+    let wire(..pts, dashed: false) = line(..pts, stroke: if dashed { (thickness: 0.6pt, dash: "dashed") } else { 0.6pt },
+      mark: (end: ">", fill: black, scale: 0.6))
+    let note(pos, it, anchor: "west") = content(pos, text(size: 7.5pt, it), anchor: anchor)
+
+    // groups
+    rect((0.6, -4.75), (12.75, -8.95), fill: rgb("#f4f7fb"), stroke: (thickness: 0.6pt, dash: "dotted"))
+    content((0.75, -8.75), text(size: 8pt, weight: "bold")[IN-ORDER CORE], anchor: "west")
+    rect((13.55, -1.4), (19.75, -6.4), fill: rgb("#fbf6ee"), stroke: (thickness: 0.6pt, dash: "dotted"))
+    content((13.7, -1.6), text(size: 8pt, weight: "bold")[PRNG-FIFO], anchor: "west")
+
+    // memory hierarchy (left column)
+    blk((1, 0), (5, -1), [DRAM], extra: [$A$, $C$, seeds])
+    blk((1, -1.7), (5, -2.7), [$L_2$ cache], extra: [optional], dash: true)
+    blk((1, -3.4), (5, -4.4), [$L_1$ D-cache], extra: [64 B lines])
+    blk((1, -5.1), (5, -6.1), [Load / store unit])
+    barrow((3, -1), (3, -1.7), both: true)
+    barrow((3, -2.7), (3, -3.4), both: true)
+    barrow((3, -4.4), (3, -5.1), both: true)
+    note((3.45, -4.75), [#step(1) #step(3) #step(5)])
+
+    // core (center)
+    blk((7, -5.1), (12, -6.1), [Register file], extra: [blocks of $A$, $B$, $C$])
+    barrow((5, -5.6), (7, -5.6), both: true)
+    // the MAC as an ALU
+    line((7.6, -6.9), (11.4, -6.9), (10.6, -7.9), (8.4, -7.9), close: true, fill: white, stroke: 0.8pt)
+    content((9.5, -7.4), align(center, stack(dir: ttb, spacing: 4pt, lbl[MAC array], sub[$R times R$])))
+    barrow((8.6, -6.1), (8.6, -6.9))
+    barrow((10.4, -6.1), (10.4, -6.9))
+    note((8.75, -6.5), [$A$])
+    note((10.55, -6.5), [$B$])
+    note((11.25, -7.4), step(4))
+    // the result goes back to the register file (accumulate C)
+    line((9.5, -7.9), (9.5, -8.45), (7.3, -8.45), (7.3, -6.1), stroke: 0.6pt, mark: (end: ">", fill: black, scale: 0.6))
+    note((7.4, -8.25), [$C$ (accumulate)])
+
+    // PRNG-FIFO (right column)
+    blk((14, -2.0), (18, -3.0), [Seed register])
+    blk((14, -3.6), (18, -4.6), [Generator], extra: [1 element per $g_c$ cycles])
+    rect((14, -5.1), (18, -6.1), fill: white, stroke: 0.8pt)
+    content((16, -5.28), lbl[FIFO])
+    for i in range(8) {
+      let x = 14.25 + i * 0.44
+      rect((x, -5.45), (x + 0.44, -5.95), fill: if i < 5 { rgb("#d9d9d9") } else { white }, stroke: 0.5pt)
+      if i < 5 { content((x + 0.22, -5.7), text(size: 6.5pt, $b$)) }
+    }
+    wire((16, -3.0), (16, -3.6))                       // seed -> generator
+    barrow((17.3, -4.6), (17.3, -5.1))                  // push at the tail
+    note((16.95, -4.85), [push], anchor: "east")
+    barrow((14, -5.6), (12, -5.6))                      // pop at the head
+    note((12.25, -5.25), [#step(2) pop])
+    // the core writes the seed
+    wire((9.5, -5.1), (9.5, -2.5), (14, -2.5))
+    note((9.65, -2.3), [#step(1) write seed])
+    // control signals
+    wire((18, -5.6), (18.9, -5.6), (18.9, -4.1), (18, -4.1), dashed: true)
+    note((18.95, -4.85), [full])
+    wire((16, -6.1), (16, -7.4), (12.75, -7.4), dashed: true)
+    note((12.9, -7.2), [empty: stall])
+  }))
   #v(0.2em)
   #set text(size: 16pt)
   #let big-step(n) = num-circle(n, 16pt, 11pt, 0.8pt)
@@ -224,15 +398,6 @@
     #big-step(4) multiply #h(0.8em) #big-step(5) store $C$ \
     #text(fill: muted)[In-order core, only the generator runs in parallel]
   ]
-]
-
-#slide("Research Goals")[
-  + Build a cycle-level simulator of a core, a cache hierarchy and a PRNG-FIFO
-  + Reproduce the Bharadwaj model
-  + Choose the dataflow that suits a PRNG-FIFO
-  + Find the best tile, and how it changes with $g_c$
-  + Build a model that explains and predicts it
-  + Answer design questions for software and hardware engineers
 ]
 
 // ---------------- Methodology ----------------
@@ -265,8 +430,26 @@
   #align(center, text(fill: muted)[Every marker in a plot is a simulated point])
 ]
 
+#slide("Research Goals")[
+  + Build a cycle-level simulator of a core, a cache hierarchy and a PRNG-FIFO
+  + Reproduce the Bharadwaj model
+  + Choose the dataflow that suits a PRNG-FIFO
+  + Find the best tile, and how it changes with $g_c$
+  + Build a model that explains and predicts it
+  + Answer design questions for software and hardware engineers
+]
+
 // ---------------- Experiments ----------------
 #section("Experiments And Results")
+
+#slide("Previous Results By Bharadwaj And Demmel")[
+  - Tiling keeps tiles in the cache so every loaded element is reused
+  - All matrices cost the same $=>$ square tiles are optimal
+  - $B$ cheaper to load (a fraction $rho$ of $A$) $=>$ the tile stretches along $B$:
+    $ T_N / T_M = 1 / rho $
+  #key(bold: false)[*Our question:* with a PRNG, $B$ costs *time*, not traffic, and it overlaps with the work on $A$ and $C$.
+    How should we tile now, and how should the hardware be balanced?]
+]
 
 #fig-slide("Reproducing The Bharadwaj Model", "fig_paper", [
   - $B$ stored at lower precision, ratio $rho$
@@ -290,12 +473,6 @@
   - Crossover at $g_c approx R_M dot T_B$
   - Ratio levels off at $T_M slash R_M$
   #key[We use $B$-stationary]
-])
-
-#fig-slide("The Best Tile", "fig_best_tile", [
-  - $T_M$ grows to hide generation
-  - $T_N$ grows, then shrinks to delay $C$ tile trashing
-  - For a very slow generator $=>$ the bigger the better.
 ])
 
 #section("The Model")
@@ -363,6 +540,12 @@
   - Tile of $A$ fits: cheap
   - Strip of $A$ doesn't fit: wider tiles are cheaper
   - Tile of $C$ overflows: second cliff
+])
+
+#fig-slide("The Best Tile", "fig_best_tile", [
+  - $T_M$ grows to hide generation
+  - $T_N$ grows, then shrinks to delay $C$ tile trashing
+  - For a very slow generator $=>$ the bigger the better.
 ])
 
 #fig-slide("It's a Simple Model", "fig_model_simple", [
@@ -637,13 +820,6 @@
     - Slower generation can sometimes afford a smaller FIFO
 ])
 
-#wide-slide("FIFO Size On Other Hardware", "hw_fifo_configs", height: 62%, [
-  - Grows with the register block and the memory latency, shrinks with a slower compute unit
-  #key[Size the FIFO by how fast the core consumes $B$]
-])
-
-#question[Should We Use A Bigger Cache Or A Bigger FIFO?]
-
 #fig-slide("Bigger Cache Or Bigger FIFO?", "hw_sram_split", [
   - When too much goes to the cache $=>$ sligtly slower runtime 
   - When too much goes to the FIFO $=>$ horrible performance
@@ -709,72 +885,12 @@
   #key[Ordinary 4- or 8-way cache + padding]
 ])
 
-// the lines of one tile of C in the 32 sets of a 16 KB 8-way L1, rows of 17 lines:
-// line j of row r goes to set (17 r + j) mod 32. A set with 8 lines of C has no room for A.
-#let tile-sets(h, w, stride: 17, ways: 8) = {
-  let sets = range(32).map(s => {
-    let rows = ()
-    for r in range(h) { for j in range(w) { if calc.rem(stride * r + j, 32) == s { rows.push(r) } } }
-    rows
-  })
-  let cell(body, fill, stroke) = box(width: 100%, height: 100%, fill: fill, stroke: stroke,
-    align(center + horizon, text(size: 7pt, body)))
-  grid(
-    columns: (0.72cm,) * 32,
-    rows: (0.33cm,) * ways + (auto,),
-    ..for level in range(ways) {
-      let slot = ways - 1 - level
-      range(32).map(s => {
-        let rows = sets.at(s)
-        let full = rows.len() >= ways
-        if slot < rows.len() {
-          cell([#rows.at(slot)], rest-fill, if full { 0.9pt + miss-ink } else { 0.4pt + rgb("#9aa7b6") })
-        } else { cell([], white, 0.4pt + rgb("#9aa7b6")) }
-      })
-    },
-    ..range(32).map(s => {
-      let full = sets.at(s).len() >= ways
-      align(center, text(size: 7pt, fill: if full { miss-ink } else { muted }, weight: if full { "bold" } else { "regular" }, str(s)))
-    }),
-  )
-}
-
-#slide("The Small Spike: A Wide Tile Of C")[
-  #set text(size: 16pt)
-  - At $g_c approx 15$–$20$ the best tile is 24 × 128: its tile of $C$ alone is 192 lines
-  #v(0.2em)
-  #grid(
-    columns: (auto, 1fr),
-    column-gutter: 0.6cm,
-    row-gutter: (0.4em, 1.1em, 0.4em),
-    align: (right + horizon, left + horizon),
-    [*24 × 128* \ #text(size: 13pt, fill: muted)[$g_c approx 15$–$20$]], tile-sets(24, 8),
-    [], text(size: 13pt)[4 to 8 lines of $C$ per set. #text(fill: miss-ink)[Sets 6, 7, 8 and 23 are full], so the lines of $A$ there thrash],
-    [*32 × 64* \ #text(size: 13pt, fill: muted)[$g_c approx 30$]], tile-sets(32, 4),
-    [], text(size: 13pt)[Exactly 4 lines of $C$ in every set, room for $A$ everywhere, same as fully associative],
-  )
-]
-
 #question[Does The Replacement \ Policy Matter?]
 
 #fig-slide("Does The Replacement Policy Matter?", "hw_policy_alpha", [
   - Random smooths the cliffs
   - LRU evicts the line needed next in a loop
   - Random lets lines survive by chance
-])
-
-#fig-slide("LRU Or Random?", "hw_policy_slow", [
-  - For normal generator, random up to 28% slower
-  - Only extremely slow generators make random worth it
-])
-
-#question[How Fast Must The \ Compute Unit Be?]
-
-#fig-slide("How Fast Must The Compute Unit Be?", "hw_compute_speed", [
-  - Fast generator: compute cost adds directly
-  - Slow generator: compute is hidden
-  - Model: $alpha + c$
-  #key[As fast as the generator lets it be]
 ])
 
 // ---------------- gem5 ----------------
@@ -810,24 +926,14 @@
 ], ratio: (1fr, 1.6fr))
 
 // ---------------- Discussion and conclusion ----------------
-#slide("Discussion")[
-  #section-name.update("Discussion And Conclusion")
-  - Two costs pull the tile height in opposite directions
-    - memory: keep it short, generation: make it tall
-  - Hardware answers come back to $alpha$
-  - Limits:
-    - our simulator charges every miss in full, no prefetcher
-    - mostly one matrix and one cache size
-    - gem5 only with a free generator
-]
-
-#slide("Conclusion")[
-  - Height of the best tile follows the generator, width follows the cache
-  - $B$-stationary, unless generation costs a few cycles
-  - A max of memory and generation per row of tiles predicts the best tile within 1%, from two calibrations
-  #v(0.4em)
-  - *Software:* pad, calibrate twice, let the model choose
-  - *Hardware:* generator just fast enough, \~1 KB FIFO, the rest to an ordinary LRU cache
+#slide("Future Studies")[
+  #section-name.update("Future Studies")
+  - gem5 with a slow generator: the memory vs generation trade-off on a realistic core
+  - A FIFO that only advances on reads that commit, so wrong-path reads cost nothing
+  - Overlapping misses and a prefetcher in our simulator
+  - More matrices and cache sizes, to see how the thresholds move
+  - Predict $alpha$ from the cache parameters instead of calibrating it for every new hardware
+  - A software-managed scratchpad that keeps the strip of $A$ on purpose
 ]
 
 #section("Thank You", number: false)

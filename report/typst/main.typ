@@ -6,6 +6,7 @@
 // ==========================================================
 
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
+#import "@preview/cetz:0.3.4"
 
 #let title = "Evaluating Matrix Tiling
 Multiplication For Asymmetric Data Cost"
@@ -209,56 +210,101 @@ DRAM and reach the core through a cache hierarchy, an $L_1$ data cache and possi
 the core, the generator, produces it from a seed, one element every $g_c$ cycles, into a FIFO, and the core reads $B$ only from
 this FIFO.
 
-#let box-fill = rgb("#eef3fa")
-#let gen-fill = rgb("#fbf1e6")
-#let small(it) = text(size: 7.5pt, fill: rgb("#444444"), it)
-// a numbered step of the flow of a tile, as in the list below the figure
-#let step(n) = box(baseline: 25%, circle(radius: 4.2pt, stroke: 0.5pt, inset: 0pt,
-  align(center + horizon, text(size: 6pt, fill: black, str(n)))))
-#let ctrl = (dash: "dashed", thickness: 0.6pt)
+// a numbered step of the flow of a tile, as in the list below the figure; the digit is
+// placed, so every circle sits at the same height
+#let step(n) = box(width: 7.6pt, height: 7.6pt, radius: 3.8pt, stroke: 0.5pt, baseline: 1.45pt,
+  place(center + horizon, text(size: 5.5pt, fill: black, str(n))))
 
 #figure(
   {
   set par(justify: false)
-  set text(size: 9pt, hyphenate: false)
-  diagram(
-    spacing: (10mm, 12mm),
-    node-stroke: 0.6pt,
-    node-corner-radius: 3pt,
-    node-inset: 6pt,
-    edge-stroke: 0.7pt,
-    // memory hierarchy: A and C live here, B never does
-    node((0, 0), [*DRAM* \ #small[$A$, $C$, seeds of $B$]], name: <dram>, fill: box-fill, width: 25mm),
-    node((1.2, 0), [*$L_2$* \ #small[optional]], name: <l2>, fill: box-fill, stroke: (dash: "dashed", thickness: 0.6pt), width: 16mm),
-    node((2.4, 0), [*$L_1$ data cache*], name: <l1>, fill: box-fill, width: 27mm),
-    // the core
-    node((4, 0), [*Load/store unit*], name: <lsu>, fill: white, width: 24mm),
-    node((4, 1.2), [*Register file* \ #small[blocks of $A$, $B$, $C$]], name: <regs>, fill: white, width: 28mm),
-    node((5.2, 1.2), [*MAC unit*], name: <mac>, fill: white, width: 16mm),
-    node(enclose: (<lsu>, <regs>, <mac>), name: <core>, fill: box-fill, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
-    node((5.2, 0), [*Core*], stroke: none, fill: none),
-    // the PRNG-FIFO: B is generated on the fly, never stored
-    node((1.2, 1.2), [*Generator* \ #small[one element of $B$] \ #small[every $g_c$ cycles]], name: <gen>, fill: gen-fill, width: 27mm),
-    node((2.4, 1.2), [*FIFO*], name: <fifo>, fill: gen-fill, width: 16mm),
-    node((1.2, 2.2), [*Seed register*], name: <seed>, fill: gen-fill, width: 27mm),
-    node(enclose: (<gen>, <fifo>, <seed>), name: <pf>, stroke: 0.8pt, inset: 7pt, corner-radius: 5pt),
-    node((2.3, 2.2), [*PRNG-FIFO*], stroke: none, fill: none),
-    // data paths, numbered by the step of a tile that uses them
-    edge(<dram>, <l2>, "<|-|>"),
-    edge(<l2>, <l1>, "<|-|>"),
-    edge(<l1>, <lsu>, "<|-|>", [#step(1) #step(3) #step(5)], label-side: left, label-pos: 0.4),
-    edge(<lsu>, <regs>, "<|-|>"),
-    edge(<regs>, (4, 2.75), (1.2, 2.75), <seed>, "-|>", [#step(1) #small[seed]], label-side: left, label-pos: 0.45),
-    edge(<seed>, <gen>, "-|>"),
-    edge(<gen>, <fifo>, "-|>", small[$B$], label-side: left),
-    edge(<fifo>, <regs>, "-|>", [#step(2) #small[pop $B$]], label-side: right),
-    edge(<regs>, <mac>, "<|-|>", step(4), label-side: left),
+  set text(hyphenate: false)
+  // a datapath-style block diagram: square boxes, hollow block arrows for data buses, thin
+  // lines for single signals, dashed lines for control, the MAC drawn as an ALU, and the FIFO
+  // as a queue of slots (the head, on the left, is popped first)
+  cetz.canvas(length: 0.8cm, {
+    import cetz.draw: *
+    let lbl(it) = text(size: 6.5pt, tracking: 0.03em, upper(it))
+    let sub(it) = text(size: 5.5pt, fill: rgb("#555555"), it)
+    let blk(a, b, name, extra: none, dash: false) = {
+      rect(a, b, fill: white, stroke: if dash { (thickness: 0.7pt, dash: "dashed") } else { 0.7pt })
+      let c = ((a.at(0) + b.at(0)) / 2, (a.at(1) + b.at(1)) / 2)
+      content(c, align(center, stack(dir: ttb, spacing: 3pt, lbl(name), ..if extra != none { (sub(extra),) })))
+    }
+    // a hollow block arrow from a to b (axis aligned), with a head at one or both ends
+    let barrow(a, b, both: false, w: 0.15, hw: 0.32, hl: 0.26) = {
+      let (x1, y1) = a
+      let (x2, y2) = b
+      let L = calc.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
+      let (ux, uy) = ((x2 - x1) / L, (y2 - y1) / L)
+      let P(t, s) = (x1 + ux * t - uy * s, y1 + uy * t + ux * s)
+      let pts = if both {
+        (P(0, 0), P(hl, hw), P(hl, w), P(L - hl, w), P(L - hl, hw), P(L, 0),
+         P(L - hl, -hw), P(L - hl, -w), P(hl, -w), P(hl, -hw))
+      } else {
+        (P(0, w), P(L - hl, w), P(L - hl, hw), P(L, 0), P(L - hl, -hw), P(L - hl, -w), P(0, -w))
+      }
+      line(..pts, close: true, fill: white, stroke: 0.6pt)
+    }
+    let wire(..pts, dashed: false) = line(..pts, stroke: if dashed { (thickness: 0.5pt, dash: "dashed") } else { 0.5pt },
+      mark: (end: ">", fill: black, scale: 0.5))
+    let note(pos, it, anchor: "west") = content(pos, text(size: 5.8pt, it), anchor: anchor)
+
+    // groups
+    rect((0.6, -4.75), (12.75, -8.95), fill: rgb("#f4f7fb"), stroke: (thickness: 0.5pt, dash: "dotted"))
+    content((0.75, -8.75), text(size: 6pt, weight: "bold")[IN-ORDER CORE], anchor: "west")
+    rect((13.55, -1.4), (19.75, -6.4), fill: rgb("#fbf6ee"), stroke: (thickness: 0.5pt, dash: "dotted"))
+    content((13.7, -1.6), text(size: 6pt, weight: "bold")[PRNG-FIFO], anchor: "west")
+
+    // memory hierarchy (left column): A and C live here, B never does
+    blk((1, 0), (5, -1), [DRAM], extra: [$A$, $C$, seeds])
+    blk((1, -1.7), (5, -2.7), [$L_2$ cache], extra: [optional], dash: true)
+    blk((1, -3.4), (5, -4.4), [$L_1$ D-cache], extra: [64 B lines])
+    blk((1, -5.1), (5, -6.1), [Load / store unit])
+    barrow((3, -1), (3, -1.7), both: true)
+    barrow((3, -2.7), (3, -3.4), both: true)
+    barrow((3, -4.4), (3, -5.1), both: true)
+    note((3.45, -4.75), [#step(1) #step(3) #step(5)])
+
+    // the core (center)
+    blk((7, -5.1), (12, -6.1), [Register file], extra: [blocks of $A$, $B$, $C$])
+    barrow((5, -5.6), (7, -5.6), both: true)
+    line((7.6, -6.9), (11.4, -6.9), (10.6, -7.9), (8.4, -7.9), close: true, fill: white, stroke: 0.7pt)
+    content((9.5, -7.4), align(center, stack(dir: ttb, spacing: 3pt, lbl[MAC unit], sub[$R_M times R_N$])))
+    barrow((8.6, -6.1), (8.6, -6.9))
+    barrow((10.4, -6.1), (10.4, -6.9))
+    note((8.75, -6.5), [$A$])
+    note((10.55, -6.5), [$B$])
+    note((11.25, -7.4), step(4))
+    // the result goes back to the register file (accumulate C)
+    line((9.5, -7.9), (9.5, -8.45), (7.3, -8.45), (7.3, -6.1), stroke: 0.5pt, mark: (end: ">", fill: black, scale: 0.5))
+    note((7.4, -8.25), [$C$ (accumulate)])
+
+    // the PRNG-FIFO (right column): B is generated on the fly, never stored
+    blk((14, -2.0), (18, -3.0), [Seed register])
+    blk((14, -3.6), (18, -4.6), [Generator], extra: [1 element per $g_c$ cycles])
+    rect((14, -5.1), (18, -6.1), fill: white, stroke: 0.7pt)
+    content((16, -5.28), lbl[FIFO])
+    for i in range(8) {
+      let x = 14.25 + i * 0.44
+      rect((x, -5.45), (x + 0.44, -5.95), fill: if i < 5 { rgb("#d9d9d9") } else { white }, stroke: 0.4pt)
+      if i < 5 { content((x + 0.22, -5.7), text(size: 5pt, $b$)) }
+    }
+    wire((16, -3.0), (16, -3.6))
+    barrow((17.3, -4.6), (17.3, -5.1))
+    note((16.95, -4.85), [push], anchor: "east")
+    barrow((14, -5.6), (12, -5.6))
+    note((12.25, -5.25), [#step(2) pop])
+    wire((9.5, -5.1), (9.5, -2.5), (14, -2.5))
+    note((9.65, -2.3), [#step(1) write seed])
     // control signals
-    edge(<fifo>, <gen>, "-|>", small[full: pause], bend: -50deg, stroke: ctrl, label-side: right),
-    edge(<fifo>, <regs>, "-|>", small[empty: stall], bend: 40deg, stroke: ctrl, label-side: left),
-  )
+    wire((18, -5.6), (18.9, -5.6), (18.9, -4.1), (18, -4.1), dashed: true)
+    note((18.95, -4.85), [full])
+    wire((16, -6.1), (16, -7.4), (12.75, -7.4), dashed: true)
+    note((12.9, -7.2), [empty: stall])
+  })
   },
-  caption: [The hardware system we study. $A$ and $C$ come from memory through the cache hierarchy, and $B$ is generated on the fly into the FIFO, from a seed that is loaded once per tile. The numbers are the steps of a tile listed below, and the dashed arrows are control signals. The sizes and latencies we simulate are in @tab-params.],
+  caption: [The hardware system we study. $A$ and $C$ come from memory through the cache hierarchy, and $B$ is generated on the fly into the FIFO, from a seed that is loaded once per tile. The hollow arrows are data buses, the dashed arrows are control signals, and the numbers are the steps of a tile listed below. The sizes and latencies we simulate are in @tab-params.],
 ) <fig-system>
 
 The core works on register blocks. It holds a block of each matrix in its registers, $R_M times R_K$ of $A$, $R_K times R_N$ of
