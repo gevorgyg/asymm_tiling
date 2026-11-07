@@ -103,7 +103,7 @@ Multiplication For Asymmetric Data Cost"
 
 == Background: Caches, Memory, Matrix Multiplication
 
-A processor computes much faster than main memory (DRAM) can deliver data. Small, fast caches close to the core hold recently used data, so that repeated uses of the same data are served quickly @hennessy2017.
+A processor computes much faster than main memory (DRAM) can deliver data. Small, fast caches close to the core hold recently used data, so that repeated uses of the same data are served quickly.
 
 Caches are also widely used for high performance matrix computation. Computing $C = A dot B$ with $A in RR^(M times K)$ and $B in
 RR^(K times N)$ takes $M N K$ multiply-accumulates (MACs). A straightforward loop nest streams through the matrices and, once they no longer fit in the cache, loads each element from memory over and over. *Tiling* splits the computation into tiles small enough to stay in the cache, so that a loaded element is reused many times before it is evicted.
@@ -114,13 +114,21 @@ rectangular tiles can perform better than the well known square tiles.
 == Motivation: The Importance Of An Asymmetric Data Access Model <sec-importance>
 
 Multiplying data by a random matrix is a core building block of randomized numerical linear algebra (RandNLA) @halko2011
-@woodruff2014 @martinsson2020 @murray2023. A random projection (or sketch), compresses a large matrix into a much smaller one
+@woodruff2014 @murray2023. A random projection (or sketch), compresses a large matrix into a much smaller one
 while approximately preserving most of its geometry. Sketching underlies fast algorithms for low-rank approximation and least-squares problems. In machine learning, random features approximate kernel methods by a multiplication with a random matrix @rahimi2007.
+
+These algorithms are not only theory, they are part of the libraries that engineers use every day. In scikit-learn, a random
+projection reduces the number of features by multiplying the data by a random Gaussian or sparse matrix
+@sklearn-random-projection, and its PCA runs a randomized SVD by default on large inputs @sklearn-pca, which multiplies the data
+by a random matrix to find its main directions @halko2011. PyTorch offers the same randomized SVD in `torch.svd_lowrank`
+@pytorch-svd-lowrank. SciPy offers a sketch for least-squares problems, the Clarkson-Woodruff transform @scipy-cwt, and the
+kernel approximation of scikit-learn multiplies the data by a random matrix to compute random features @sklearn-rbfsampler.
+Apache Spark uses random projections to find similar items in large datasets @spark-lsh.
 
 In all of these algorithms the random matrix $B$ carries no information of its own, making it much cheaper to provide than the
 data it multiplies, in a couple of ways.
 
-Firstly, it can afford to have lower precision. An element of $B$ can be stored in a single bit or byte @achlioptas2003, while $A$ and $C$ keep full precision. This is an asymmetric-precision matrix multiplication, which reduces cache traffic, as shown by Bharadwaj and Demmel @notes-random-tiling @notes-asym-cost and in our experiments (@reproduce).
+Firstly, it can afford to have lower precision. An element of $B$ can be stored in a single bit @achlioptas2003, while $A$ and $C$ keep full precision. This is an asymmetric-precision matrix multiplication, which reduces cache traffic, as shown by Bharadwaj and Demmel @notes-random-tiling @notes-asym-cost and in our experiments (@reproduce).
 
 Secondly, the matrix can have no storage at all. $B$ can be generated on the fly from a small seed by a pseudo-random number
 generator (PRNG), as the computation consumes it. $B$ then causes no memory traffic at all, only generation time. The only thing
@@ -145,7 +153,7 @@ for every number. A linear feedback shift register (LFSR) shifts its state by on
 same idea with shifts and XORs of whole words, and the Mersenne Twister @matsumoto1998mt keeps a much larger state for a longer
 period and better statistics. On FPGAs, generators built from shift registers and XORs produce a new number every cycle, with a
 quality comparable to good software generators @thomas2013lutsr. All of these produce their numbers in a fixed order, so the
-$i$-th number can only be reached by producing every number before it. Either kind of generator can sit next to the core and feed it it's $B$ matrix.
+$i$-th number can only be reached by producing every number before it. Either kind of generator can sit next to the core and feed it its $B$ matrix.
 A stateful generator fits a FIFO that the core reads in order, restarted from a seed for every tile. For the tiling, what matters is not which generator is used,
 but how many cycles it needs for each element of $B$, which we call the generation cost $g_c$.
 
@@ -159,13 +167,15 @@ hardware and software engineer can use to their advantage.
 
 To get there, we:
 
-+ Build a cycle-level simulator of a core with a cache hierarchy and a PRNG-FIFO.
-+ Check that it reproduces the previous results of Bharadwaj and Demmel (@reproduce).
-+ Choose the dataflow that suits a PRNG-FIFO best (@sec-dataflow).
-+ Find the best tile by simulation, and follow how its shape changes with the cost of generation (@sec-tile).
-+ Develop a simple model that explains these tiles and predicts the runtime of a tile when $B$ is generated by the PRNG-FIFO,
-  and refine it until it matches the simulator (@sec-simple-model).
-+ Answer practical design questions: which tile a software engineer should choose, and how a hardware engineer should balance the cache, the FIFO and the generator.
++ Build a cycle-level simulator of a core with a cache hierarchy and a PRNG-FIFO, and check that it reproduces the previous
+  results of Bharadwaj and Demmel (@reproduce).
++ Find what the best tile looks like by simulation, starting with the dataflow that suits a PRNG-FIFO (@sec-dataflow), and
+  follow how its shape changes with the cost of generation (@sec-tile).
++ Build a model that predicts the best tile when $B$ is generated by the PRNG-FIFO (@sec-simple-model, @sec-refine).
++ Check how well the model chooses the tile, also for other matrices (@sec-test-model, @sec-sw-shapes).
++ Answer design questions for engineers who use or build such a system, such as, which tile a software engineer should choose, and how
+  a hardware engineer should balance the cache, the FIFO and the generator (@sec-sw, @sec-hw).
++ Check the results on a more realistic core with gem5 (@sec-gem5).
 
 == Notation <sec-notation>
 
@@ -330,7 +340,7 @@ tile runs as follows:
 The core is in order. It waits for every access to finish before it starts the next one, and the only thing that works in
 parallel with it is the generator, which keeps producing elements while the FIFO has room and pauses when it is full. Over the
 whole tile the runtime is therefore set by the slower of the two, the core's accesses to $A$ and $C$, or the generator producing
-$B$. The rest of this report studies this trade-off: which tile balances the two best, and how a hardware engineer should split
+$B$. The rest of this report studies this trade-off, which tile balances the two best, and how a hardware engineer should split
 the hardware between the generator, the FIFO and the cache.
 
 = Methodology
@@ -493,7 +503,7 @@ the store for the end of the loop. This gives $C$-stationary a clear edge when $
 + At $g_c = 0$, $C$-stationary is always faster. $T_M = 128$ gives $C$-stationary an even bigger edge because at that size the tile no longer fits in $L_1$, making every $C$ load and store much less forgiving.
 + The ratio crosses 1 at a small $g_c$, around 4 to 5 for most heights. Only $T_M = 128$ is the exception again, crossing only at about 12, showing that when the tile does not fit inside the cache, $C$-stationary keeps its edge for longer.
 + Once both dataflows are limited by generation, the ratio reaches an asymptote. That upper bound is how many more rows share each
-  generated element in $B$-stationary than in $C$-stationary: $T_M slash R_M$.
+  generated element in $B$-stationary than in $C$-stationary, which is $T_M slash R_M$.
 
 One last thing is, we can see that for a tile height of $T_M = 4$, the performance is the same for both dataflows for all $g_c$
 values seen in the figure. This makes sense because it's the same height as the register files, meaning the amortization for
@@ -531,7 +541,7 @@ We start by *finding the Empirically Best Tiles*. To find the best tile at each 
 
 #figure(
   image("./figures/fig_best_tile.svg", width: 100%),
-  caption: [The best tile against $g_c$: its height $T_M^*$ and width $T_N^*$.],
+  caption: [The best tile against $g_c$, its height $T_M^*$ and width $T_N^*$.],
 ) <fig-best-tile>
 
 The figure shows an interesting phenomenon. At first as $g_c$ grows, the best tile gets taller and wider, but after $g_c$ passes 20,
@@ -577,7 +587,7 @@ This is a simple model. It assumes that the overlap is perfect and that the tile
 === The Memory Cost $alpha$ <sec-alpha>
 
 With $g_c = 0$, generating $B$ is free, and the runtime per MAC is the memory cost $alpha(T_M, T_N)$ alone. This is very
-convenient and it allows us to analyze and study the behaviour of $alpha(T_M, T_N)$. Plugging in $g_c = 0$, we measured it for every $T_M$ from 4 to 128 in steps of 4 and $T_N in {4, 8, 16, 32, 64}$, with the default parameters (@tab-params).
+convenient and it allows us to analyze and study the behavior of $alpha(T_M, T_N)$. Plugging in $g_c = 0$, we measured it for every $T_M$ from 4 to 128 in steps of 4 and $T_N in {4, 8, 16, 32, 64}$, with the default parameters (@tab-params).
 
 #figure(
   image("./figures/fig_alpha.svg", width: 100%),
@@ -598,7 +608,7 @@ convenient and it allows us to analyze and study the behaviour of $alpha(T_M, T_
   divide the matrix dimensions. Those tiles, include a residual tile that is smaller than the full one, causing *less* thrashing
   of the $L_1$ cache when the $C$ tile overflows. On the other hand, those tiles that *do divide* the matrix, have no residual
   tile, therefore reaching maximal thrashing.
-+ The narrow tiles have a "sawtooth" shape: small dips at some points. The reason is similar to the previous point. After the
++ The narrow tiles have a "sawtooth" shape, small dips at some points. The reason is similar to the previous point. After the
   first step, these heights leave a very short residual row of tiles, short enough for its tile of $A$ to fit in $L_1$, so it is
   cheap and pulls the *average* $alpha$ down.
 
@@ -606,14 +616,14 @@ convenient and it allows us to analyze and study the behaviour of $alpha(T_M, T_
 
 At the moment that generating $B$ costs time, the simple model predicts the runtime as the larger of two costs, which pull the tile height in opposite directions:
 
-+ the memory cost $alpha$, whose behaviour we've analyzed in the previous section.
++ the memory cost $alpha$, whose behavior we've analyzed in the previous section.
 + the generation cost $g_c slash T_M$, which *falls* with $T_M$.
 
 @fig-model-simple shows both for $T_N = 32$ and $T_M$ from 4 to 128 in steps of 4, together with the runtime measured at $g_c = 30$, $100$ and $200$, with the default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/fig_model_simple.svg", width: 100%),
-  caption: [The two costs of the simple model against $T_M$ ($T_N = 32$): the memory cost $alpha$ measured at $g_c = 0$ (solid), the generation cost $g_c slash T_M$ (dashed), and the measured runtime (markers) at $g_c = 30$, $100$ and $200$.],
+  caption: [The two costs of the simple model against $T_M$ ($T_N = 32$), the memory cost $alpha$ measured at $g_c = 0$ (solid), the generation cost $g_c slash T_M$ (dashed), and the measured runtime (markers) at $g_c = 30$, $100$ and $200$.],
 ) <fig-model-simple>
 
 Trying to understand the formula intuitively, the runtime always follows the higher of the two curves. The *best tile* is therefore the *lowest point* of that
@@ -622,7 +632,7 @@ the left, generation dominates and a taller tile helps. To the right, memory dom
 
 We can see that most of the points don't actually follow the curves. At $g_c = 30$ generation is cheap, and the measured runtime sits on the higher curve almost everywhere. At $g_c = 100$ and $200$ it clearly does not. Instead it follows a decreasing step shape above the generation curve.
 
-Analysing the points that do touch the curve shows that those are the points that have tiles at heights that divide the
+Analyzing the points that do touch the curve shows that those are the points that have tiles at heights that divide the
 height of the matrix ($M = 192$), such as $T_M = 48$ and $64$. In addition, we can see that a few measurements are slower than both curves. Why the simple model misses these points, and how to fix it, is the subject of the next section.
 
 === Refining The Model <sec-refine>
@@ -681,7 +691,7 @@ startup added to the memory cost.
 
 #figure(
   image("./figures/fig_model_refined.svg", width: 100%),
-  caption: [As @fig-model, with the full refined model (dashed): the max taken per row of tiles, with the startup term on the memory side.],
+  caption: [As @fig-model, with the full refined model (dashed), the max taken per row of tiles, with the startup term on the memory side.],
 ) <fig-model-refined>
 
 *4. $K$ and the strip of $A$:* So far $alpha$ was measured on one matrix with the same $M N K$ dimensions. $M$ and $N$ are already
@@ -783,7 +793,7 @@ $M$, $N$ and $K$ in the model (refinements 3 and 4 of @sec-refine), two calibrat
 Before this can work, there is one condition. Every row of $C$ has to start at the beginning of a cache line, which means
 that the length of a row, $N$, has to be a multiple of the number of elements in one cache line in the configuration that is used.
 Let's assume that it does not, then a row of a tile of $C$ will start in the middle of a line and therefore touch one more line
-than it actually needs. The tile then takes more of the cache, and starts to thrash at a smaller height. @fig-sw-alignment shows three matrices that differ only in $N$: with $N = 300$, which is 18.75 lines per row, $alpha$ starts to climb at $T_M approx 80$ instead of 128.
+than it actually needs. The tile then takes more of the cache, and starts to thrash at a smaller height. @fig-sw-alignment shows three matrices that differ only in $N$. With $N = 300$, which is 18.75 lines per row, $alpha$ starts to climb at $T_M approx 80$ instead of 128.
 
 #figure(
   image("./figures/sw_alignment.svg", width: 100%),
@@ -802,7 +812,7 @@ of them.
 
 #figure(
   image("./figures/sw_kmodel.svg", width: 100%),
-  caption: [How close the chosen tile is to the best tile, over 130 matrices and six values of $g_c$ (780 cases): the share of the cases within 1%, between 1% and 5%, and more than 5% slower, and the worst case. "K model" uses the two calibrations and refinement 4, "own table" calibrates every matrix itself, and "one table" uses the calibration of $192 times 256 times 256$ for all.],
+  caption: [How close the chosen tile is to the best tile, over 130 matrices and six values of $g_c$ (780 cases), the share of the cases within 1%, between 1% and 5%, and more than 5% slower, and the worst case. "K model" uses the two calibrations and refinement 4, "own table" calibrates every matrix itself, and "one table" uses the calibration of $192 times 256 times 256$ for all.],
 ) <fig-sw-kmodel>
 
 With $K$ in the model, the two calibrations choose a tile within 1% of the best one in 96% of the cases, and within 5% in all but
@@ -862,19 +872,19 @@ Square tiles are optimal when all matrices cost the same. @fig-vs-square fixes t
 Looking at the best square tile of any size (black dashed line), we compare the best tile overall with the best square tile of any size.
 The net gains are smaller, and the line has two hills, with no gain at the ends and in between the hills. 
 
-This exact phenomenon can be seen in the section about the path of the best tile overall in @fig-best-tile. There we see that the best tile starts short and wide, passes through a square around $g_c = 45$, and ends tall and narrow up until it turns wide again at extremely high $g_c$ values. This same pattern of behaviour can be seen in @fig-vs-square as well.
+This exact phenomenon can be seen in the section about the path of the best tile overall in @fig-best-tile. There we see that the best tile starts short and wide, passes through a square around $g_c = 45$, and ends tall and narrow up until it turns wide again at extremely high $g_c$ values. This same pattern of behavior can be seen in @fig-vs-square as well.
 
 Our suggestion, don't default to a square tile. A square is only safe when generation is almost free, or when it is so expensive that it dominates every tile. Everywhere in between, the best tile saves up to half of the runtime, and choosing it costs only the calibration and a short computation (@sec-test-model).
 
 == Hardware Focused Design Questions <sec-hw>
 
 So far the hardware was fixed. A hardware engineer designing such a system has to decide on the hardware itself: how fast the
-generator must be, how large the cache and the FIFO should be, and so on. We answer each question the same way: for every
+generator must be, how large the cache and the FIFO should be, and so on. We answer each question the same way. For every
 configuration and every $g_c$, we simulate all the tiles and keep the fastest one, comparing configurations by their best tile.
 
 === How Fast Must The Generator Be? <sec-hw-prng>
 
-A faster generator costs area and power, so the engineer wants the slowest generator that does not slow the computation down. To find it, we take the best runtime at every $g_c$ and divide it by the best runtime with free generation ($g_c = 0$): this is the slowdown caused by the generator. We repeat this for four $L_1$ sizes, 8 to 64 KB, with the default configuration otherwise (@tab-params).
+A faster generator costs area and power, so the engineer wants the slowest generator that does not slow the computation down. To find it, we take the best runtime at every $g_c$ and divide it by the best runtime with free generation ($g_c = 0$), which is the slowdown caused by the generator. We repeat this for four $L_1$ sizes, 8 to 64 KB, with the default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/hw_prng_budget.svg", width: 100%),
@@ -911,7 +921,7 @@ The FIFO takes on-chip memory that could otherwise go to the cache, so we would 
 
 #figure(
   image("./figures/hw_fifo_size.svg", width: 100%),
-  caption: [Slowdown caused by a small FIFO: the best runtime with a FIFO of the given size divided by the best runtime with an unlimited FIFO, one line per $g_c$. The dotted line marks 1%.],
+  caption: [Slowdown caused by a small FIFO, the best runtime with a FIFO of the given size divided by the best runtime with an unlimited FIFO, one line per $g_c$. The dotted line marks 1%.],
 ) <fig-hw-fifo>
 
 @fig-hw-fifo shows that the FIFO size does matter. A FIFO that holds only one register block can make the computation up to a
@@ -987,8 +997,8 @@ allocation. We wanted to test how much performance we need to pay if we decide t
 ) <fig-hw-assoc>
 
 @fig-hw-assoc shows that the price of going set-associative is very high. As long as generation is not almost free, the
-performance becomes two to six times worse with a set-associative cache. Adding ways barely helps: the 4-, 8- and 16-way caches
-give exactly the same results, and only the 32-way cache does better but in a negligible amount.
+performance becomes two to six times worse with a set-associative cache. Adding ways barely helps. The 4-, 8- and 16-way caches
+give exactly the same results, and only the 32-way cache does better, but it is still up to three times slower than the fully associative one for slow generators.
 
 A set-associative cache decides where a line goes by its address. Line number $l$ can only go to set $l(mod S)$, where $S$ is the
 number of sets, and each set holds only a few lines. Along a row, consecutive lines go to consecutive sets, $0, 1, 2, dots$. But a
@@ -1097,7 +1107,7 @@ default configuration otherwise (@tab-params).
 
 #figure(
   image("./figures/hw_compute_speed.svg", width: 100%),
-  caption: [Slowdown caused by the compute unit: the best runtime with a compute unit of the given throughput divided by the best runtime with a free MAC.],
+  caption: [Slowdown caused by the compute unit, the best runtime with a compute unit of the given throughput divided by the best runtime with a free MAC.],
 ) <fig-hw-mac>
 
 When generation is cheap, every cycle counts. At a small $g_c$, the core does its arithmetic right after the memory access, and
@@ -1130,7 +1140,7 @@ systems.
 
 === Configuration
 
-Every gem5 run compares two sources of $B$. The baseline is the conventional system of @reproduce: $B$ is a stored matrix in
+Every gem5 run compares two sources of $B$. The baseline is the conventional system of @reproduce. $B$ is a stored matrix in
 DRAM, in int8, and the core reads it through the caches like $A$ and $C$. We call this "$B$ in memory". Against it we run the
 same kernel with $B$ coming from the PRNG-FIFO, which takes the place of memory as the source of $B$. In both cases $B$ is int8
 because that is its stored precision in the asymmetric-precision setting of @sec-importance. The time to generate an element is
@@ -1144,7 +1154,7 @@ vectors @ti-spruiv4. gem5 has no model of the C7x itself, so the core that runs 
 The PRNG-FIFO is a new gem5 component that sits between the core's data port and the $L_1$ data cache, where @fig-system puts
 it. It owns a window of addresses. A read inside the window is answered by the generator and never reaches the cache, and every
 other access passes through to the cache unchanged. The kernel therefore reads $B$ with ordinary load instructions, and the
-core treats them like any other load: it can issue them early, and it can issue them on a mispredicted path, which matters in
+core treats them like any other load. It can issue them early, and it can issue them on a mispredicted path, which matters in
 @sec-gem5-branch.
 
 #figure(
@@ -1244,14 +1254,14 @@ reads all of $B$ and there are $M slash T_M$ row bands, and then climb the same 
 The prefetcher only does something at $T_M = 8$, where it removes 95% of the $L_1$ misses. There, a tile has one row block, and
 every load instruction of the kernel walks memory with one fixed stride of 32 bytes. In a taller tile, each load instruction
 steps from one row block to the next, 4.6 KB along $A$ and 16.9 KB along $C$ with padding, which is past the end of the 4 KB
-page, and gem5's stride prefetcher does not prefetch across pages: at $T_M = 64$ it identifies 221 thousand candidates and
+page, and gem5's stride prefetcher does not prefetch across pages. At $T_M = 64$ it identifies 221 thousand candidates and
 issues none. For every tile with $T_M >= 16$ the runs with and without the prefetcher agree within 0.1%. What makes memory
 cheaper here than in our simulator is the overlap of misses with computation and with each other, and the prefetcher has
 almost no part in it.
 
 #figure(
   image("./figures/gem5_speedup.svg", width: 100%),
-  caption: [Speedup of the counter PRNG-FIFO over $B$ in memory on the same tile: cycles with $B$ in memory divided by cycles with the PRNG-FIFO. Blue means the PRNG-FIFO is faster.],
+  caption: [Speedup of the counter PRNG-FIFO over $B$ in memory on the same tile, cycles with $B$ in memory divided by cycles with the PRNG-FIFO. Blue means the PRNG-FIFO is faster.],
 ) <fig-gem5-speedup>
 
 On the same tile the PRNG-FIFO is faster everywhere, from 1.00 at $T_M = 192$ to 1.96 at $8 times 8$, and the gain follows the
@@ -1298,7 +1308,7 @@ Up to $g_c = 16$ the grid does not change. Each element of $B$ is used by the $T
 $g_c slash T_M$ cycles per MAC, and at $g_c = 16$ that is 0.25 for the $64 times 64$ tile, below its memory cost of 0.41. From
 $g_c = 32$ the short tiles are generation bound at exactly $g_c slash T_M$ (1.0, 2.0 and 4.0 cycles per MAC at $T_M = 32$, 16
 and 8), and the best tile moves up: $96 times 16$ at $g_c = 32$, $192 times 64$ at 64, $192 times 16$ at 128. This is the
-picture of @sec-mem-vs-gen and @sec-hw-prng on a real core: the best tile grows taller with the generation cost.
+picture of @sec-mem-vs-gen and @sec-hw-prng on a real core. The best tile grows taller with the generation cost.
 
 #figure(
   image("./figures/gem5_gencost_speedup.svg", width: 70%),
@@ -1340,8 +1350,8 @@ every $g_c$, the tile each simulator ranks best and how much the tile our simula
   caption: [The tile each simulator ranks best for every $g_c$ (counter PRNG-FIFO, padding, prefetcher on), and the runtime our simulator's choice costs in gem5 over gem5's own best tile.],
 ) <tab-gem5-vs-sim>
 
-The two agree on the shape: the tile our simulator picks costs less than 1% in gem5 at seven of the nine values of $g_c$. The exceptions are $g_c = 16$ and
-32, where memory and generation are about equal and the two simulators place the crossover at a different $T_M$: ours charges
+The two agree on the shape. The tile our simulator picks costs less than 1% in gem5 at seven of the nine values of $g_c$. The exceptions are $g_c = 16$ and
+32, where memory and generation are about equal and the two simulators place the crossover at a different $T_M$. Ours charges
 every miss in full, so it finds memory more expensive and moves to tall tiles sooner. The absolute cycle counts differ, since
 our simulator has no compute cost and a simpler cache; what it is built to do is rank tiles.
 
@@ -1349,10 +1359,10 @@ our simulator has no compute cost and a simpler cache; what it is built to do is
 
 On an in-order core whose misses overlap, with a free generator, the PRNG-FIFO removes the traffic of $B$ and gains 8% at the
 best tile and up to 2$times$ on short tiles that read $B$ many times. Padding is as necessary as in @sec-hw-assoc, and the
-prefetcher is nearly irrelevant to tiled code on this core. With a slow generator the picture of the report repeats on gem5:
-the best tile grows taller with $g_c$, the PRNG-FIFO pays off up to about $g_c = 32$ on this cache, and the model of
+prefetcher is nearly irrelevant to tiled code on this core. With a slow generator the picture of the report repeats on gem5.
+The best tile grows taller with $g_c$, the PRNG-FIFO pays off up to about $g_c = 32$ on this cache, and the model of
 @sec-refine, calibrated once at $g_c = 0$, predicts gem5's runtime within 3% and chooses its best tile. gem5 also shows one
-thing our simulator cannot: a speculating core reads the FIFO on the wrong path, which a stream FIFO does not survive, so the
+thing our simulator cannot. A speculating core reads the FIFO on the wrong path, which a stream FIFO does not survive, so the
 generator must be addressable by the core, or the FIFO must pop only on reads that commit.
 
 = Discussion
@@ -1379,7 +1389,7 @@ so with a free generator the PRNG-FIFO gains 8% at the best tile, and up to 2$ti
 With a slow generator the best tile grows taller, the PRNG-FIFO breaks even with $B$ in memory at about $g_c = 32$ on that
 cache, and the model, calibrated once in gem5 at $g_c = 0$, predicts gem5's runtime within 3% and picks its best tile. The
 capacity cliffs and the need for padding show up in gem5 too, at the sizes of its own caches, and the prefetcher does nearly
-nothing for tiled code. gem5 also shows a cost that our simulator has no notion of: a core that speculates reads the FIFO on a
+nothing for tiled code. gem5 also shows a cost that our simulator has no notion of. A core that speculates reads the FIFO on a
 wrong path, which costs generation time with a counter PRNG-FIFO and corrupts $B$ with a seeded one.
 
 Our results have some limits. Our simulator charges every miss in full and has no prefetcher, which favors the PRNG-FIFO. Most of the
@@ -1404,7 +1414,8 @@ to use, unless generation costs only a few cycles.
 
 The runtime of a tile is well described by the larger of the two costs. The memory cost, measured once with free generation,
 and the generation cost of each row of tiles. A model built on this explains the best tiles we found, and chooses a tile within
-1% of the best in almost every case we tested, from only two calibrations.
+1% of the best in almost every case we tested, from only two calibrations. On a more realistic core in gem5 the same picture
+holds. The best tile grows taller with the generation cost, and the model, calibrated once, predicts gem5's runtime within 3%.
 
 For a software engineer, this means padding the rows of the matrices to whole cache lines, calibrating the model twice, and
 letting it choose the tile instead of defaulting to a square, which can cost up to half of the runtime. For a hardware engineer,

@@ -132,13 +132,13 @@
 ]
 
 // ---------------- Introduction ----------------
-#slide("Motivation")[
-  - Multiplying by a random matrix $B$ is a core building block of RandNLA
-    - sketching, low-rank approximation, least squares, random features
-  - $B$ carries no information of its own, so it is cheap to provide
-    - lower precision: one bit or byte per element
-    - or no storage at all: generated on the fly by a PRNG from a seed
-  - an *asymmetric access cost*: $B$ is much cheaper than $A$ and $C$
+#slide("Motivation: Random Matrices In Practice")[
+  - *scikit-learn* random projections: data $times$ a random Gaussian or sparse matrix
+  - *scikit-learn* PCA: randomized SVD, the default for large inputs
+  - *PyTorch* `torch.svd_lowrank`: the same randomized SVD
+  - *SciPy* `clarkson_woodruff_transform`: a random sketch for least squares
+  - *scikit-learn* `RBFSampler`: random features for kernel methods
+  - *Apache Spark*: random projections to find similar items
 ]
 
 // ---------------- Animations: how tiling works, how a PRNG works ----------------
@@ -431,12 +431,12 @@
 ]
 
 #slide("Research Goals")[
-  + Build a cycle-level simulator of a core, a cache hierarchy and a PRNG-FIFO
-  + Reproduce the Bharadwaj model
-  + Choose the dataflow that suits a PRNG-FIFO
-  + Find the best tile, and how it changes with $g_c$
-  + Build a model that explains and predicts it
-  + Answer design questions for software and hardware engineers
+  + Build a cycle-level simulator, and check it against the Bharadwaj results
+  + Find what the best tile looks like, and how it changes with $g_c$
+  + Build a model that predicts the best tile
+  + Check how well the model chooses the tile, also for other matrices
+  + Answer design questions for engineers who use or build such a system
+  + Check the results on a more realistic core with gem5
 ]
 
 // ---------------- Experiments ----------------
@@ -490,6 +490,19 @@
     text(fill: muted)[After:], math.equation(math.display(after.body)),
   )
 })
+
+#slide("The Bharadwaj Model")[
+  - The cost of a tile is its memory traffic per MAC
+  - An element of $A$ is reused by the $T_N$ columns of the tile, an element of $B$ by its $T_M$ rows
+  - $B$ costs a fraction $rho$ of $A$
+  #v(1em)
+  #align(center, text(size: 26pt, {
+    let tx(it) = text(font: "Noto Sans", size: 26pt, it)
+    $ "traffic" / "MAC" = underbrace(1 / T_N, #tx[$A$]) + underbrace(rho / T_M, #tx[$B$]) $
+  }))
+  #v(0.4em)
+  #align(center)[For a fixed tile area it is smallest at $T_N slash T_M = 1 slash rho$]
+]
 
 #slide("Change 1: Traffic To Cycles")[
   - A real cache has hits, misses, tiles that fit or don't
@@ -974,12 +987,10 @@
 // ---------------- Discussion and conclusion ----------------
 #slide("Future Studies")[
   #section-name.update("Future Studies")
-  - A FIFO that only advances on reads that commit, so a seeded generator works behind a speculating core
-  - gem5 on other cores and other matrices
-  - Overlapping misses in our simulator
   - More matrices and cache sizes, to see how the thresholds move
+  - Going in much further on every one of the experiments we showed
+  - Researching the mathematical model further to achive a deterministic model
   - Predict $alpha$ from the cache parameters instead of calibrating it for every new hardware
-  - A software-managed scratchpad that keeps the strip of $A$ on purpose
 ]
 
 #section("Thank You", number: false)
