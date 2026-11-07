@@ -108,3 +108,29 @@ slide 56:
 slide 57:
 - at a very high gc -> no matter what tile we pick -> we are past the second cliff -> there random is just always better.
 - between the extremes -> the tile that is picked is the one that is generation bound -> and for generation bound areas -> the policy does not matter -> making it so they have the same performance.
+
+# Final questions
+
+## What is the L_mem/(EK) term?
+- Every element of C must come from memory once (compulsory miss) -> L_mem/E cycles per element -> shared by its K MACs -> L_mem/(EK) per MAC.
+- Small, but different for every K -> that's the drift in alpha.
+
+## Which matrices do we calibrate on?
+- 192×128×256 and 192×1024×256, at gc = 0, every tile simulated -> two full tables of alpha.
+
+## Isn't it circular? The fit test needs the tile height, and alpha depends on it.
+- No -> the model goes over every tile -> fit test for that tile -> read alpha of that same tile from the matching table -> predict runtime -> pick the fastest at the end.
+- The height is an input to the fit test, never an output.
+
+## How do we get one table where it fits and one where it doesn't?
+- Fitting only gets harder as K grows.
+- Small K (the smallest we expect, 128) -> anything that fits at our K fits here too.
+- Large K (1024) -> nothing fits at all.
+- So every tile always has a matching table, also for K bigger than 1024.
+
+## Why would anyone be past the cliff, where random wins?
+- On purpose -> extremely slow generator -> the best tile is one row of tiles (T_M = M) so B is generated once, even though it thrashes (gc about 1400 to 4500).
+- By accident -> shared cache (other cores take part of it) or tiles hard-coded for a bigger cache -> a tile that fits on paper thrashes.
+- Robustness -> random has no sharp cliffs, so a tile that is a bit too tall costs a little instead of a lot.
+- Hardware -> random is much cheaper to build than true LRU.
+- Otherwise keep LRU and pick a tile that fits -> random is up to 28% slower there.

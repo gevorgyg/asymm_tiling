@@ -457,23 +457,12 @@
   - Savings vs square: 18% and 36% (predicted 20% and 37%)
 ])
 
-#fig-slide("B-Stationary vs C-Stationary", "fig_dataflow", [
-  - $C$-stationary wins only for $g_c <= 4$
-  - $B$-stationary shares each element of $B$ over $T_M$ rows instead of $R_M$
-])
-
-#fig-slide("A Fairer Comparison: Each At Its Best Tile", "fig_dataflow_best", [
+#fig-slide("B-Stationary vs C-Stationary", "fig_dataflow_best", [
   - Each dataflow at its own best tile, for every $g_c$
   - $C$-stationary faster only for $g_c <= 3$
-  - Then $B$-stationary wins by a growing margin
-], ratio: (1fr, 1.6fr))
-
-#fig-slide("Other Tiles, Other Hardware", "fig_dataflow_ratio", [
-  - Same pattern for every height
-  - Crossover at $g_c approx R_M dot T_B$
-  - Ratio levels off at $T_M slash R_M$
+  - $B$-stationary shares each element of $B$ over $T_M$ rows instead of $R_M$
   #key[We use $B$-stationary]
-])
+], ratio: (1fr, 1.6fr))
 
 #section("The Model")
 
@@ -557,7 +546,7 @@
 
 #fig-slide("The Best Tile", "fig_best_tile", [
   - $T_M$ grows to hide generation
-  - $T_N$ grows, then shrinks to delay $C$ tile trashing
+  - $T_N$ grows, then shrinks to delay $C$ tile thrashing
   - For a very slow generator $=>$ the bigger the better.
 ])
 
@@ -709,7 +698,7 @@
 #slide("Refinement 4: A Small Drift In K")[
   - Inside each level, $alpha$ still drifts a little with $K$
   - The reason is $C$:
-    - every line of $C$ is loaded from memory once: $L_"mem"$ cycles for $E$ elements
+    - every line of $C$ is loaded from memory once, a compulsory miss: $L_"mem"$ cycles for $E$ elements
     - every element of $C$ is used by $K$ MACs
   #v(1em)
   #set text(size: 22pt)
@@ -800,14 +789,6 @@
   )
 ]
 
-#question[How Much Autotuning \ Is Needed?]
-
-#fig-slide("How Much Autotuning?", "sw_autotune", [
-  - Square tiles alone: up to 2$times$ slower
-  - Heights dividing $M$, power-of-two widths: within 10%
-  #key[Start small, add candidates if needed]
-])
-
 #question[Does The Choice Of Tile Matter?]
 
 #fig-slide("Does The Choice Matter?", "fig_vs_square", [
@@ -834,68 +815,9 @@
 ])
 
 #fig-slide("Bigger Cache Or Bigger FIFO?", "hw_sram_split", [
-  - When too much goes to the cache $=>$ sligtly slower runtime 
+  - When too much goes to the cache $=>$ slightly slower runtime 
   - When too much goes to the FIFO $=>$ horrible performance
   - As soon as the FIFO is big enough the rest should go to the cache
-])
-
-#question[Does The Cache Need \ To Be Fully Associative?]
-
-#fig-slide("Does The Cache Need To Be Fully Associative?", "hw_assoc_unpadded", [
-  - more than 2$times$ slower
-  - More ways barely help
-  - Rows of $2^k$ lines land in the same sets
-])
-
-// where the rows of one tile column land in a 16 KB 8-way L1 (32 sets x 8 ways):
-// row r starts at line r * stride, so it goes to set (r * stride) mod 32.
-// Cells above the 8 ways are rows that want that set but don't fit.
-#let miss-fill = rgb("#f6d0cc")
-#let miss-ink = rgb("#c62828")
-#let set-map(stride, nrows: 24, ways: 8, over: 4) = {
-  let sets = range(32).map(s => range(nrows).filter(r => calc.rem(r * stride, 32) == s))
-  let cell(body, fill, stroke) = box(width: 100%, height: 100%, fill: fill, stroke: stroke,
-    align(center + horizon, text(size: 7.5pt, body)))
-  grid(
-    columns: (0.72cm,) * 32,
-    rows: (0.33cm,) * (over + ways) + (auto,),
-    ..for level in range(over + ways) {
-      let slot = over + ways - 1 - level          // 0 = the bottom way
-      range(32).map(s => {
-        let rows = sets.at(s)
-        let has = slot < rows.len()
-        if slot < ways {
-          cell(if has [#rows.at(slot)], if has { a-fill } else { white }, 0.4pt + rgb("#9aa7b6"))
-        } else if has {
-          cell(text(fill: miss-ink)[#rows.at(slot)], miss-fill, 0.4pt + miss-ink)
-        } else { [] }
-      })
-    },
-    ..range(32).map(s => align(center, text(size: 7pt, fill: muted, str(s)))),
-  )
-}
-
-#slide("Why Padding Works: Where The Rows Land")[
-  #set text(size: 16pt)
-  - 16 KB 8-way $L_1$ = 32 sets $times$ 8 lines. Row $r$ goes to set $(r dot "lines per row") mod 32$
-  - One step touches the same column of every row of the tile, here 24 rows
-  #v(0.2em)
-  #grid(
-    columns: (auto, 1fr),
-    column-gutter: 0.6cm,
-    row-gutter: (0.4em, 1.1em, 0.4em),
-    align: (right + horizon, left + horizon),
-    [*Rows of 256* \ #text(size: 13pt, fill: muted)[16 lines, no padding]], set-map(16),
-    [], text(size: 13pt)[Every row lands on set 0 or 16. Only 16 rows fit, the other #text(fill: miss-ink)[8 thrash]],
-    [*Rows of 272* \ #text(size: 13pt, fill: muted)[17 lines, padded]], set-map(17, over: 0),
-    [], text(size: 13pt)[The rows spread over all the sets, one line each, and all 24 fit],
-  )
-]
-
-#fig-slide("Padding Fixes It", "hw_assoc_padded", [
-  - Odd number of lines per row
-  - 8-way $approx$ fully associative
-  #key[Ordinary 4- or 8-way cache + padding]
 ])
 
 #question[Does The Replacement \ Policy Matter?]
@@ -989,7 +911,7 @@
   #section-name.update("Future Studies")
   - More matrices and cache sizes, to see how the thresholds move
   - Going in much further on every one of the experiments we showed
-  - Researching the mathematical model further to achive a deterministic model
+  - Researching the mathematical model further to achieve a deterministic model
   - Predict $alpha$ from the cache parameters instead of calibrating it for every new hardware
 ]
 
