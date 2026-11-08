@@ -7,7 +7,7 @@
 #import "@preview/cetz:0.3.4"
 
 #let title = "Evaluating Matrix Tiling Multiplication For Asymmetric Data Cost"
-#let author = "Regev Ginzburg, Areg Mkhitaryan"
+#let author = "George Ginzburg, Areg Mkhitaryan"
 #let course = "Project Aleph Spring 2026"
 #let date = datetime.today().display("[month repr:long] [day], [year]")
 
@@ -846,7 +846,7 @@
 
 #wide-slide("gem5: Cache Misses", "gem5_misses", height: 60%, [
   - The steps are capacity limits: the strip of $A$ stops fitting in $L_1$ at $T_M = 64$, in $L_2$ at $T_M = 192$
-  - The prefetcher only helps at $T_M = 8$: it does not prefetch across 4 KB pages
+  - The prefetcher only helps at $T_M = 8$, where every load walks memory with a fixed 32-byte stride
 ])
 
 #wide-slide("gem5: Speedup Of The PRNG-FIFO", "gem5_speedup", height: 60%, [
@@ -859,7 +859,18 @@
   - A load of $B$ on that wrong path reaches the FIFO before the branch resolves
   - Counter PRNG-FIFO: the extra elements are thrown away, costs only generation time
   - Seeded PRNG-FIFO: the stream shifts, the rest of the tile gets the *wrong* $B$
-  #key[The generator must be addressable, or the FIFO must pop only on reads that commit]
+  #block(fill: rgb("#f5f7fa"), stroke: 0.6pt + rgb("#d0d7e0"), radius: 4pt,
+    inset: (x: 12pt, y: 9pt), width: 100%, above: 0.9em)[
+    #show raw: set text(font: "Noto Sans Mono", size: 14pt)
+    ```
+    tile 1: seed1 -> b1 b2 b3 b4 b5 ...
+      needs:  step 1: b1 b2   step 2: b3 b4
+      gets:   step 1: b1 b2   (b3 on the wrong path)   step 2: b4 b5   <- wrong C
+    tile 2: seed2 -> FIFO emptied and restarted, the shift does not carry over
+    tile 3: seed3 -> ...
+    ```
+  ]
+  #key[FIFO must pop only on reads that commit]
 ]
 
 #wide-slide("gem5: A Slow Generator", "gem5_gencost_tiles", height: 58%, [

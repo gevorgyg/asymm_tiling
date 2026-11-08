@@ -10,7 +10,7 @@
 
 #let title = "Evaluating Matrix Tiling
 Multiplication For Asymmetric Data Cost"
-#let author = "Regev Ginzburg, Areg Mkhitaryan"
+#let author = "George Ginzburg, Areg Mkhitaryan"
 #let course = "Project Aleph Spring 2026"
 #let date = datetime.today().display("[month repr:long] [day], [year]")
 
