@@ -844,14 +844,15 @@
   - Without padding: set conflicts rule, only short tiles are good
 ])
 
-#wide-slide("gem5: Cache Misses", "gem5_misses", height: 60%, [
-  - The steps are capacity limits: the strip of $A$ stops fitting in $L_1$ at $T_M = 64$, in $L_2$ at $T_M = 192$
-  - The prefetcher only helps at $T_M = 8$, where every load walks memory with a fixed 32-byte stride
-])
-
 #wide-slide("gem5: Speedup Of The PRNG-FIFO", "gem5_speedup", height: 60%, [
   - Same tile: 1.00$times$ to 1.96$times$, it follows the traffic of $B$ ($prop 1 slash T_M$)
   - Best tile against best tile: 8%, and 28% without padding
+])
+
+
+#wide-slide("gem5: A Slow Generator", "gem5_gencost_tiles", height: 58%, [
+  - Up to $g_c = 16$ nothing changes: generation is hidden
+  - From $g_c = 32$ the best tile grows taller: $96 times 16$, then $192 times 64$, then $192 times 16$
 ])
 
 #slide("gem5: Branch Prediction And The FIFO")[
@@ -871,50 +872,6 @@
     ```
   ]
   #key[FIFO must pop only on reads that commit]
-]
-
-#wide-slide("gem5: A Slow Generator", "gem5_gencost_tiles", height: 58%, [
-  - Up to $g_c = 16$ nothing changes: generation is hidden
-  - From $g_c = 32$ the best tile grows taller: $96 times 16$, then $192 times 64$, then $192 times 16$
-])
-
-#fig-slide("gem5: Is The PRNG-FIFO Worth It?", "gem5_gencost_speedup", [
-  - Against the best tile with $B$ in memory
-  - Breaks even at $g_c approx 32$
-  - Keeping the tile of $g_c = 0$: 3$times$ slower at $g_c = 128$
-  - Our model $max(alpha, g_c slash T_M)$: within 3% of gem5, picks its best tile
-], ratio: (1fr, 1.3fr))
-
-#slide("gem5 Against Our Simulator")[
-  #grid(
-    columns: (1fr, auto),
-    gutter: 1cm,
-    align(horizon)[
-      - Our simulator run on the gem5 setup
-      - Its tile loses less than 1% in gem5 at 7 of 9 values of $g_c$
-      - Off only at $g_c = 16$ and 32, where memory and generation are equal: ours charges misses in full, so it goes tall sooner
-    ],
-    align(horizon, {
-      set text(size: 14pt)
-      table(
-        columns: 4,
-        stroke: none,
-        inset: (x: 8pt, y: 4pt),
-        align: (right, center, center, right),
-        table.hline(stroke: 0.6pt),
-        [*$g_c$*], [*gem5 best*], [*ours*], [*loss*],
-        table.hline(stroke: 0.4pt),
-        [0], [$64 times 64$], [$48 times 16$], [0.5%],
-        [1–4], [$64 times 64$], [$32 times 32$], [0.6%],
-        [8], [$64 times 64$], [$64 times 64$], [0.0%],
-        [16], [$64 times 64$], [$96 times 16$], [6.7%],
-        [32], [$96 times 16$], [$192 times 64$], [18.6%],
-        [64], [$192 times 64$], [$192 times 64$], [0.0%],
-        [128], [$192 times 16$], [$192 times 64$], [0.2%],
-        table.hline(stroke: 0.6pt),
-      )
-    }),
-  )
 ]
 
 // ---------------- Discussion and conclusion ----------------
